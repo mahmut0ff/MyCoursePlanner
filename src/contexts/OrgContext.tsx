@@ -9,11 +9,14 @@ import type { InstitutionType } from '../types';
 export interface OrgContextValue {
   orgData: any | null;
   institutionType: InstitutionType;
+  /** Re-read the org document so a saved setting (type, name, logo) shows without a reload. */
+  refreshOrg: () => Promise<void>;
 }
 
 export const OrgContext = createContext<OrgContextValue>({
   orgData: null,
   institutionType: 'center',
+  refreshOrg: async () => {},
 });
 
 export const useOrg = () => useContext(OrgContext);

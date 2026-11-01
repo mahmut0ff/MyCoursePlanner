@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar.tsx';
 import Topbar from './Topbar.tsx';
@@ -95,13 +95,21 @@ const AppLayout: React.FC = () => {
   const { isSuperAdmin, organizationId } = useAuth();
   const { t, i18n } = useTranslation();
   const [orgData, setOrgData] = useState<any>(null);
+  const hasOrg = !isSuperAdmin && !!organizationId && organizationId !== 'personal';
+
+  // Ответ после смены организации отбрасывается: иначе медленный запрос старой
+  // орг. перезапишет данные новой.
+  const orgIdRef = useRef(organizationId);
+  orgIdRef.current = organizationId;
+  const refreshOrg = useCallback(async () => {
+    if (!hasOrg || !organizationId) return;
+    const data = await apiGetOrganization(organizationId);
+    if (orgIdRef.current === organizationId) setOrgData(data);
+  }, [hasOrg, organizationId]);
 
   useEffect(() => {
-    if (!isSuperAdmin && organizationId && organizationId !== 'personal') {
-      apiGetOrganization(organizationId).then(data => {
-        setOrgData(data);
-
-      }).catch(console.error);
+    if (hasOrg) {
+      refreshOrg().catch(console.error);
     } else {
       setOrgData(null);
       const root = document.documentElement;
@@ -109,7 +117,7 @@ const AppLayout: React.FC = () => {
         root.style.removeProperty(`--color-primary-${w}`);
       });
     }
-  }, [organizationId, isSuperAdmin]);
+  }, [hasOrg, refreshOrg]);
 
   // «студент»/«ученик» в текстах следует типу заведения; пересобрать открытые экраны
   // через тот же сигнал, что и смена языка.
@@ -137,7 +145,7 @@ const AppLayout: React.FC = () => {
     <BranchProvider>
     <PlanProvider>
     <PermissionsProvider>
-    <OrgContext.Provider value={{ orgData, institutionType: orgData?.institutionType || 'center' }}>
+    <OrgContext.Provider value={{ orgData, institutionType: orgData?.institutionType || 'center', refreshOrg }}>
       {/* RBAC permission context wraps the authenticated app shell */}
       {/* Skip-to-content link for keyboard/screen reader users */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">

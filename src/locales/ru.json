@@ -2362,6 +2362,7 @@
       "gradingScale": "Система оценок",
       "institutionType": "Тип заведения",
       "institutionTypeDesc": "Меняет терминологию (группы/классы, студенты/ученики) и шкалу оценок по умолчанию для новых курсов",
+      "institutionApplied": "Режим «{{name}}» применён",
       "passingScore": "Проходной балл (%)",
       "teacherPermissions": "Права преподавателей",
       "teacherGroupManagement": "Управление своими группами",

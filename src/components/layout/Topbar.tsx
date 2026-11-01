@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrg } from '../../contexts/OrgContext';
+import { term } from '../../lib/terminology';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import LanguageSwitcher from '../LanguageSwitcher';
@@ -122,10 +124,13 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { institutionType } = useOrg();
   const pageTitle = useMemo(() => {
     const hit = TITLE_MAP.find(([prefix]) => location.pathname === prefix || location.pathname.startsWith(prefix + '/'));
-    return hit ? t(hit[1], hit[2]) : '';
-  }, [location.pathname, t]);
+    if (!hit) return '';
+    // Как в меню: «Классы» в школе, «Потоки» в академии.
+    return hit[0] === '/groups' ? term(t, institutionType, 'groups') : t(hit[1], hit[2]);
+  }, [location.pathname, t, institutionType]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');

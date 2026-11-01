@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useBranch } from '../../contexts/BranchContext';
+import { useOrg } from '../../contexts/OrgContext';
+import { term } from '../../lib/terminology';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers, orgTeacherJoinGroup, orgTeacherLeaveGroup, orgGetSettings } from '../../lib/api';
 import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut, GripVertical, ListRestart } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -60,6 +62,7 @@ const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: Re
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { institutionType } = useOrg();
   const { role, profile } = useAuth();
   const { activeBranchId, branches } = useBranch();
   const { canDelete, can } = usePermissions();
@@ -194,7 +197,7 @@ const GroupsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t('nav.groups', 'Группы')}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{term(t, institutionType, 'groups')}</h1>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
             <Users className="w-4 h-4" /> {t('groups.list.total', 'Всего групп: {{count}}', { count: filtered.length })}
           </p>

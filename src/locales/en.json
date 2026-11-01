@@ -1916,6 +1916,7 @@
       "gradingScale": "Grading Scale",
       "institutionType": "Institution type",
       "institutionTypeDesc": "Changes terminology (groups/classes, students/pupils) and the default grading scale for new courses",
+      "institutionApplied": "Mode “{{name}}” applied",
       "passingScore": "Passing Score (%)",
       "teacherPermissions": "Teacher permissions",
       "teacherGroupManagement": "Manage their own groups",

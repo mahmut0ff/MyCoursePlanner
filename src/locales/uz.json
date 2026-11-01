@@ -2302,6 +2302,7 @@
       "gradingScale": "Baholash tizimi",
       "institutionType": "Muassasa turi",
       "institutionTypeDesc": "Terminologiyani (guruhlar/sinflar, talabalar/o'quvchilar) va yangi kurslar uchun standart baholash shkalasini o'zgartiradi",
+      "institutionApplied": "«{{name}}» rejimi qo'llandi",
       "passingScore": "O'tish bali (%)",
       "teacherPermissions": "O'qituvchilar huquqlari",
       "teacherGroupManagement": "O'z guruhlarini boshqarish",

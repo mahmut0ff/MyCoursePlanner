@@ -11,8 +11,9 @@ import {
   QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Globe,
   School, Languages, Users, SlidersHorizontal
 } from 'lucide-react';
-import type { OrgSettings } from '../../types';
-import { INSTITUTION_LIST } from '../../lib/terminology';
+import type { OrgSettings, InstitutionType } from '../../types';
+import { INSTITUTION_LIST, getInstitution } from '../../lib/terminology';
+import { useOrg } from '../../contexts/OrgContext';
 import QRCode from 'qrcode';
 import { IntegrationsTab } from './IntegrationsTab';
 import toast from 'react-hot-toast';
@@ -35,7 +36,12 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
 ];
 
 /* ════════════════════════════════════ GENERAL ════════════════════════════════════ */
-const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
+const GeneralTab: React.FC<{
+  settings: OrgSettings;
+  update: (k: string, v: any) => void;
+  onTypeChange: (type: InstitutionType) => void;
+  switchingType: boolean;
+}> = ({ settings, update, onTypeChange, switchingType }) => {
   const { t } = useTranslation();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -72,8 +78,10 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
               <button
                 key={inst.id}
                 type="button"
-                onClick={() => update('institutionType', inst.id)}
-                className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all ${active ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                onClick={() => onTypeChange(inst.id)}
+                disabled={switchingType}
+                aria-pressed={active}
+                className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all disabled:cursor-wait disabled:opacity-60 ${active ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
               >
                 <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
                 <span className={`text-sm font-medium ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-700 dark:text-slate-300'}`}>{t(inst.labelKey, inst.label)}</span>
@@ -587,6 +595,8 @@ const OrgSettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [switchingType, setSwitchingType] = useState(false);
+  const { refreshOrg } = useOrg();
   const requestedTab = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(
     requestedTab && TABS.some((tb) => tb.id === requestedTab) ? requestedTab : 'general'
@@ -601,6 +611,24 @@ const OrgSettingsPage: React.FC = () => {
 
   const update = (key: string, value: any) => setSettings((s) => s ? { ...s, [key]: value } : s);
 
+  // Тип заведения применяется сразу, без кнопки «Сохранить»: шлём только его, чтобы
+  // недосохранённые правки остальных полей не ушли на сервер и не пропали из формы.
+  const changeType = async (type: InstitutionType) => {
+    if (!settings || switchingType || type === (settings.institutionType || 'center')) return;
+    const prev = settings.institutionType;
+    update('institutionType', type);
+    setSwitchingType(true); setError('');
+    try {
+      await orgUpdateSettings({ institutionType: type });
+      await refreshOrg();
+      const inst = getInstitution(type);
+      toast.success(t('org.settings.institutionApplied', 'Режим «{{name}}» применён', { name: t(inst.labelKey, inst.label) }));
+    } catch (e: any) {
+      update('institutionType', prev);
+      setError(e.message || t('common.saveError', 'Ошибка сохранения'));
+    } finally { setSwitchingType(false); }
+  };
+
   const handleSave = async () => {
     if (!settings) return;
     if (!String(settings.name ?? '').trim()) { setError(t('common.orgNameRequired', 'Название организации не может быть пустым')); return; }
@@ -608,6 +636,7 @@ const OrgSettingsPage: React.FC = () => {
     try {
       await orgUpdateSettings(settings);
       setSaved(true); setTimeout(() => setSaved(false), 2000);
+      refreshOrg().catch(console.error);
     } catch (e: any) { setError(e.message || t('common.saveError', 'Ошибка сохранения')); }
     finally { setSaving(false); }
   };
@@ -616,7 +645,7 @@ const OrgSettingsPage: React.FC = () => {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'general': return <GeneralTab settings={settings} update={update} />;
+      case 'general': return <GeneralTab settings={settings} update={update} onTypeChange={changeType} switchingType={switchingType} />;
       case 'menu': return <SidebarCustomizerCard />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
       case 'visitcard': return <VisitCardTab settings={settings} update={update} />;

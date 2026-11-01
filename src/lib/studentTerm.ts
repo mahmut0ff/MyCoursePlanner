@@ -13,8 +13,16 @@ import type { InstitutionType } from '../types';
  */
 type Swap = [RegExp, string][];
 
-const RU_TO_STUDENT: Swap = [[/ученик/g, 'студент'], [/Ученик/g, 'Студент'], [/УЧЕНИК/g, 'СТУДЕНТ']];
-const RU_TO_PUPIL: Swap = [[/студент/g, 'ученик'], [/Студент/g, 'Ученик'], [/СТУДЕНТ/g, 'УЧЕНИК']];
+// Мн. число им. падежа расходится (студенты / ученики — «ы» после т, «и» после к),
+// поэтому его меняем целиком до замены основы, иначе выходит «Ученикы».
+const RU_TO_STUDENT: Swap = [
+  [/ученики/g, 'студенты'], [/Ученики/g, 'Студенты'], [/УЧЕНИКИ/g, 'СТУДЕНТЫ'],
+  [/ученик/g, 'студент'], [/Ученик/g, 'Студент'], [/УЧЕНИК/g, 'СТУДЕНТ'],
+];
+const RU_TO_PUPIL: Swap = [
+  [/студенты/g, 'ученики'], [/Студенты/g, 'Ученики'], [/СТУДЕНТЫ/g, 'УЧЕНИКИ'],
+  [/студент/g, 'ученик'], [/Студент/g, 'Ученик'], [/СТУДЕНТ/g, 'УЧЕНИК'],
+];
 const EN_TO_STUDENT: Swap = [[/pupil/g, 'student'], [/Pupil/g, 'Student'], [/PUPIL/g, 'STUDENT']];
 const EN_TO_PUPIL: Swap = [[/student/g, 'pupil'], [/Student/g, 'Pupil'], [/STUDENT/g, 'PUPIL']];
 const UZ_TO_STUDENT: Swap = [[/o['‘ʻ]quvchi/g, 'talaba'], [/O['‘ʻ]quvchi/g, 'Talaba'], [/O['‘ʻ]QUVCHI/g, 'TALABA']];

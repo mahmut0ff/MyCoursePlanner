@@ -2070,6 +2070,7 @@
       "gradingScale": "Баалоо системасы",
       "institutionType": "Мекеменин түрү",
       "institutionTypeDesc": "Терминологияны (группалар/класстар, студенттер/окуучулар) жана жаңы курстар үчүн демейки баалоо системасын өзгөртөт",
+      "institutionApplied": "«{{name}}» режими колдонулду",
       "passingScore": "Өтүү баллы (%)",
       "teacherPermissions": "Мугалимдердин укуктары",
       "teacherGroupManagement": "Өз топторун башкаруу",

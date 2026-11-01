@@ -8,6 +8,11 @@ describe('applyStudentTerm', () => {
     expect(applyStudentTerm('Добавить студента', 'ru', true)).toBe('Добавить ученика');
     expect(applyStudentTerm('Обучение', 'ru', false)).toBe('Обучение');
   });
+  it('ru: мн. число им. падежа — «ученики», а не «ученикы»', () => {
+    expect(applyStudentTerm('Студенты · все студенты', 'ru', true)).toBe('Ученики · все ученики');
+    expect(applyStudentTerm('Ученики · ученики · учениками', 'ru', false)).toBe('Студенты · студенты · студентами');
+    expect(applyStudentTerm('СТУДЕНТЫ', 'ru', true)).toBe('УЧЕНИКИ');
+  });
   it('uz and en swap stems, kg is left alone', () => {
     expect(applyStudentTerm("O'quvchilar ro'yxati", 'uz', false)).toBe("Talabalar ro'yxati");
     expect(applyStudentTerm('talabaga', 'uz', true)).toBe("o'quvchiga");

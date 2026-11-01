@@ -22,6 +22,9 @@ import { isUntouchedPlan, orgDayKey, planPeriodKey } from './utils/payment-plans
 import { loadTuitionRates, effectiveChargeAmount } from './utils/tuition';
 import { roomKeys, sameRoom } from './utils/classrooms';
 import { ensureTeacherRate } from './utils/payroll-default-rate';
+import { INSTITUTION_LIST, getInstitution } from '../../src/lib/terminology';
+import { makeDefaultSchema } from '../../src/lib/gradePresets';
+import type { InstitutionType } from '../../src/types';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -50,6 +53,27 @@ export function normalizeChatLink(raw: unknown): string | null {
   if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return null;
   return 'https://' + s;
 }
+
+/**
+ * Смена типа заведения. Курс без своей схемы оценок берёт шкалу из типа, поэтому
+ * переключение молча перешкалировало бы уже выставленные оценки (пятёрка под
+ * 100-балльной — провал). План: курсы без схемы закрепить на текущей шкале, а
+ * новую шкалу типа сделать дефолтом организации — она достанется только новым курсам.
+ * null — тип не меняется; `freezePresetId: null` — шкала та же, закреплять нечего.
+ */
+export function institutionSwitchPlan(
+  org: { institutionType?: string; defaultGradePresetId?: string } | undefined,
+  nextType: InstitutionType,
+): { freezePresetId: string | null; nextPresetId: string } | null {
+  const currentType = getInstitution(org?.institutionType as InstitutionType).id;
+  if (currentType === nextType) return null;
+  const currentPresetId = org?.defaultGradePresetId || getInstitution(currentType).defaultGradePresetId;
+  const nextPresetId = getInstitution(nextType).defaultGradePresetId;
+  return { freezePresetId: currentPresetId === nextPresetId ? null : currentPresetId, nextPresetId };
+}
+
+export const isInstitutionType = (v: unknown): v is InstitutionType =>
+  INSTITUTION_LIST.some((i) => i.id === v);
 
 /** Цена курса — неотрицательное число, название (если прислано) — не пустое. */
 export function courseFieldsError(f: { title?: unknown; price?: unknown }): string | null {
@@ -2544,7 +2568,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         workingHours: orgData?.workingHours || '',
         photos: orgData?.photos || [],
         subjects: orgData?.subjects || [],
-        institutionType: orgData?.institutionType || 'center',
+        institutionType: getInstitution(orgData?.institutionType).id,
         timezone: sData.timezone || 'Asia/Bishkek',
         locale: sData.locale || 'ru',
         academicYearStart: sData.academicYearStart || '',
@@ -2586,18 +2610,45 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.city !== undefined) orgUpdate.city = body.city;
       if (body.country !== undefined) orgUpdate.country = body.country;
       if (body.subjects !== undefined) orgUpdate.subjects = body.subjects;
-      if (body.institutionType !== undefined) orgUpdate.institutionType = body.institutionType;
+      if (body.institutionType !== undefined) {
+        if (!isInstitutionType(body.institutionType)) return badRequest('Неизвестный тип заведения');
+        const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+        const plan = institutionSwitchPlan(orgSnap.data(), body.institutionType);
+        if (plan) {
+          // Закрепляем шкалу ДО смены типа: упади запись типа — схемы совпадают с
+          // тем, что журнал и так показывал, и ничего не перешкалировано.
+          if (plan.freezePresetId) {
+            const [coursesSnap, schemasSnap] = await Promise.all([
+              orgQuery('courses', orgId).get(),
+              orgQuery('gradeSchemas', orgId).get(),
+            ]);
+            const withSchema = new Set(schemasSnap.docs.map((d) => d.data().courseId));
+            const bare = coursesSnap.docs.filter((d) => !withSchema.has(d.id));
+            for (let i = 0; i < bare.length; i += 400) {
+              const batch = adminDb.batch();
+              for (const c of bare.slice(i, i + 400)) {
+                const { gradingType, scale, passThreshold } = makeDefaultSchema(plan.freezePresetId, c.id);
+                batch.set(adminDb.collection('gradeSchemas').doc(), {
+                  courseId: c.id, organizationId: orgId, gradingType, scale, passThreshold,
+                  rules: {}, createdAt: now(), updatedAt: now(),
+                });
+              }
+              await batch.commit();
+            }
+          }
+          orgUpdate.defaultGradePresetId = plan.nextPresetId;
+        }
+        // Пишем и без смены: так устаревшее значение («language_school») нормализуется.
+        orgUpdate.institutionType = body.institutionType;
+      }
       await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
 
-      // Settings doc (academic config)
-      const settingsData: Record<string, any> = {
-        timezone: body.timezone, locale: body.locale,
-        academicYearStart: body.academicYearStart,
-        academicYearEnd: body.academicYearEnd,
-        gradingScale: body.gradingScale,
-        passingScore: body.passingScore,
-        updatedAt: now(),
-      };
+      // Settings doc (academic config). Только присланные поля: запрос может нести
+      // один тип заведения, а undefined Firestore отвергает.
+      const settingsData: Record<string, any> = { updatedAt: now() };
+      for (const k of ['timezone', 'locale', 'academicYearStart', 'academicYearEnd', 'gradingScale', 'passingScore']) {
+        if (body[k] !== undefined) settingsData[k] = body[k];
+      }
       // Teacher self-service group management (admin-controlled policy toggles).
       if (body.teacherGroupManagement !== undefined) {
         settingsData.teacherGroupManagement = body.teacherGroupManagement === true;

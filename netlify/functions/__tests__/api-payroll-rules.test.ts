@@ -109,7 +109,8 @@ function wire(opts: {
    */
   const batches: Array<{ ops: number }> = [];
 
-  const orgDoc: Record<string, any> = {};
+  // Записи зарплатного модуля гейтятся тарифом (requirePlanFeature) — организация в тесте платит за Professional.
+  const orgDoc: Record<string, any> = { planId: 'professional' };
   if (opts.defaultRate !== undefined) orgDoc.payrollDefaultRate = opts.defaultRate;
 
   const rulesQuery = seededQuery(rules);

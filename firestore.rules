@@ -62,7 +62,16 @@ service cloud.firestore {
     // 3. Organizations and Public/Global Data
     match /organizations/{orgId} {
       allow read: if request.auth != null || resource.data.isPublic == true;
-      allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == resource.data.ownerId);
+      // Владелец правит свою организацию, но не её тариф, статус и владельца:
+      // сервер берёт лимиты и состав тарифа из organizations.planId, а
+      // блокировку за неоплату — из status, поэтому прямой записью владелец
+      // выдавал себе Enterprise и снимал приостановку. Создание и удаление —
+      // только бэкенд (клиент организации не создаёт).
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (
+        request.auth != null && request.auth.uid == resource.data.ownerId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['planId', 'status', 'ownerId'])
+      );
 
       match /aiLeads/{leadId} {
         allow read, write: if isSuperAdmin() || (

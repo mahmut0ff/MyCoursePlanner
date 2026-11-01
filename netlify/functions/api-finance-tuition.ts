@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: договорная цена обучения — «сколько платит этот студент за этот курс».
  *
@@ -135,6 +136,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'finances'); if (gate) return gate; }
 
   const orgId = getOrgFilter(user);
   if (!orgId) return badRequest('Organization context required');

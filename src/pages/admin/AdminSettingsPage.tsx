@@ -1,3 +1,4 @@
+import { PLAN_IDS, PLAN_LIMITS, planPrice } from '../../lib/subscription-plans';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -50,20 +51,20 @@ const ProfileTab: React.FC = () => {
   const [showPw, setShowPw] = useState(false);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Profile Header */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex items-center gap-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-center gap-4">
         {profile?.avatarUrl ? (
-          <img src={profile.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover shadow-lg ring-2 ring-white/10" />
+          <img src={profile.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
         ) : (
-          <div className="w-14 h-14 bg-emerald-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
+          <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-sm font-semibold text-slate-700 dark:text-slate-200">
             {profile?.displayName?.[0]?.toUpperCase() || '?'}
           </div>
         )}
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{profile?.displayName}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
-          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role?.replace('_', ' ')}</span>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{profile?.displayName}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{profile?.email}</p>
+          <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role?.replace('_', ' ')}</span>
         </div>
       </div>
 
@@ -73,55 +74,55 @@ const ProfileTab: React.FC = () => {
       <SidebarCustomizerCard />
 
       {/* Profile Form */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.firstName')}</label>
+            <label className="label">{t('admin.settings.firstName')}</label>
             <input type="text" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.lastName')}</label>
+            <label className="label">{t('admin.settings.lastName')}</label>
             <input type="text" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.emailLabel')}</label>
+            <label className="label">{t('admin.settings.emailLabel')}</label>
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.phone')}</label>
+            <label className="label">{t('admin.settings.phone')}</label>
             <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="+996 XXX XXX XXX" />
           </div>
         </div>
         <div className="flex justify-end">
-          <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('admin.settings.saveChanges')}</button>
+          <button className="btn-primary inline-flex items-center gap-1.5"><Save className="w-3.5 h-3.5" />{t('admin.settings.saveChanges')}</button>
         </div>
       </div>
 
       {/* Change Password */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4" />{t('admin.settings.changePassword')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-slate-400" />{t('admin.settings.changePassword')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.currentPassword')}</label>
+            <label className="label">{t('admin.settings.currentPassword')}</label>
             <div className="relative">
               <input type={showPw ? 'text' : 'password'} value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} className="input pr-10" placeholder={t('admin.settings.enterCurrentPassword')} />
-              <button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <button onClick={() => setShowPw(!showPw)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.newPassword')}</label>
+              <label className="label">{t('admin.settings.newPassword')}</label>
               <input type="password" value={pw.newPw} onChange={(e) => setPw({ ...pw, newPw: e.target.value })} className="input" placeholder={t('admin.settings.enterNewPassword')} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.confirmNewPassword')}</label>
+              <label className="label">{t('admin.settings.confirmNewPassword')}</label>
               <input type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} className="input" placeholder={t('admin.settings.confirmNewPassword')} />
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm">{t('admin.settings.updatePassword')}</button>
+            <button className="btn-primary">{t('admin.settings.updatePassword')}</button>
           </div>
         </div>
       </div>
@@ -155,23 +156,23 @@ const UsersRolesTab: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.rolesPermissions')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.settings.rolesPermissions')}</h3>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {roles.map((r) => (
-            <div key={r.name} className="px-6 py-4 flex items-center justify-between">
+            <div key={r.name} className="px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium capitalize ${r.color}`}>{r.name.replace('_', ' ')}</span>
+                <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium capitalize ${r.color}`}>{r.name.replace('_', ' ')}</span>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{t(r.descKey)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-sm text-slate-500 dark:text-slate-400">{counts[r.name] ?? 0} {t('admin.settings.usersCount')}</span>
-                <button className="btn-secondary text-xs">{t('common.edit')}</button>
+                <button className="btn-secondary">{t('common.edit')}</button>
               </div>
             </div>
           ))}
@@ -189,38 +190,38 @@ const BrandingTab: React.FC = () => {
   const [brand, setBrand] = useState({ name: 'SabakHub', primaryColor: '#6366f1', accentColor: '#10b981' });
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('admin.settings.platformBranding')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.settings.platformBranding')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.platformName')}</label>
+            <label className="label">{t('admin.settings.platformName')}</label>
             <input type="text" value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.logo')}</label>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center">
+            <label className="label">{t('admin.settings.logo')}</label>
+            <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center">
               <p className="text-sm text-slate-400 dark:text-slate-500">{t('admin.settings.dropLogo')}</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.primaryColor')}</label>
+              <label className="label">{t('admin.settings.primaryColor')}</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={brand.primaryColor} onChange={(e) => setBrand({ ...brand, primaryColor: e.target.value })} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-                <input type="text" value={brand.primaryColor} onChange={(e) => setBrand({ ...brand, primaryColor: e.target.value })} className="input text-sm font-mono" />
+                <input type="color" value={brand.primaryColor} onChange={(e) => setBrand({ ...brand, primaryColor: e.target.value })} className="w-8 h-8 rounded-md cursor-pointer border border-slate-300 dark:border-slate-600 shrink-0" />
+                <input type="text" value={brand.primaryColor} onChange={(e) => setBrand({ ...brand, primaryColor: e.target.value })} className="input font-mono" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.accentColor')}</label>
+              <label className="label">{t('admin.settings.accentColor')}</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={brand.accentColor} onChange={(e) => setBrand({ ...brand, accentColor: e.target.value })} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-                <input type="text" value={brand.accentColor} onChange={(e) => setBrand({ ...brand, accentColor: e.target.value })} className="input text-sm font-mono" />
+                <input type="color" value={brand.accentColor} onChange={(e) => setBrand({ ...brand, accentColor: e.target.value })} className="w-8 h-8 rounded-md cursor-pointer border border-slate-300 dark:border-slate-600 shrink-0" />
+                <input type="text" value={brand.accentColor} onChange={(e) => setBrand({ ...brand, accentColor: e.target.value })} className="input font-mono" />
               </div>
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('admin.settings.saveChanges')}</button>
+            <button className="btn-primary inline-flex items-center gap-1.5"><Save className="w-3.5 h-3.5" />{t('admin.settings.saveChanges')}</button>
           </div>
         </div>
       </div>
@@ -235,23 +236,23 @@ const NotificationsTab: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.emailNotifications')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.settings.emailNotifications')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('admin.settings.emailNotificationsDesc')}</p>
         </div>
         <div className="px-6 py-12 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center mb-4">
-            <Bell className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center justify-center mb-2">
+            <Bell className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+          <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
             {t('admin.settings.notificationsComingSoon', 'В разработке')}
           </h4>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
             {t('admin.settings.notificationsComingSoonDesc', 'Система уведомлений находится в разработке. Скоро вы сможете получать уведомления о новых регистрациях, платежах, ошибках и истечении пробных периодов.')}
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             {[
               { icon: '👤', label: t('admin.settings.notif_new_user', 'Новые пользователи') },
               { icon: '🏢', label: t('admin.settings.notif_new_org', 'Новые организации') },
@@ -259,7 +260,7 @@ const NotificationsTab: React.FC = () => {
               { icon: '⚠️', label: t('admin.settings.notif_system_error', 'Ошибки системы') },
               { icon: '⏰', label: t('admin.settings.notif_trial_expiring', 'Истечение триала') },
             ].map((item) => (
-              <span key={item.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+              <span key={item.label} className="inline-flex items-center gap-1.5 h-6 px-2 rounded text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                 {item.icon} {item.label}
               </span>
             ))}
@@ -283,21 +284,21 @@ const IntegrationsTab: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.connectedServices')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.settings.connectedServices')}</h3>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {integrations.map((i) => (
-            <div key={i.id} className="px-6 py-4 flex items-center gap-4">
-              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-xl">{i.icon}</div>
+            <div key={i.id} className="px-4 py-3 flex items-center gap-4">
+              <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-md flex items-center justify-center text-xl">{i.icon}</div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900 dark:text-white">{i.name}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{i.status ? t('admin.settings.connected') : t('admin.settings.notConnected')}</p>
               </div>
-              <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${i.status ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{i.status ? t('common.active') : t('common.disabled')}</span>
-              <button className="btn-secondary text-xs">{i.status ? t('admin.settings.configure') : t('admin.settings.connect')}</button>
+              <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${i.status ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{i.status ? t('common.active') : t('common.disabled')}</span>
+              <button className="btn-secondary">{i.status ? t('admin.settings.configure') : t('admin.settings.connect')}</button>
             </div>
           ))}
         </div>
@@ -311,36 +312,34 @@ const IntegrationsTab: React.FC = () => {
 /* ════════════════════════════════════════════════ */
 const BillingTab: React.FC = () => {
   const { t } = useTranslation();
-  const plans = [
-    { id: 'starter', name: t('admin.plans.starter'), price: 1990, students: 50, teachers: 5 },
-    { id: 'professional', name: t('admin.plans.professional'), price: 4990, students: 200, teachers: 20 },
-    { id: 'enterprise', name: t('admin.plans.enterprise'), price: 14900, students: -1, teachers: -1 },
-  ];
+  const plans = PLAN_IDS.map((id) => ({
+    id, name: t(`admin.plans.${id}`), price: planPrice(id), students: PLAN_LIMITS[id].maxStudents, teachers: PLAN_LIMITS[id].maxTeachers,
+  }));
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.planManagement')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.settings.planManagement')}</h3>
         </div>
         <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
+          <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.settings.planName')}</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.settings.priceMonth')}</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.settings.students')}</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.settings.teachers')}</th>
-              <th className="text-right px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase"></th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.settings.planName')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.settings.priceMonth')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.settings.students')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.settings.teachers')}</th>
+              <th className="text-right px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {plans.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{p.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: p.price })}</td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.students === -1 ? '∞' : p.students}</td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.teachers === -1 ? '∞' : p.teachers}</td>
-                <td className="px-6 py-4 text-right"><button className="btn-secondary text-xs">{t('common.edit')}</button></td>
+              <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td className="px-3 py-2 text-sm font-medium text-slate-900 dark:text-white">{p.name}</td>
+                <td className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: p.price })}</td>
+                <td className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400">{p.students === -1 ? '∞' : p.students}</td>
+                <td className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400">{p.teachers === -1 ? '∞' : p.teachers}</td>
+                <td className="px-3 py-2 text-right"><button className="btn-secondary">{t('common.edit')}</button></td>
               </tr>
             ))}
           </tbody>
@@ -365,20 +364,20 @@ const EmailTemplatesTab: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.emailTemplatesTitle')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.settings.emailTemplatesTitle')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('admin.settings.emailTemplatesDesc')}</p>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {templates.map((tmpl) => (
-            <div key={tmpl.id} className="px-6 py-4 flex items-center justify-between">
+            <div key={tmpl.id} className="px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-white">{t(`admin.settings.tpl_${tmpl.id}`)}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{tmpl.id}</p>
               </div>
-              <button className="btn-secondary text-xs">{t('common.edit')}</button>
+              <button className="btn-secondary">{t('common.edit')}</button>
             </div>
           ))}
         </div>
@@ -399,31 +398,31 @@ const LocalizationTab: React.FC = () => {
   const langs = UI_LANGUAGES;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('admin.settings.languageSettings')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.settings.languageSettings')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.defaultLanguage')}</label>
+            <label className="label">{t('admin.settings.defaultLanguage')}</label>
             <select value={defaultLang} onChange={(e) => setDefaultLang(e.target.value)} className="input">
               {langs.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('admin.settings.enabledLanguages')}</label>
+            <label className="label">{t('admin.settings.enabledLanguages')}</label>
             <div className="flex gap-3">
               {langs.map((l) => (
-                <label key={l.code} className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-600 hover:border-primary-300 dark:hover:border-primary-600 transition-colors">
-                  <input type="checkbox" defaultChecked className="accent-primary-500 w-4 h-4" />
-                  <span className="text-lg">{l.flag}</span>
+                <label key={l.code} className="flex items-center gap-2 h-8 px-3 rounded-md cursor-pointer border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-primary-300 dark:hover:border-primary-600 transition-colors">
+                  <input type="checkbox" defaultChecked className="accent-primary-500 w-3.5 h-3.5" />
+                  <span className="text-sm">{l.flag}</span>
                   <span className="text-sm text-slate-700 dark:text-slate-300">{l.label}</span>
                 </label>
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.timezone')}</label>
+              <label className="label">{t('admin.settings.timezone')}</label>
               <select value={tz} onChange={(e) => setTz(e.target.value)} className="input">
                 <option value="Asia/Bishkek">Asia/Bishkek (UTC+6)</option>
                 <option value="Asia/Almaty">Asia/Almaty (UTC+6)</option>
@@ -432,7 +431,7 @@ const LocalizationTab: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.currency')}</label>
+              <label className="label">{t('admin.settings.currency')}</label>
               <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input">
                 <option value="KGS">KGS ({t('admin.currencyName', 'сом')})</option>
                 <option value="USD">USD ($)</option>
@@ -442,7 +441,7 @@ const LocalizationTab: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('admin.settings.saveChanges')}</button>
+            <button className="btn-primary inline-flex items-center gap-1.5"><Save className="w-3.5 h-3.5" />{t('admin.settings.saveChanges')}</button>
           </div>
         </div>
       </div>
@@ -464,24 +463,24 @@ const SecurityTab: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('admin.settings.securitySettings')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.settings.securitySettings')}</h3>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.sessionTimeout')}</label>
+              <label className="label">{t('admin.settings.sessionTimeout')}</label>
               <div className="flex items-center gap-2">
                 <input type="number" value={settings.sessionTimeout} onChange={(e) => setSettings({ ...settings, sessionTimeout: +e.target.value })} className="input" />
                 <span className="text-sm text-slate-500 dark:text-slate-400">{t('admin.settings.minutes')}</span>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.minPasswordLength')}</label>
+              <label className="label">{t('admin.settings.minPasswordLength')}</label>
               <input type="number" value={settings.minPasswordLength} onChange={(e) => setSettings({ ...settings, minPasswordLength: +e.target.value })} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.maxLoginAttempts')}</label>
+              <label className="label">{t('admin.settings.maxLoginAttempts')}</label>
               <input type="number" value={settings.maxLoginAttempts} onChange={(e) => setSettings({ ...settings, maxLoginAttempts: +e.target.value })} className="input" />
             </div>
           </div>
@@ -498,16 +497,16 @@ const SecurityTab: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setSettings({ ...settings, [item.key]: !settings[item.key] })}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${settings[item.key] ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  className={`relative w-8 h-[18px] rounded-full transition-colors ${settings[item.key] ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings[item.key] ? 'left-[22px]' : 'left-0.5'}`} />
+                  <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-transform ${settings[item.key] ? 'left-4' : 'left-0.5'}`} />
                 </button>
               </div>
             ))}
           </div>
 
           <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('admin.settings.saveChanges')}</button>
+            <button className="btn-primary inline-flex items-center gap-1.5"><Save className="w-3.5 h-3.5" />{t('admin.settings.saveChanges')}</button>
           </div>
         </div>
       </div>
@@ -522,25 +521,25 @@ const DataManagementTab: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('admin.settings.exportData')}</h3>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.settings.exportData')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('admin.settings.exportDataDesc')}</p>
         <div className="flex gap-3">
-          <button className="btn-secondary text-sm">{t('admin.settings.exportUsers')}</button>
-          <button className="btn-secondary text-sm">{t('admin.settings.exportOrgs')}</button>
-          <button className="btn-secondary text-sm">{t('admin.settings.exportExams')}</button>
+          <button className="btn-secondary">{t('admin.settings.exportUsers')}</button>
+          <button className="btn-secondary">{t('admin.settings.exportOrgs')}</button>
+          <button className="btn-secondary">{t('admin.settings.exportExams')}</button>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('admin.settings.backup')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.settings.backup')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('admin.settings.backupDesc')}</p>
-        <button className="btn-primary text-sm">{t('admin.settings.createBackup')}</button>
+        <button className="btn-primary">{t('admin.settings.createBackup')}</button>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-6">
-        <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('admin.settings.dangerZone')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">{t('admin.settings.dangerZone')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('admin.settings.dangerZoneDesc')}</p>
-        <button className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition-colors">{t('admin.settings.purgeData')}</button>
+        <button className="btn-danger">{t('admin.settings.purgeData')}</button>
       </div>
     </div>
   );
@@ -568,7 +567,7 @@ const AdminSettingsPage: React.FC = () => {
   const ActiveComponent = TAB_COMPONENTS[activeTab];
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 md:gap-6 min-h-[calc(100vh-8rem)]">
+    <div className="flex flex-col md:flex-row gap-4 min-h-[calc(100vh-8rem)]">
       {/* Mobile: horizontal scrollable tabs */}
       <div className="md:hidden overflow-x-auto -mx-2 px-2 pb-2">
         <div className="flex gap-1 min-w-max">
@@ -579,10 +578,10 @@ const AdminSettingsPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 h-7 px-2 rounded-md text-sm whitespace-nowrap transition-colors ${
                   isActive
-                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                    ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -594,7 +593,7 @@ const AdminSettingsPage: React.FC = () => {
       </div>
 
       {/* Desktop: vertical sidebar tabs */}
-      <div className="hidden md:block w-56 shrink-0">
+      <div className="hidden md:block w-52 shrink-0">
         <nav className="space-y-0.5 sticky top-4">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -603,13 +602,13 @@ const AdminSettingsPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors ${
                   isActive
-                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 {t(tab.labelKey)}
               </button>
             );

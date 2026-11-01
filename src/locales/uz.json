@@ -1805,9 +1805,6 @@
     "trialCountdown": "Sinov muddati",
     "trialCountdownDesc": "{{days}} {{dayWord}} qoldi. Shundan so'ng tarifni to'lash kerak.",
     "trialEndsLabel": "Sinov muddati tugashi",
-    "unlimited": "30+ o'quvchi",
-    "upTo30": "5–30 o'quvchi",
-    "upTo5": "5 tagacha o'quvchi",
     "yourPlan": "Tarifni tanlang",
     "trialBanner": "Sinov muddati",
     "trialDays_one": "{{count}} kun",
@@ -1816,7 +1813,10 @@
     "upgradNow": "To'lash",
     "day": "kun",
     "days2": "kun",
-    "days5": "kun"
+    "days5": "kun",
+    "rangeStarter": "50 tagacha talaba",
+    "rangePro": "300 tagacha talaba",
+    "rangeEnterprise": "Cheklovlarsiz"
   },
   "counts": {
     "participants_one": "{{count}} ta ishtirokchi",
@@ -4548,7 +4548,7 @@
     "plan2Desc": "300 tagacha talaba. Qo'shimcha: imtihonlar, jonli viktorinalar, AI yordamida dars va testlar yaratish, geymifikatsiya, QR sertifikatlar.",
     "planPopular": "Tavsiya qilamiz",
     "plan3Name": "Korporativ",
-    "plan3Price": "14 900",
+    "plan3Price": "9 900",
     "plan3Desc": "Cheklovlarsiz. Filiallar, moliyaviy tahlil, ustuvor qo'llab-quvvatlash va ma'lumotlarni to'liq ko'chirish.",
     "faqTitle": "Ko'p beriladigan savollar",
     "faq1Q": "Ma'lumotlarimizni ko'chirish qiyinmi?",

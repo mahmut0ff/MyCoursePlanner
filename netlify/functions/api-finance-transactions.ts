@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Finance Transactions — CRUD for Income/Expenses.
  */
@@ -218,6 +219,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'finances'); if (gate) return gate; }
 
   const params = event.queryStringParameters || {};
 

@@ -1418,9 +1418,6 @@
     "trialCountdown": "Trial period",
     "trialCountdownDesc": "{{days}} {{dayWord}} left. After that you need to pay for a plan.",
     "trialEndsLabel": "Trial ends",
-    "unlimited": "30+ students",
-    "upTo30": "5–30 students",
-    "upTo5": "Up to 5 students",
     "yourPlan": "Choose a plan",
     "trialBanner": "Trial period",
     "trialDays_one": "{{count}} day",
@@ -1429,7 +1426,10 @@
     "upgradNow": "Pay now",
     "day": "day",
     "days2": "days",
-    "days5": "days"
+    "days5": "days",
+    "rangeStarter": "Up to 50 students",
+    "rangePro": "Up to 300 students",
+    "rangeEnterprise": "No limits"
   },
   "counts": {
     "participants_one": "{{count}} participant",
@@ -4173,7 +4173,7 @@
     "plan2Desc": "Up to 300 students. Plus exams, live quizzes, AI-generated lessons and tests, gamification, QR certificates.",
     "planPopular": "We recommend",
     "plan3Name": "Enterprise",
-    "plan3Price": "14,900",
+    "plan3Price": "9,900",
     "plan3Desc": "No limits. Branches, financial analytics, priority support and turnkey data migration.",
     "faqTitle": "Frequently asked questions",
     "faq1Q": "Is it hard to migrate our data?",

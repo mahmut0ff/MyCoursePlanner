@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Per-student monthly billing — «Начислить за месяц».
  *
@@ -51,6 +52,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'finances'); if (gate) return gate; }
 
   if (event.httpMethod !== 'POST') return badRequest('Only POST is supported');
   if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');

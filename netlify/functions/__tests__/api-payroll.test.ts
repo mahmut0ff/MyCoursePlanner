@@ -161,6 +161,8 @@ const july = '2026-07';
 const local = (y: number, m: number, d: number, h = 12) => new Date(y, m, d, h, 0, 0, 0).toISOString();
 
 const baseSeed = () => ({
+  // Записи зарплатного модуля гейтятся тарифом (requirePlanFeature): организация платит за Professional.
+  organizations: [{ id: 'org1', planId: 'professional' }],
   // Филиала у ставки нет: «двадцать процентов» — свойство человека, а не здания.
   compensationRules: [
     {

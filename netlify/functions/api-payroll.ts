@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Payroll — жизненный цикл ведомости draft → calculated → approved → paid.
  *
@@ -526,6 +527,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'payroll'); if (gate) return gate; }
 
   const params = event.queryStringParameters || {};
   const action = params.action || '';

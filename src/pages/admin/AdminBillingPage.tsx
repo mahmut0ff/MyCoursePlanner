@@ -4,7 +4,7 @@ import { adminGetSubscriptions, adminSetSubscription } from '../../lib/api';
 import { CreditCard, Banknote, Ban, Clock, Search, Settings2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { planPrice } from '../../lib/subscription-plans';
+import { PLAN_IDS, planPrice } from '../../lib/subscription-plans';
 
 /**
  * Состояния подписки, которые НЕ означают платящего клиента. Селект «Управления»
@@ -118,7 +118,7 @@ const AdminBillingPage: React.FC = () => {
   };
 
   const daysBadge = (s: any) => {
-    if (s.status === 'gifted') return <span className="text-xs text-violet-500">∞ {t('admin.billing.giftedForever', 'подарен')}</span>;
+    if (s.status === 'gifted') return <span className="text-xs text-primary-500">∞ {t('admin.billing.giftedForever', 'подарен')}</span>;
     const d = daysLeft(s.paidUntil);
     if (d === null) return <span className="text-xs text-slate-400">{t('admin.billing.notSet', 'не задано')}</span>;
     const date = new Date(s.paidUntil).toLocaleDateString();
@@ -129,36 +129,36 @@ const AdminBillingPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.billing.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.billing.subtitle')}</p>
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('admin.billing.title')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-xs">{t('admin.billing.subtitle')}</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1"><Banknote className="w-4 h-4 text-emerald-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.mrr')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.currencyAmount', '{{amount}} сом', { amount: totalMRR.toLocaleString() })}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1"><Banknote className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.mrr')}</span></div>
+          <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{t('admin.currencyAmount', '{{amount}} сом', { amount: totalMRR.toLocaleString() })}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1"><CreditCard className="w-4 h-4 text-primary-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.active')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{activeCount}</p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1"><CreditCard className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.active')}</span></div>
+          <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{activeCount}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1"><Clock className="w-4 h-4 text-amber-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.trial')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{trialCount}</p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1"><Clock className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.trial')}</span></div>
+          <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{trialCount}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1"><Ban className="w-4 h-4 text-red-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.suspended', 'Отключены')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{suspendedCount}</p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1"><Ban className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.suspended', 'Отключены')}</span></div>
+          <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{suspendedCount}</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder={t('admin.billing.search')} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-8" placeholder={t('admin.billing.search')} />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto">
           <option value="">{t('admin.billing.allStatus')}</option>
@@ -170,25 +170,25 @@ const AdminBillingPage: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-700/50 border-b"><tr>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.organization')}</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.plan')}</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.price')}</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.status')}</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.paidUntil', 'Оплачено до')}</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.actions')}</th>
+          <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><tr>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.organization')}</th>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.plan')}</th>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.price')}</th>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.status')}</th>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.paidUntil', 'Оплачено до')}</th>
+            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.billing.actions')}</th>
           </tr></thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {filtered.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
-                <td className="px-4 py-3"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
-                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: planPrice(s.planId).toLocaleString() })}</td>
-                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : s.status === 'gifted' ? 'bg-violet-100 text-violet-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
-                <td className="px-4 py-3">{daysBadge(s)}</td>
-                <td className="px-4 py-3">
+              <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td className="px-3 py-2"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
+                <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-primary-100 text-primary-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
+                <td className="px-3 py-2 text-sm font-medium text-slate-900 dark:text-white">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: planPrice(s.planId).toLocaleString() })}</td>
+                <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : s.status === 'gifted' ? 'bg-primary-100 text-primary-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
+                <td className="px-3 py-2">{daysBadge(s)}</td>
+                <td className="px-3 py-2">
                   <button onClick={() => openManage(s)} className="inline-flex items-center gap-1.5 text-primary-500 hover:text-primary-700 text-xs font-medium">
                     <Settings2 className="w-3.5 h-3.5" />{t('admin.billing.manage', 'Управление')}
                   </button>
@@ -203,33 +203,33 @@ const AdminBillingPage: React.FC = () => {
       {/* Manage Modal */}
       {manage && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setManage(null)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('admin.billing.manageTitle', 'Управление подпиской')}</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 w-full max-w-md shadow-pop" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('admin.billing.manageTitle', 'Управление подпиской')}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{manage.name}</p>
 
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.plan')}</label>
+            <label className="label">{t('admin.billing.plan')}</label>
             <select value={manage.planId} onChange={(e) => setManage({ ...manage, planId: e.target.value })} className="input mb-4">
-              <option value="starter">{t('admin.plans.starter', 'Базовый')} — 1 990 сом</option>
-              <option value="professional">{t('admin.plans.professional', 'Профессиональный')} — 4 990 сом</option>
-              <option value="enterprise">{t('admin.plans.enterprise', 'Корпоративный')} — 14 900 сом</option>
+              {PLAN_IDS.map((id) => (
+                <option key={id} value={id}>{t(`admin.plans.${id}`)} — {t('admin.currencyAmount', '{{amount}} сом', { amount: planPrice(id).toLocaleString() })}</option>
+              ))}
             </select>
 
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.paidUntil', 'Оплачено до')}</label>
+            <label className="label">{t('admin.billing.paidUntil', 'Оплачено до')}</label>
             <input type="date" value={manage.date} onChange={(e) => setManage({ ...manage, date: e.target.value })} className="input mb-2" />
             <div className="flex gap-2 mb-4">
-              <button onClick={() => bumpDate(30)} className="btn-secondary text-xs py-1">{t('admin.billing.plusMonth', '+1 месяц')}</button>
-              <button onClick={() => bumpDate(7)} className="btn-secondary text-xs py-1">{t('admin.billing.plusWeek', '+1 неделя')}</button>
-              <button onClick={() => setManage({ ...manage, date: '' })} className="btn-ghost text-xs py-1 text-slate-500">{t('common.clear', 'Очистить')}</button>
+              <button onClick={() => bumpDate(30)} className="btn-secondary">{t('admin.billing.plusMonth', '+1 месяц')}</button>
+              <button onClick={() => bumpDate(7)} className="btn-secondary">{t('admin.billing.plusWeek', '+1 неделя')}</button>
+              <button onClick={() => setManage({ ...manage, date: '' })} className="btn-ghost">{t('common.clear', 'Очистить')}</button>
             </div>
 
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.status')}</label>
+            <label className="label">{t('admin.billing.status')}</label>
             {/* Для не-платящей организации (пробный период, подарен) селект
                 начинается с ЕЁ СОБСТВЕННОГО состояния, а не с «Активен».
                 Иначе открыть окно и нажать «Сохранить», ничего не трогая,
                 означало перевести её в платящие: она попадала в MRR и в счётчик
                 активных, хотя денег не приходило. Перевод в платящие остаётся
                 возможным — но как ЯВНЫЙ выбор «Активен». */}
-            <select value={manage.status} onChange={(e) => setManage({ ...manage, status: e.target.value })} className="input mb-5">
+            <select value={manage.status} onChange={(e) => setManage({ ...manage, status: e.target.value })} className="input mb-4">
               {NON_PAYING_STATUSES.includes(manage.originalStatus) && (
                 <option value={manage.originalStatus}>
                   {manage.originalStatus === 'trial'
@@ -242,9 +242,9 @@ const AdminBillingPage: React.FC = () => {
             </select>
 
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setManage(null)} className="btn-secondary text-sm">{t('common.cancel')}</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary text-sm flex items-center gap-2">
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}{t('common.save', 'Сохранить')}
+              <button onClick={() => setManage(null)} className="btn-ghost">{t('common.cancel')}</button>
+              <button onClick={handleSave} disabled={saving} className="btn-primary inline-flex items-center gap-1.5">
+                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{t('common.save', 'Сохранить')}
               </button>
             </div>
           </div>

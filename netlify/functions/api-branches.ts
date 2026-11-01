@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Branches — org-scoped CRUD for branch/location/campus management.
  * Admin: full CRUD. Manager: read assigned branches only.
@@ -45,6 +46,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'branches'); if (gate) return gate; }
   if (!user.organizationId) return forbidden();
 
   const params = event.queryStringParameters || {};

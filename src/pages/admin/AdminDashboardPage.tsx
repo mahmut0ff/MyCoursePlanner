@@ -1,3 +1,4 @@
+import { planPrice } from '../../lib/subscription-plans';
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { adminGetAnalytics, adminGetAuditLogs } from '../../lib/api';
@@ -142,7 +143,7 @@ const AreaChart: React.FC<{
           return (
             <React.Fragment key={i}>
               <line x1={px} y1={y} x2={width - 20} y2={y} stroke="currentColor" strokeOpacity="0.06" strokeDasharray="4,4" />
-              <text x={px - 8} y={y + 4} textAnchor="end" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{step}</text>
+              <text x={px - 8} y={y + 4} textAnchor="end" className="fill-slate-500 dark:fill-slate-500 text-xs">{step}</text>
             </React.Fragment>
           );
         })}
@@ -178,7 +179,7 @@ const AreaChart: React.FC<{
 
         {/* X labels */}
         {labels.map((lbl, i) => (
-          <text key={i} x={px + (i / Math.max(labels.length - 1, 1)) * innerWidth} y={height + 20} textAnchor="middle" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{lbl}</text>
+          <text key={i} x={px + (i / Math.max(labels.length - 1, 1)) * innerWidth} y={height + 20} textAnchor="middle" className="fill-slate-500 dark:fill-slate-500 text-xs">{lbl}</text>
         ))}
 
         {/* Interaction zones */}
@@ -204,7 +205,7 @@ const AreaChart: React.FC<{
       {/* Floating HTML Tooltip */}
       {hoverIndex !== null && (
         <div 
-          className="absolute pointer-events-none z-10 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur shadow-xl border border-white/10 rounded-xl p-3 flex flex-col gap-2 min-w-[140px]"
+          className="absolute pointer-events-none z-10 bg-slate-900/95 dark:bg-slate-800/95 border border-white/10 rounded-md shadow-pop p-2.5 flex flex-col gap-2 min-w-[140px]"
           style={{
             left: Math.min(
               px + (hoverIndex / Math.max(labels.length - 1, 1)) * innerWidth + 15,
@@ -220,7 +221,7 @@ const AreaChart: React.FC<{
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.color }} />
                 {ds.label}
               </span>
-              <span className="font-bold text-white text-sm">{ds.points[hoverIndex]?.val}</span>
+              <span className="font-semibold text-white text-sm">{ds.points[hoverIndex]?.val}</span>
             </div>
           ))}
         </div>
@@ -281,7 +282,7 @@ const AdminDashboardPage: React.FC = () => {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
     </div>
   );
   if (!stats) return <div className="text-center py-20 text-slate-400 dark:text-slate-500">{t('admin.health.failedLoad')}</div>;
@@ -324,7 +325,7 @@ const AdminDashboardPage: React.FC = () => {
       chg: change(0),
       glow: 'shadow-amber-500/20 dark:shadow-amber-500/30',
       iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-500',
-      spark: sparklineData.orgs.map((v: number) => v * 1990),
+      spark: sparklineData.orgs.map((v: number) => v * planPrice('starter')),
       sparkColor: '#fbbf24',
     },
     {
@@ -355,30 +356,30 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div>
       {/* ═══ Header with filters ═══ */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.dashboard.title')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('admin.dashboard.title')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('admin.dashboard.subtitle')} · <span className="text-slate-400 dark:text-slate-500">{t('admin.dashboard.lastUpdate')}: {new Date().toLocaleString()}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={refresh}
-            className={`p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${updating ? 'animate-spin' : ''}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors ${updating ? 'animate-spin' : ''}`}
             title={t('common.refresh', 'Обновить')}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-1">
             {periods.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setPeriod(p.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                className={`h-7 px-2 text-sm rounded-md transition-colors ${
                   period === p.id
-                    ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 {p.label}
@@ -389,18 +390,18 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ═══ Metric Cards — Neon glow ═══ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {metrics.map((m) => {
           const ChgIcon = m.chg.icon;
           return (
-            <div key={m.label} className={`bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 hover:shadow-xl ${m.glow} transition-all group backdrop-blur-sm`}>
+            <div key={m.label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 group">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">{m.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{m.value}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{m.label}</p>
+                  <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{m.value}</p>
                 </div>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.iconBg} group-hover:scale-110 transition-transform`}>
-                  <m.icon className="w-5 h-5" />
+                <div className="text-slate-400">
+                  <m.icon className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -419,10 +420,10 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ═══ Main Chart ═══ */}
-      <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-6 mb-6 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary-500" />{t('admin.dashboard.growth')}
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="w-3.5 h-3.5 text-slate-400" />{t('admin.dashboard.growth')}
           </h3>
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-[#818cf8]" /><span className="text-slate-500 dark:text-slate-400">{t('admin.dashboard.organizations')}</span></span>
@@ -440,17 +441,17 @@ const AdminDashboardPage: React.FC = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
         {/* ═══ Plan Distribution ═══ */}
-        <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-6 backdrop-blur-sm">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary-500" />{t('admin.dashboard.planDistribution')}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <BarChart3 className="w-3.5 h-3.5 text-slate-400" />{t('admin.dashboard.planDistribution')}
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[
-              { name: t('admin.plans.starter'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 1990 }), count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
-              { name: t('admin.plans.professional'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 4990 }), count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
-              { name: t('admin.plans.enterprise'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 14900 }), count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
+              { name: t('admin.plans.starter'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: planPrice('starter') }), count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
+              { name: t('admin.plans.professional'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: planPrice('professional') }), count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
+              { name: t('admin.plans.enterprise'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: planPrice('enterprise') }), count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
             ].map((p) => {
               const totalItems = Number(stats.totalOrganizations) || 0;
               let pct = 0;
@@ -464,9 +465,9 @@ const AdminDashboardPage: React.FC = () => {
                 <div key={p.name}>
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-slate-700 dark:text-slate-300 font-medium">{p.name} <span className="text-slate-400 dark:text-slate-500 text-xs">({p.price})</span></span>
-                    <span className="font-bold text-slate-900 dark:text-white">{p.count} <span className="text-slate-400 dark:text-slate-500 text-xs font-normal">({pct}%)</span></span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{p.count} <span className="text-slate-400 dark:text-slate-500 text-xs font-normal">({pct}%)</span></span>
                   </div>
-                  <div className="h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden w-full relative">
+                  <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden w-full relative">
                     {pct > 0 && (
                       <div
                         className={`absolute top-0 left-0 h-full rounded-full ${p.color} transition-all duration-700`}
@@ -481,21 +482,21 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* ═══ Quick Stats ═══ */}
-        <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-6 backdrop-blur-sm">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <Globe className="w-4 h-4 text-primary-500" />{t('admin.dashboard.platformOverview')}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Globe className="w-3.5 h-3.5 text-slate-400" />{t('admin.dashboard.platformOverview')}
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { label: t('admin.dashboard.activeRooms'), value: stats.activeRooms, total: stats.totalRooms, color: 'text-sky-500', bg: 'bg-sky-500/10' },
               { label: t('admin.dashboard.trialOrgs'), value: stats.trialOrgs, total: stats.totalOrganizations, color: 'text-rose-500', bg: 'bg-rose-500/10' },
               { label: t('admin.dashboard.teachers'), value: stats.teachers, total: stats.totalUsers, color: 'text-violet-500', bg: 'bg-violet-500/10' },
               { label: t('admin.dashboard.suspended'), value: stats.suspendedOrganizations, total: stats.totalOrganizations, color: 'text-amber-500', bg: 'bg-amber-500/10' },
             ].map((item) => (
-              <div key={item.label} className={`${item.bg} rounded-xl p-4`}>
+              <div key={item.label} className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{item.label}</p>
-                <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500">/ {item.total} {t('admin.dashboard.total')}</p>
+                <p className="text-xl font-semibold tabular-nums text-slate-900 dark:text-white">{item.value}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">/ {item.total} {t('admin.dashboard.total')}</p>
               </div>
             ))}
           </div>
@@ -503,11 +504,11 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ═══ Smart Insights ═══ */}
-      <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-5 mb-6 backdrop-blur-sm">
-        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">⚡ {t('admin.dashboard.smartInsights')}</h3>
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">⚡ {t('admin.dashboard.smartInsights')}</h3>
+        <div className="flex flex-wrap gap-2">
           {insights.map((ins, i) => (
-            <span key={i} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${ins.cls}`}>
+            <span key={i} className={`inline-flex items-center gap-1.5 h-6 px-2 rounded text-xs font-medium border ${ins.cls}`}>
               <span>{ins.icon}</span>
               {ins.text}
             </span>
@@ -516,17 +517,17 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ═══ Recent Activity ═══ */}
-      <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden backdrop-blur-sm">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Activity className="w-4 h-4 text-primary-500" />{t('admin.dashboard.recentActivity')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Activity className="w-3.5 h-3.5 text-slate-400" />{t('admin.dashboard.recentActivity')}</h3>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {recentLogs.map((log) => (
-            <div key={log.id} className="px-6 py-3 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+            <div key={log.id} className="min-h-[40px] px-4 py-1.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               {log.actorAvatarUrl ? (
-                <img src={log.actorAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-lg shadow-primary-500/20 shrink-0" />
+                <img src={log.actorAvatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
               ) : (
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary-500/20 shrink-0">
+                <div className="w-7 h-7 bg-slate-200 rounded-full flex items-center justify-center text-xs font-semibold text-slate-700 shrink-0 dark:bg-slate-700 dark:text-slate-200">
                   {log.actorName?.[0]?.toUpperCase() || '?'}
                 </div>
               )}

@@ -345,7 +345,7 @@ export const apiSetMemberRoles = (userId: string, organizationId: string, roles:
   memberReq('changeRole', 'POST', { userId, organizationId, roles });
 /** Read a member's role set in an org (for the assignment UI). */
 export const apiGetMemberRoles = (userId: string, orgId: string) =>
-  memberReq<{ role: string | null; roles: string[] }>('memberRoles', 'GET', undefined, { userId, orgId });
+  memberReq<{ role: string | null; roles: string[]; roleId?: string | null }>('memberRoles', 'GET', undefined, { userId, orgId });
 export const apiSwitchOrg = (organizationId: string) =>
   memberReq('switchOrg', 'POST', { organizationId });
 /** Switch the caller's active role within their active org (must be a role they hold). */

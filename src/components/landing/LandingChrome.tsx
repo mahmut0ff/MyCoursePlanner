@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import LanguageSwitcher from '../LanguageSwitcher';
-import { Menu, X, MessageCircle, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
-import { APP_LOGIN_URL, TELEGRAM_LINK, isPlaceholder } from './ctaLinks';
+import { ArrowRight } from 'lucide-react';
+import { TELEGRAM_LINK, isPlaceholder } from './ctaLinks';
+import { MktNav, MktFooter, focusRing, leadCls } from './LandingKit';
 
 /* ──────────────────────────────────────────────────────────────
-   Shared chrome + primitives for every marketing / public page.
-   One source of truth for the navbar, footer and section rhythm.
+   Chrome for the public subpages (/about, /contact, /docs,
+   /vibecoder, legal). Built on LandingKit so they share the home
+   page's nav, footer and tone: whitespace and tints, no outlined
+   boxes, the one approved call to action.
    ────────────────────────────────────────────────────────────── */
 
 /* Every call to action on the public pages points at the same place. Until the
@@ -29,156 +30,50 @@ export const ChromeCta: React.FC<{ className: string; onClick?: () => void; chil
     </a>
   );
 
-export const Eyebrow: React.FC<{ children: React.ReactNode; tone?: 'light' | 'dark' }> = ({ children, tone = 'light' }) => (
-  <p className={`text-[0.8rem] font-semibold uppercase tracking-[0.18em] ${tone === 'dark' ? 'text-primary-300' : 'text-primary-600'}`}>
-    {children}
-  </p>
-);
+export const LandingNav: React.FC = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const anchors = [
+    { href: '/features', label: t('landing.navFeatures') },
+    { href: '/#pricing', label: t('landing.navPricing') },
+    { href: '/docs', label: t('landing.navDocs') },
+    { href: '/about', label: t('landing.navAbout') },
+    { href: '/contact', label: t('landing.navContact') },
+  ];
+  return <MktNav anchors={anchors} onDemo={() => navigate('/contact?demo=1')} />;
+};
 
-export const SectionHead: React.FC<{
-  eyebrow?: string;
-  title: string;
-  subtitle?: string;
-  tone?: 'light' | 'dark';
-  align?: 'left' | 'center';
-}> = ({ eyebrow, title, subtitle, tone = 'light', align = 'center' }) => (
-  <div className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''}`}>
-    {eyebrow && <Eyebrow tone={tone}>{eyebrow}</Eyebrow>}
-    <h2 className={`mt-3 text-3xl sm:text-4xl font-bold tracking-tight ${tone === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+export const LandingFooter = MktFooter;
+
+/** Page heading for subpages: left-aligned, same rise as the home hero. */
+export const PageHero: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
+  <header className="mx-auto max-w-[1200px] px-4 pb-10 pt-12 sm:px-8 sm:pb-14 sm:pt-20">
+    <h1 className="hero-rise max-w-[20ch] text-balance text-[clamp(32px,4.2vw,52px)] font-semibold leading-[1.08] tracking-[-0.035em]">
       {title}
-    </h2>
+    </h1>
     {subtitle && (
-      <p className={`mt-4 text-lg leading-relaxed ${tone === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+      <p className={`hero-rise mt-5 max-w-[60ch] ${leadCls} sm:!text-[18px]`} style={{ animationDelay: '0.08s' }}>
         {subtitle}
       </p>
     )}
-  </div>
+  </header>
 );
 
-type NavItem = { label: string; to?: string; href?: string };
-
-export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 'page' }) => {
-  const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
-  const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const items: NavItem[] = [
-    { label: t('landing.navFeatures'), to: '/features' },
-    ...(variant === 'home' ? [{ label: t('landing.navPricing'), href: '#pricing' }] : []),
-    { label: t('landing.navDocs'), to: '/docs' },
-    { label: t('landing.navAbout'), to: '/about' },
-    { label: t('landing.navContact'), to: '/contact' },
-    ...(variant === 'home' ? [{ label: t('landing.navFaq'), href: '#faq' }] : []),
-  ];
-
-  // A subpage isn't transparent at the top — only the home hero needs that.
-  const solid = scrolled || variant !== 'home';
-  // Transparent state now sits over the dark hero, so top-of-home text goes light.
-  const overDark = !solid;
-
-  const linkClass = (active: boolean) =>
-    `px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-      overDark
-        ? (active ? 'text-white bg-white/15' : 'text-slate-200 hover:text-white hover:bg-white/10')
-        : (active ? 'text-slate-900 bg-slate-100/80' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70')
-    }`;
-
-  return (
-    <nav className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${solid ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/70' : 'bg-transparent border-b border-transparent'}`}>
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
-          <span className={`font-semibold text-lg tracking-tight ${overDark ? 'text-white' : ''}`}>SabakHub</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-1">
-          {items.map((item) =>
-            item.to ? (
-              <Link key={item.to} to={item.to} className={linkClass(pathname === item.to)}>{item.label}</Link>
-            ) : (
-              <a key={item.href} href={item.href} className={linkClass(false)}>{item.label}</a>
-            ),
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          {user ? (
-            <Link to={isPlaceholder(APP_LOGIN_URL) ? '/dashboard' : APP_LOGIN_URL} className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('auth.login')}</Link>
-          ) : (
-            <>
-              <Link to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL} className={`hidden sm:inline-flex items-center text-sm font-medium px-3 py-2 transition-colors ${overDark ? 'text-slate-200 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{t('auth.login')}</Link>
-              <ChromeCta className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</ChromeCta>
-            </>
-          )}
-          <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label={t('landing.menu', 'Меню')}>
-            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {open && (
-        <div className="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-1">
-          {items.map((item) =>
-            item.to ? (
-              <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</Link>
-            ) : (
-              <a key={item.href} href={item.href} onClick={() => setOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</a>
-            ),
-          )}
-          <div className="flex gap-3 pt-3">
-            {user ? (
-              <Link to={isPlaceholder(APP_LOGIN_URL) ? '/dashboard' : APP_LOGIN_URL} onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('auth.login')}</Link>
-            ) : (
-              <>
-                <Link to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL} onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
-                <ChromeCta onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</ChromeCta>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-};
-
-/** Consistent page header for subpages: fading grid backdrop + centered heading. */
-export const PageHero: React.FC<{ eyebrow?: string; title: string; subtitle?: string }> = ({ eyebrow, title, subtitle }) => (
-  <section className="relative overflow-hidden px-6 pt-36 pb-14 sm:pt-40 sm:pb-16">
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f01a_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f01a_1px,transparent_1px)] bg-[size:56px_56px]"
-      style={{ WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)' }}
-    />
-    <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[360px] w-[720px] -translate-x-1/2 rounded-full bg-primary-200/30 blur-[120px]" />
-    <SectionHead eyebrow={eyebrow} title={title} subtitle={subtitle} />
-  </section>
-);
-
-/** Shared dark call-to-action band used across the public pages. */
-export const LandingCTA: React.FC<{ title?: string; subtitle?: string }> = ({ title, subtitle }) => {
+/** The violet call-to-action band, with the home page's approved copy. */
+export const LandingCTA: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <section className="px-6 py-20">
-      <div className="relative max-w-5xl mx-auto overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 sm:px-16 sm:py-20 text-center">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.35),transparent_60%)]" />
-        <div className="relative">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{title || t('landing.ctaTitle')}</h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{subtitle || t('landing.ctaSubtitle')}</p>
-          <ChromeCta className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-            {t('landing.ctaButton')}
-            <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-          </ChromeCta>
+    <section className="mx-auto max-w-[1200px] px-4 pb-16 pt-20 sm:px-8 sm:pb-24 sm:pt-28">
+      <div className="grid gap-8 rounded-3xl bg-primary-600 p-7 text-white sm:p-12 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-12 lg:p-14 dark:bg-primary-700">
+        <div className="max-w-[56ch]">
+          <h2 className="text-balance text-[clamp(26px,3vw,40px)] font-semibold leading-[1.12] tracking-[-0.03em]">
+            {t('home.ctaTitle')}
+          </h2>
+          <p className="mt-4 text-[16px] leading-relaxed text-white/85">{t('home.ctaDesc')}</p>
         </div>
+        <ChromeCta className="inline-flex h-11 items-center gap-2 justify-self-start whitespace-nowrap rounded-md bg-white px-5 text-[15px] font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600">
+          {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-4 w-4" />
+        </ChromeCta>
       </div>
     </section>
   );
@@ -186,114 +81,50 @@ export const LandingCTA: React.FC<{ title?: string; subtitle?: string }> = ({ ti
 
 export type LegalSection = { id: string; heading: string; body: string[] };
 
-/** Reusable layout for legal pages (privacy, terms): sticky TOC + numbered sections. */
+/** Layout for legal pages (privacy, terms): sticky contents + numbered sections. */
 export const LegalLayout: React.FC<{
-  eyebrow: string;
   title: string;
   updated: string;
   intro?: string;
   sections: LegalSection[];
-}> = ({ eyebrow, title, updated, intro, sections }) => (
-  <div className="min-h-screen bg-white text-slate-900 antialiased">
+}> = ({ title, updated, intro, sections }) => (
+  <div className="min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
     <LandingNav />
-    <main className="px-6 pt-32 pb-16">
-      <div className="max-w-5xl mx-auto">
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-3 text-sm text-slate-500">{updated}</p>
-        {intro && <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">{intro}</p>}
+    <main className="mx-auto max-w-[1200px] px-4 pb-20 pt-12 sm:px-8 sm:pt-20">
+      <h1 className="text-[clamp(30px,3.6vw,44px)] font-semibold leading-[1.1] tracking-[-0.03em]">{title}</h1>
+      <p className="mt-3 text-[13px] text-slate-500 dark:text-slate-400">{updated}</p>
+      {intro && <p className={`mt-6 max-w-[64ch] ${leadCls}`}>{intro}</p>}
 
-        <div className="mt-12 grid gap-12 lg:grid-cols-[220px_1fr]">
-          <aside className="hidden lg:block">
-            <nav className="sticky top-24 space-y-1">
-              {sections.map((s) => (
-                <a key={s.id} href={`#${s.id}`} className="block rounded-lg px-3 py-2 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">{s.heading}</a>
-              ))}
-            </nav>
-          </aside>
-
-          <div className="max-w-2xl space-y-10">
-            {sections.map((s, i) => (
-              <section key={s.id} id={s.id} className="scroll-mt-24">
-                <h2 className="flex items-baseline gap-3 text-xl font-semibold text-slate-900">
-                  <span className="text-sm font-semibold text-primary-600">{String(i + 1).padStart(2, '0')}</span>
-                  {s.heading}
-                </h2>
-                <div className="mt-3 space-y-3 text-[0.95rem] leading-relaxed text-slate-600">
-                  {s.body.map((p, j) => <p key={j}>{p}</p>)}
-                </div>
-              </section>
+      <div className="mt-12 grid gap-12 lg:grid-cols-[220px_1fr]">
+        <aside className="hidden lg:block">
+          <nav className="sticky top-20 space-y-0.5">
+            {sections.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className={`block rounded-md px-3 py-2 text-[14px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 ${focusRing}`}
+              >
+                {s.heading}
+              </a>
             ))}
-          </div>
+          </nav>
+        </aside>
+
+        <div className="max-w-[68ch] space-y-10">
+          {sections.map((s, i) => (
+            <section key={s.id} id={s.id} className="scroll-mt-20">
+              <h2 className="flex items-baseline gap-3 text-[20px] font-semibold tracking-[-0.01em]">
+                <span className="text-[13px] font-medium tabular-nums text-primary-600 dark:text-primary-400">{String(i + 1).padStart(2, '0')}</span>
+                {s.heading}
+              </h2>
+              <div className="mt-3 space-y-3 text-[15px] leading-[1.65] text-slate-600 dark:text-slate-400">
+                {s.body.map((p, j) => <p key={j}>{p}</p>)}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </main>
     <LandingFooter />
   </div>
 );
-
-export const LandingFooter: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <footer className="border-t border-slate-200 bg-white px-6 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2.5">
-              <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
-              <span className="font-semibold text-lg tracking-tight">SabakHub</span>
-            </div>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">{t('landing.footerDesc')}</p>
-            <div className="mt-5 flex gap-2.5">
-              <a href="https://t.me/sabakhub_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
-                <MessageCircle className="w-4 h-4" />
-              </a>
-              <a href="mailto:hello@sabakhub.kg" aria-label="Email" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
-                <Mail className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerProduct')}</h4>
-            <ul className="mt-4 space-y-3">
-              <li><Link to="/features" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navFeatures')}</Link></li>
-              <li><Link to="/#pricing" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navPricing')}</Link></li>
-              <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerCompany')}</h4>
-            <ul className="mt-4 space-y-3">
-              <li><Link to="/about" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerAbout')}</Link></li>
-              <li><Link to="/contact" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerContactLink')}</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerResources')}</h4>
-            <ul className="mt-4 space-y-3">
-              <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
-              <li><Link to="/vibecoder" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerVibecoder')}</Link></li>
-              <li><Link to="/about" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerAbout')}</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerContact')}</h4>
-            <ul className="mt-4 space-y-3">
-              <li className="flex items-center gap-2 text-sm text-slate-500"><Mail className="w-4 h-4 shrink-0 text-slate-400" /> hello@sabakhub.kg</li>
-              <li className="flex items-center gap-2 text-sm text-slate-500"><Phone className="w-4 h-4 shrink-0 text-slate-400" /> +996 550 308 078</li>
-              <li className="flex items-center gap-2 text-sm text-slate-500"><MapPin className="w-4 h-4 shrink-0 text-slate-400" /> {t('landing.footerCity')}</li>
-            </ul>
-          </div>
-        </div>
-        <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-slate-200 pt-6 md:flex-row">
-          <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            <Link to="/privacy" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerPrivacy')}</Link>
-            <Link to="/terms" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerTerms')}</Link>
-            <LanguageSwitcher />
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};

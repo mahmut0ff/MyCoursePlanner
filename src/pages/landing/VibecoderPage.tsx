@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next';
 import {
   ArrowLeft, Globe2, Atom, GitBranch, Server, Cloud,
   Database, FolderOpen, PlayCircle, ListChecks,
-  CheckCircle2, BookOpen, Clock, ClipboardList, Users,
+  CheckCircle2, Clock, Users,
   Zap, UploadCloud, Bot, ShoppingCart, LayoutGrid, Rocket,
 } from 'lucide-react';
 import { LandingNav, LandingFooter } from '../../components/landing/LandingChrome';
@@ -129,16 +129,12 @@ const getModules = (t: TFunction): Module[] => [
   },
 ];
 
-const ACCENTS: Record<string, { text: string; bg: string; softBg: string; ring: string }> = {
-  indigo: { text: 'text-indigo-600', bg: 'bg-indigo-600', softBg: 'bg-indigo-50', ring: 'ring-indigo-200' },
-  sky: { text: 'text-sky-600', bg: 'bg-sky-600', softBg: 'bg-sky-50', ring: 'ring-sky-200' },
-  emerald: { text: 'text-emerald-600', bg: 'bg-emerald-600', softBg: 'bg-emerald-50', ring: 'ring-emerald-200' },
-  violet: { text: 'text-violet-600', bg: 'bg-violet-600', softBg: 'bg-violet-50', ring: 'ring-violet-200' },
-  cyan: { text: 'text-cyan-600', bg: 'bg-cyan-600', softBg: 'bg-cyan-50', ring: 'ring-cyan-200' },
-};
+// One accent for the whole course (the shell's primary); stage ids stay for the data.
+const PRIMARY = { text: 'text-primary-600 dark:text-primary-400', bg: 'bg-primary-600', softBg: 'bg-primary-50 dark:bg-primary-500/10' };
+const ACCENTS: Record<string, typeof PRIMARY> = { indigo: PRIMARY, sky: PRIMARY, emerald: PRIMARY, violet: PRIMARY, cyan: PRIMARY };
 
 const VideoEmbed: React.FC<{ id: string; title: string }> = ({ id, title }) => (
-  <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg ring-1 ring-slate-200 bg-slate-900">
+  <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-float bg-slate-900">
     <iframe
       src={`https://www.youtube.com/embed/${id}`}
       title={title}
@@ -173,7 +169,7 @@ const VibecoderPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900 dark:text-slate-100 antialiased dark:bg-slate-900 dark:text-slate-100">
       <style>{`
         @keyframes vc-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
         .vc-rise { opacity: 0; animation: vc-rise 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
@@ -182,37 +178,31 @@ const VibecoderPage: React.FC = () => {
 
       <LandingNav />
 
-      <div className="max-w-6xl mx-auto px-6 pt-28 pb-24">
+      <div className="max-w-6xl mx-auto px-6 pt-10 pb-24 sm:pt-14">
         {/* Header */}
         <header className="mb-12">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-6 transition-colors">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-primary-600 mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" /> {t('common.back')}
           </Link>
-          <div className="flex items-center gap-2 text-primary-600 font-semibold text-sm mb-3">
-            <BookOpen className="w-4 h-4" /> {t('landing.vibe.path', 'Учебный путь')}
-          </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
+          <h1 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">
             {t('landing.vibe.title', 'Что должен знать вайбкодер')}
           </h1>
-          <p className="text-lg text-slate-600 leading-relaxed max-w-2xl">
+          <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
             {t('landing.vibe.lead', 'Пошаговый маршрут: проходи этапы по порядку — от того, как вообще устроен веб, до инфраструктуры, на которой работает эта платформа. Каждый этап — короткое видео или разбор с ключевыми понятиями.')}
           </p>
         </header>
 
         {/* Программа курса */}
-        <section className="mb-16 rounded-3xl border border-slate-200 bg-white shadow-sm p-8 md:p-10 vc-rise">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
-            <ClipboardList className="w-4 h-4" /> {t('landing.vibe.program', 'Программа курса')}
-          </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3 leading-tight">
+        <section className="mb-16 rounded-2xl bg-slate-50 p-8 md:p-10 vc-rise dark:bg-slate-800/50">
+          <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 dark:text-slate-100 mb-3 leading-tight">
             {t('landing.vibe.programTitle', 'С нуля до продакшена за один месяц')}
           </h2>
-          <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-3xl">
+          <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed mb-8 max-w-3xl">
             {t('landing.vibe.programText', 'Мы проходим весь путь целиком — от первой строчки до готового сайта в интернете, которым могут пользоваться реальные люди. За месяц студенты с помощью ИИ делают два завершённых проекта, после которых уже могут принимать заказы и создавать сайты сами.')}
           </p>
 
           {/* Чему научатся */}
-          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">{t('landing.vibe.learnTitle', 'Чему научатся')}</p>
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">{t('landing.vibe.learnTitle', 'Чему научатся')}</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
             {[
               { icon: Users, title: t('landing.vibe.learn1Title', 'Работа в команде'), text: t('landing.vibe.learn1', 'Совместная разработка, как в настоящих IT-проектах.') },
@@ -222,35 +212,35 @@ const VibecoderPage: React.FC = () => {
             ].map((s, i) => {
               const SIcon = s.icon;
               return (
-                <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-                  <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><SIcon className="w-5 h-5" /></div>
-                  <p className="font-bold text-slate-900 mb-1">{s.title}</p>
-                  <p className="text-sm text-slate-500 leading-relaxed">{s.text}</p>
+                <div key={i} className="rounded-xl bg-white p-5 shadow-float dark:bg-slate-800">
+                  <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300 flex items-center justify-center mb-3"><SIcon className="w-5 h-5" /></div>
+                  <p className="font-bold text-slate-900 dark:text-slate-100 mb-1">{s.title}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{s.text}</p>
                 </div>
               );
             })}
           </div>
 
           {/* Два проекта */}
-          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">{t('landing.vibe.projectsTitle', 'Два реальных проекта')}</p>
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">{t('landing.vibe.projectsTitle', 'Два реальных проекта')}</p>
           <div className="grid sm:grid-cols-2 gap-5">
-            <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6">
+            <div className="rounded-xl bg-primary-50 p-6 dark:bg-primary-500/10">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center shadow-md"><ShoppingCart className="w-5 h-5" /></div>
-                <h3 className="font-bold text-slate-900 text-lg">{t('landing.vibe.shopTitle', 'Интернет-магазин')}</h3>
+                <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center"><ShoppingCart className="w-5 h-5" /></div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">{t('landing.vibe.shopTitle', 'Интернет-магазин')}</h3>
               </div>
-              <p className="text-slate-600 leading-relaxed">{t('landing.vibe.shopText', 'Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.')}</p>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{t('landing.vibe.shopText', 'Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.')}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="rounded-xl bg-white p-6 shadow-float dark:bg-slate-800">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><LayoutGrid className="w-5 h-5" /></div>
-                <h3 className="font-bold text-slate-900 text-lg">{t('landing.vibe.choiceTitle', 'Проект на выбор')}</h3>
+                <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center"><LayoutGrid className="w-5 h-5" /></div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">{t('landing.vibe.choiceTitle', 'Проект на выбор')}</h3>
               </div>
-              <p className="text-slate-600 leading-relaxed">{t('landing.vibe.choiceText', 'Второй проект студент выбирает сам из списка идей, который даёт преподаватель.')}</p>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{t('landing.vibe.choiceText', 'Второй проект студент выбирает сам из списка идей, который даёт преподаватель.')}</p>
             </div>
           </div>
 
-          <div className="mt-8 flex items-center gap-2 text-slate-500">
+          <div className="mt-8 flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Rocket className="w-4 h-4 text-primary-600 shrink-0" /> {t('landing.vibe.bothDone', 'Оба проекта — завершённые сайты, готовые к показу заказчикам.')}
           </div>
         </section>
@@ -269,11 +259,11 @@ const VibecoderPage: React.FC = () => {
                       key={m.id}
                       href={`#${m.id}`}
                       className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                        active ? `${a.softBg} ${a.text} font-semibold` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                        active ? `${a.softBg} ${a.text} font-semibold` : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:text-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span className={`flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold shrink-0 transition-colors ${
-                        active ? `${a.bg} text-white` : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                        active ? `${a.bg} text-white` : 'bg-slate-100 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
                       }`}>{i + 1}</span>
                       <span className="leading-tight">{m.title}</span>
                     </a>
@@ -292,7 +282,7 @@ const VibecoderPage: React.FC = () => {
                 <section key={m.id} id={m.id} className="scroll-mt-24 vc-rise">
                   {/* Заголовок этапа */}
                   <div className="flex items-start gap-4 mb-5">
-                    <div className={`w-12 h-12 rounded-2xl ${a.bg} flex items-center justify-center shadow-md shrink-0`}>
+                    <div className={`w-12 h-12 rounded-2xl ${a.bg} flex items-center justify-center shrink-0`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -302,20 +292,20 @@ const VibecoderPage: React.FC = () => {
                           <Clock className="w-3.5 h-3.5" /> {m.duration}
                         </span>
                       </div>
-                      <h2 className="text-2xl font-extrabold text-slate-900 leading-tight">
-                        <span className="text-slate-300 mr-2">{i + 1}.</span>{m.title}
+                      <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+                        <span className="text-slate-300 dark:text-slate-600 dark:text-slate-400 mr-2">{i + 1}.</span>{m.title}
                       </h2>
                     </div>
                   </div>
 
                   {/* Вступление */}
-                  <p className="text-slate-600 text-[17px] leading-relaxed mb-6 lg:pl-16">{m.intro}</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[17px] leading-relaxed mb-6 lg:pl-16">{m.intro}</p>
 
                   <div className="lg:pl-16 space-y-6">
                     {/* Видео */}
                     {m.video && (
                       <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                           <PlayCircle className={`w-5 h-5 ${a.text}`} /> {t('landing.vibe.video', 'Видео: {{title}}', { title: m.video.title })}
                         </div>
                         <VideoEmbed id={m.video.id} title={m.video.title} />
@@ -326,7 +316,7 @@ const VibecoderPage: React.FC = () => {
                     {m.body && (
                       <div className="space-y-4">
                         {m.body.map((p, j) => (
-                          <p key={j} className="text-slate-600 leading-relaxed">{p}</p>
+                          <p key={j} className="text-slate-600 dark:text-slate-400 leading-relaxed">{p}</p>
                         ))}
                       </div>
                     )}
@@ -337,14 +327,14 @@ const VibecoderPage: React.FC = () => {
                         {m.subcards.map((c, j) => {
                           const CIcon = c.icon;
                           return (
-                            <div key={j} className={`rounded-2xl border border-slate-100 ${a.softBg} p-5`}>
+                            <div key={j} className={`rounded-xl ${a.softBg} p-5`}>
                               <div className="flex items-center gap-3 mb-2">
-                                <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm ${a.text}`}>
+                                <div className={`w-9 h-9 rounded-lg bg-white flex items-center justify-center dark:bg-slate-800 ${a.text}`}>
                                   <CIcon className="w-5 h-5" />
                                 </div>
-                                <h3 className="font-bold text-slate-900">{c.title}</h3>
+                                <h3 className="font-bold text-slate-900 dark:text-slate-100">{c.title}</h3>
                               </div>
-                              <p className="text-sm text-slate-600 leading-relaxed">{c.text}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{c.text}</p>
                             </div>
                           );
                         })}
@@ -353,16 +343,16 @@ const VibecoderPage: React.FC = () => {
 
                     {/* Ключевые понятия */}
                     {m.points && (
-                      <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 sm:p-6">
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-4">
+                      <div className="rounded-xl bg-slate-50 p-5 sm:p-6 dark:bg-slate-800/50">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">
                           <ListChecks className={`w-4 h-4 ${a.text}`} /> {t('landing.vibe.keyConcepts', 'Ключевые понятия')}
                         </div>
                         <ul className="space-y-3">
                           {m.points.map((pt, j) => (
                             <li key={j} className="flex items-start gap-3">
                               <CheckCircle2 className={`w-5 h-5 ${a.text} shrink-0 mt-0.5`} />
-                              <span className="text-slate-600 leading-relaxed">
-                                <span className="font-semibold text-slate-900">{pt.term}.</span> {pt.text}
+                              <span className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                                <span className="font-semibold text-slate-900 dark:text-slate-100">{pt.term}.</span> {pt.text}
                               </span>
                             </li>
                           ))}
@@ -376,11 +366,11 @@ const VibecoderPage: React.FC = () => {
 
             {/* Низ: статус документа */}
             <div className="lg:pl-16">
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 flex items-start gap-4">
+              <div className="rounded-xl bg-slate-50 p-6 flex dark:bg-slate-800/50 items-start gap-4">
                 <FolderOpen className="w-6 h-6 text-slate-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">{t('landing.vibe.moreTitle', 'Продолжение следует')}</p>
-                  <p className="text-sm text-slate-500 leading-relaxed">
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 mb-1">{t('landing.vibe.moreTitle', 'Продолжение следует')}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t('landing.vibe.moreText', 'Это живой учебный материал — мы будем добавлять новые этапы и видео по ходу дела: базы данных, аутентификацию, безопасность и работу с ИИ.')}
                   </p>
                 </div>

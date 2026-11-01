@@ -8,42 +8,53 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* Dolboor violet as the fallback; an org's --color-primary-* still overrides it */
         primary: {
-          50: 'rgb(var(--color-primary-50, 238 242 255) / <alpha-value>)',
-          100: 'rgb(var(--color-primary-100, 224 231 255) / <alpha-value>)',
-          200: 'rgb(var(--color-primary-200, 199 210 254) / <alpha-value>)',
-          300: 'rgb(var(--color-primary-300, 165 180 252) / <alpha-value>)',
-          400: 'rgb(var(--color-primary-400, 129 140 248) / <alpha-value>)',
-          500: 'rgb(var(--color-primary-500, 99 102 241) / <alpha-value>)',
-          600: 'rgb(var(--color-primary-600, 79 70 229) / <alpha-value>)',
-          700: 'rgb(var(--color-primary-700, 67 56 202) / <alpha-value>)',
-          800: 'rgb(var(--color-primary-800, 55 48 163) / <alpha-value>)',
-          900: 'rgb(var(--color-primary-900, 49 46 129) / <alpha-value>)',
-          950: 'rgb(var(--color-primary-950, 30 27 75) / <alpha-value>)',
+          50: 'rgb(var(--color-primary-50, 245 242 254) / <alpha-value>)',
+          100: 'rgb(var(--color-primary-100, 239 233 253) / <alpha-value>)',
+          200: 'rgb(var(--color-primary-200, 221 214 254) / <alpha-value>)',
+          300: 'rgb(var(--color-primary-300, 196 181 253) / <alpha-value>)',
+          400: 'rgb(var(--color-primary-400, 177 151 252) / <alpha-value>)',
+          500: 'rgb(var(--color-primary-500, 139 92 246) / <alpha-value>)',
+          600: 'rgb(var(--color-primary-600, 109 40 217) / <alpha-value>)',
+          700: 'rgb(var(--color-primary-700, 91 33 182) / <alpha-value>)',
+          800: 'rgb(var(--color-primary-800, 76 29 149) / <alpha-value>)',
+          900: 'rgb(var(--color-primary-900, 59 26 120) / <alpha-value>)',
+          950: 'rgb(var(--color-primary-950, 43 33 73) / <alpha-value>)',
+        },
+        /* Dolboor's neutral greys in place of Tailwind's blue-tinted slate, so every page
+           follows the shell. One ramp serves both themes: 50–300 are light surfaces and
+           borders, 700–950 dark ones, 400–600 muted text in either. */
+        slate: {
+          50: '#f7f7f8',
+          100: '#f0f1f3',
+          200: '#e5e7eb',
+          300: '#d4d7dc',
+          400: '#8d939c',
+          500: '#646b77',
+          600: '#474c55',
+          700: '#2a2b2f',
+          800: '#18191b',
+          900: '#111214',
+          950: '#0a0b0c',
         },
         accent: {
           teal: '#14b8a6',
         },
-        /* Marketing (landing) surface — warm paper/ink layer, deliberately
-           not the app's cool slate. */
-        paper: {
-          DEFAULT: 'rgb(var(--mkt-paper) / <alpha-value>)',
-          deep: 'rgb(var(--mkt-paper-deep) / <alpha-value>)',
-        },
-        ink: 'rgb(var(--mkt-ink) / <alpha-value>)',
-        /* surfaces of the marketing layer that don't flip with the theme
-           the way paper/ink do: raised cards, always-dark bands and the
-           light text on them (values in index.css) */
-        card: 'rgb(var(--mkt-card) / <alpha-value>)',
-        night: 'rgb(var(--mkt-night) / <alpha-value>)',
-        cream: 'rgb(var(--mkt-cream) / <alpha-value>)',
+      },
+      /* Dolboor caps corners at 12px: cards 8, modals 12 */
+      borderRadius: {
+        xl: '8px',
+        '2xl': '10px',
+        '3xl': '12px',
+      },
+      boxShadow: {
+        pop: '0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.08)',
+        float: '0 2px 8px rgb(0 0 0 / 0.12), 0 12px 32px rgb(0 0 0 / 0.10)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"Source Serif 4"', 'Georgia', 'Cambria', 'serif'],
-        /* Cyrillic-first pairing for the marketing surface only */
-        marketing: ['"Golos Text"', 'Inter', 'system-ui', 'sans-serif'],
-        'marketing-display': ['Unbounded', 'Montserrat', 'sans-serif'],
       },
     },
   },

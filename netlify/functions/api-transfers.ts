@@ -1,12 +1,31 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
+import { verifyAuth, resolveOrgGrants, resolveOrgRole, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+import { LESSONS_COLLECTION } from './utils/lessons';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NOTIFICATIONS = 'notifications';
-const LESSONS = 'lessons';
+const LESSONS = LESSONS_COLLECTION;
 const MATERIALS = 'materials';
 const USERS = 'users';
+
+/**
+ * Кто одобряет переносы. Получателей заявки ищем по роли членства (владелец —
+ * отдельная роль), а право решать проверяем по роли приложения, к которой
+ * resolveOrgGrants сводит те же роли (владелец → admin).
+ */
+const APPROVER_MEMBER_ROLES = ['admin', 'manager', 'owner'];
+const APPROVER_ROLES = ['super_admin', 'admin', 'manager'];
+
+/**
+ * Можно ли отдать автору заявки материалы организации: он её активный участник —
+ * или суперадмин, которого resolveOrgGrants пропускает и к самой заявке.
+ */
+async function requesterInOrg(requesterId: string, orgId: string): Promise<boolean> {
+  if ((await resolveOrgRole(requesterId, orgId)).role) return true;
+  const requester = await adminDb.collection(USERS).doc(requesterId).get();
+  return requester.data()?.role === 'super_admin';
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -24,21 +43,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       const { transferType, sourceId, targetId, orgId, sourceTitle } = body;
       if (!transferType || !sourceId || !orgId) return badRequest('Missing required fields');
 
+      // Организация приходит телом запроса — сверяем её с членством: просить
+      // перенос можно только из той организации, где состоишь сам.
+      const standing = await resolveOrgGrants(user, orgId);
+      if (!standing) return forbidden('Вы не состоите в этой организации');
+
       // Находим всех админов и менеджеров организации
       const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
       if (!orgDoc.exists) return badRequest('Org not found');
       
       const snap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
         .where('status', '==', 'active')
-        .where('role', 'in', ['admin', 'manager', 'owner'])
+        .where('role', 'in', APPROVER_MEMBER_ROLES)
         .get();
 
-      let adminIds = snap.docs.map(d => d.data().userId);
-      
-      if (adminIds.length === 0) {
-        // Fallback: If no dedicated admins found but the user is making the request, let them receive it
-        // (This can happen in newly created orgs or solo owner setups)
-        adminIds = [user.uid];
+      const adminIds = new Set<string>(snap.docs.map(d => d.data().userId).filter(Boolean));
+      // Запасного пути «некому одобрить — пусть заявку получит сам автор» больше нет:
+      // автор сам же её и одобрял, то есть перенос из организации без активных
+      // админов не требовал ничьего согласия. Себе заявка приходит, только если
+      // автор и так вправе одобрять переносы этой организации.
+      if (APPROVER_ROLES.includes(standing.role)) adminIds.add(user.uid);
+      if (adminIds.size === 0) {
+        return jsonResponse(409, { error: 'В организации нет администратора или менеджера, который мог бы одобрить перенос' });
       }
 
       // Создаем уведомление-заявку для каждого админа
@@ -50,7 +76,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Генерируем уникальный ID заявки (чтобы связать уведомления)
       const requestId = adminDb.collection(NOTIFICATIONS).doc().id;
 
-      let hasAdded = false;
       for (const adminId of adminIds) {
         const notifRef = adminDb.collection(NOTIFICATIONS).doc();
         batch.set(notifRef, {
@@ -73,12 +98,9 @@ const handler: Handler = async (event: HandlerEvent) => {
             status: 'pending' // pending, approved, rejected
           }
         });
-        hasAdded = true;
       }
 
-      if (hasAdded) {
-        await batch.commit();
-      }
+      await batch.commit();
 
       return ok({ success: true, requestId });
     }
@@ -99,6 +121,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       const meta = notifData.metadata;
       const { transferType, sourceId, targetId, requesterId, sourceTitle, requestId } = meta;
 
+      // Заявка — документ уведомления, а его получатель по правилам Firestore может
+      // переписать в нём любое поле, включая type и metadata. Поэтому, кто решает и
+      // в чью пользу, сверяется заново с живым членством, а не берётся из заявки:
+      // решает только тот, кто сейчас одобряет переносы этой организации, а копию
+      // получает только её участник. Заявки, которые прежний запасной путь
+      // адресовал самому автору, на этом и останавливаются.
+      if (!meta.orgId || !requesterId) return badRequest('В заявке не указаны организация или автор');
+      const approver = await resolveOrgGrants(user, meta.orgId);
+      if (!approver || !APPROVER_ROLES.includes(approver.role)) {
+        return forbidden('Решать по заявкам на перенос может только администратор или менеджер этой организации');
+      }
+      if (decision === 'approve' && !(await requesterInOrg(requesterId, meta.orgId))) {
+        return badRequest('Автор заявки не состоит в этой организации');
+      }
+
       let successMessage = '';
 
       if (decision === 'approve') {
@@ -110,8 +147,19 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (!materialDoc.exists || !lessonDoc.exists) {
              return badRequest('Исходный материал или целевой урок не найдены');
           }
-          
+
           const mat = materialDoc.data()!;
+          const targetLesson = lessonDoc.data()!;
+          // Одобрение не проверяло, ЧТО именно одобряют: оба id пришли из заявки.
+          // Пока путь читал несуществующую коллекцию `lessons`, до копирования не
+          // доходило; теперь доходит — поэтому документы сверяются с заявкой:
+          // материал той организации, чей админ одобряет, урок — личный урок автора.
+          if ((mat.organizationId || '') !== meta.orgId) {
+            return badRequest('Материал не принадлежит этой организации');
+          }
+          if (targetLesson.authorId !== requesterId || targetLesson.organizationId) {
+            return badRequest('Материал можно перенести только в собственный личный урок');
+          }
           const newAttachment = {
             id: adminDb.collection(LESSONS).doc().id, // fake id for attachment
             name: mat.title,
@@ -134,12 +182,20 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (!srcLessonDoc.exists) return badRequest('Урок не найден или был удалён');
           
           const srcLesson = srcLessonDoc.data()!;
-          
+          // Та же сверка, что и у материала: копируется урок организации, чей админ одобряет.
+          if ((srcLesson.organizationId || '') !== meta.orgId) {
+            return badRequest('Урок не принадлежит этой организации');
+          }
+
           const newLessonData = {
             ...srcLesson,
             title: `${srcLesson.title} (Копия)`,
             organizationId: null, // removing from org
             branchId: null,
+            // Личная копия не привязана к группам организации — иначе она всплыла бы
+            // в списке уроков группы (api-lessons ?groupId=) у сотрудников и учеников.
+            groupIds: [],
+            groupNames: [],
             authorId: requesterId,
             authorName: meta.requesterEmail,
             status: 'draft',

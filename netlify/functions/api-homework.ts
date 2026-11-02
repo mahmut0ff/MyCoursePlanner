@@ -5,6 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, isSuperAdmin, can, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
+import { LESSONS_COLLECTION } from './utils/lessons';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
@@ -23,7 +24,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 async function resolveLessonTeacherIds(lessonId: string): Promise<string[]> {
   const ids = new Set<string>();
   try {
-    const lessonSnap = await adminDb.collection('lessons').doc(lessonId).get();
+    const lessonSnap = await adminDb.collection(LESSONS_COLLECTION).doc(lessonId).get();
     if (!lessonSnap.exists) return [];
     const lesson = lessonSnap.data() || {};
     if (lesson.authorId) ids.add(String(lesson.authorId));
@@ -251,12 +252,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
       return forbidden('You can only run AI analysis on your own submission');
     }
 
-    // We should ideally fetch the actual lesson assignment details. 
-    // Usually it resides in `lessons` collection.
+    // The assignment itself lives on the lesson: its `homework` block and `subject`.
     let assignmentDesc = 'Unknown task.';
     let subject = '';
     try {
-      const lessonSnap = await adminDb.collection('lessons').doc(submission?.lessonId).get();
+      const lessonSnap = await adminDb.collection(LESSONS_COLLECTION).doc(submission?.lessonId).get();
       if (lessonSnap.exists) {
         const ldata = lessonSnap.data();
         const h = ldata?.homework;

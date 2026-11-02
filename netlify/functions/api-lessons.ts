@@ -4,10 +4,12 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
+import type { AuthUser } from './utils/auth';
 import { notifyOrgStudents } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
+import { LESSONS_COLLECTION } from './utils/lessons';
 
-const COLLECTION = 'lessonPlans';
+const COLLECTION = LESSONS_COLLECTION;
 
 /**
  * Read the group names off the group documents, index for index with `groupIds`.
@@ -47,6 +49,17 @@ export async function resolveGroupLinkage(
   return { groupIds, groupNames };
 }
 
+/**
+ * Whose lessons a caller may read: their own org's (getOrgFilter — a super admin
+ * reads across orgs) and, of personal lessons (no org), only the ones they wrote.
+ * Applies to every role: a lesson id or a group id proves nothing about the org.
+ */
+function inReadScope(user: AuthUser, lesson: { organizationId?: string | null; authorId?: string }): boolean {
+  if (isSuperAdmin(user)) return true;
+  if (!lesson.organizationId) return lesson.authorId === user.uid;
+  return lesson.organizationId === getOrgFilter(user);
+}
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -62,13 +75,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('Lesson not found');
       const lessonData = doc.data()!;
 
-      // Access control: students can only see published lessons from their own org
-      if (!isSuperAdmin(user) && !isStaff(user)) {
-        if (lessonData.status !== 'published') return notFound('Lesson not found');
-        if (lessonData.organizationId && user.organizationId && lessonData.organizationId !== user.organizationId) {
-          return forbidden();
-        }
-      }
+      // The org check used to run for students only, so staff of any org could
+      // read any lesson by id.
+      if (!inReadScope(user, lessonData)) return forbidden();
+      // Students only see published lessons.
+      if (!isStaff(user) && lessonData.status !== 'published') return notFound('Lesson not found');
 
       return ok({ id: doc.id, ...lessonData });
     }
@@ -80,7 +91,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           .where('groupIds', 'array-contains', params.groupId)
           .limit(200)
           .get();
-        let lessons = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        // A group id proves nothing about the org — this used to return any org's
+        // lessons. Scoped in memory: personal lessons match by author, which can't
+        // be OR-ed into an organizationId filter.
+        let lessons = snap.docs
+          .map((d: any) => ({ id: d.id, ...d.data() }))
+          .filter((l) => inReadScope(user, l));
         // Sort by createdAt desc in memory (avoids composite index requirement)
         lessons.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         // For students, only show published lessons

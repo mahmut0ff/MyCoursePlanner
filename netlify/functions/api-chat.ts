@@ -25,7 +25,7 @@ import {
   resolveBranchFilter, memberInBranchScope,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
-import { sendTelegramRaw, TELEGRAM_BOT_TOKEN } from './utils/telegram';
+import { sendTelegramRaw, getTelegramBotToken } from './utils/telegram';
 
 const now = () => new Date().toISOString();
 
@@ -89,6 +89,10 @@ async function deliverTelegram(d: TelegramDelivery): Promise<string[]> {
   });
   if (eligible.length === 0) return [];
 
+  // Без токена бота писать нечем — не читаем и профили (геттер сам пишет в лог).
+  const botToken = getTelegramBotToken();
+  if (!botToken) return [];
+
   const profiles = await getDocsByIds('users', eligible);
   const isGroup = d.room.type === 'group';
   const roomTitle = isGroup ? (d.room.title || 'Групповой чат') : d.senderName;
@@ -111,7 +115,7 @@ async function deliverTelegram(d: TelegramDelivery): Promise<string[]> {
     const prefs = profile.notificationPreferences || {};
     if (prefs.pushEnabled === false || prefs.chat === false) return;
 
-    const okSent = await sendTelegramRaw(TELEGRAM_BOT_TOKEN, chatId, text);
+    const okSent = await sendTelegramRaw(botToken, chatId, text);
     if (okSent) delivered.push(uid);
   }));
 

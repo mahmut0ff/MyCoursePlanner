@@ -10,7 +10,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
-import { generateTelegramLinkCode, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME } from './utils/telegram';
+import { generateTelegramLinkCode, getTelegramBotToken, TELEGRAM_BOT_USERNAME } from './utils/telegram';
+import { setTelegramWebhook, TELEGRAM_WEBHOOK_PATH } from './utils/telegram-webhook-auth';
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -50,12 +51,22 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Global bot instead of organization-specific
       const botUsername = TELEGRAM_BOT_USERNAME;
-      const systemToken = TELEGRAM_BOT_TOKEN;
 
       const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
       if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
-        const whUrl = `${origin}/.netlify/functions/api-telegram-webhook`;
-        fetch(`https://api.telegram.org/bot${systemToken}/setWebhook?url=${encodeURIComponent(whUrl)}`).catch(() => {});
+        const systemToken = getTelegramBotToken();
+        if (systemToken) {
+          // Re-registers the global webhook with its secret_token — the way to
+          // re-arm it after a token or secret rotation. Awaited: a function can be
+          // frozen the moment it returns, and an unsent request with it.
+          const whUrl = `${origin}${TELEGRAM_WEBHOOK_PATH}`;
+          try {
+            const whRes = await setTelegramWebhook(systemToken, whUrl);
+            if (whRes && !whRes.ok) console.error('[telegram] setWebhook failed:', await whRes.text());
+          } catch (e) {
+            console.error('[telegram] setWebhook failed:', e);
+          }
+        }
       }
 
       const deepLink = `https://t.me/${botUsername}?start=${code}`;

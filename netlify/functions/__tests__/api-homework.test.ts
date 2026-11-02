@@ -31,7 +31,7 @@ vi.mock('../utils/rate-limiter', () => ({
 
 vi.mock('../utils/telegram', () => ({
   sendTelegramToUser: vi.fn().mockResolvedValue(undefined),
-  TELEGRAM_BOT_TOKEN: 'test-token',
+  getTelegramBotToken: () => 'test-token',
 }));
 
 vi.mock('../utils/join-approvals', () => ({ sendJoinApprovalButtons: vi.fn() }));

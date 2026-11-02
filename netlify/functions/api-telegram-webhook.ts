@@ -1,7 +1,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
+import { resolveTelegramLinkCode, getTelegramBotToken } from './utils/telegram';
+import { telegramWebhookAccessError } from './utils/telegram-webhook-auth';
 import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
 import { planHasAIManager } from './utils/plan-limits';
@@ -248,12 +249,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
+    // Determine if this is the Global SabakHub Bot or a Custom AI Bot
+    const queryOrgId = event.queryStringParameters?.orgId;
+
+    // Everything below trusts chat.id / from.id as the sender's identity, so an
+    // update must first prove it came from Telegram: the secret_token that bot's
+    // webhook was registered with. Forged POSTs stop here — before any parsing,
+    // Firestore read or Bot API call.
+    const denied = telegramWebhookAccessError(event, queryOrgId);
+    if (denied) return denied;
+
     const payload = JSON.parse(event.body || '{}');
     const appOrigin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host || ''}`;
 
-    // Determine if this is the Global SabakHub Bot or a Custom AI Bot
-    const queryOrgId = event.queryStringParameters?.orgId;
-    let botToken = TELEGRAM_BOT_TOKEN;
+    let botToken: string;
     let isGlobalBot = true;
 
     if (queryOrgId) {
@@ -266,6 +275,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
       botToken = settingsData.telegramBotToken;
       isGlobalBot = false;
+    } else {
+      // Without TELEGRAM_BOT_TOKEN the global bot can't answer anyone — drop the
+      // update before any side effects (the getter logs why). 200 for the same
+      // reason as the catch below: so Telegram doesn't retry it forever.
+      const globalToken = getTelegramBotToken();
+      if (!globalToken) return { statusCode: 200, body: 'OK' };
+      botToken = globalToken;
     }
 
     // Inline-button press — route by callback_data prefix.

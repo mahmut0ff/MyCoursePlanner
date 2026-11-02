@@ -17,10 +17,10 @@ import { randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin';
 import { getOrgLimits } from './plan-limits';
-import { TELEGRAM_BOT_TOKEN } from './telegram';
+import { getTelegramBotToken } from './telegram';
 
 const now = () => new Date().toISOString();
-const tgApi = (method: string) => `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`;
+const tgApi = (botToken: string, method: string) => `https://api.telegram.org/bot${botToken}/${method}`;
 
 interface SentMessage { chatId: string; messageId: number; }
 
@@ -56,6 +56,10 @@ export async function sendJoinApprovalButtons(args: {
     .map((d) => String(d.data()!.telegramChatId));
   if (chatIds.length === 0) return;
 
+  // No bot token → no button messages, so no approval doc to map them back.
+  const botToken = getTelegramBotToken();
+  if (!botToken) return;
+
   const token = randomBytes(8).toString('hex'); // 16 chars
   const roleWord = args.role === 'teacher' ? 'преподаватель' : 'ученик';
   const text =
@@ -74,7 +78,7 @@ export async function sendJoinApprovalButtons(args: {
   await Promise.allSettled(
     chatIds.map(async (chatId) => {
       try {
-        const res = await fetch(tgApi('sendMessage'), {
+        const res = await fetch(tgApi(botToken, 'sendMessage'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup }),

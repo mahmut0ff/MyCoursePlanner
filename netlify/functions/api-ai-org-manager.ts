@@ -4,6 +4,7 @@ import { AI_MODEL } from './utils/ai';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
 import { planHasAIManager } from './utils/plan-limits';
+import { setTelegramWebhook, TELEGRAM_WEBHOOK_PATH } from './utils/telegram-webhook-auth';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -102,12 +103,14 @@ const handler: Handler = async (event: HandlerEvent) => {
             
             // Create absolute webhook URL securely using rawUrl
             const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
-            const webhookUrl = `${origin}/.netlify/functions/api-telegram-webhook?orgId=${organizationId}`;
+            const webhookUrl = `${origin}${TELEGRAM_WEBHOOK_PATH}?orgId=${encodeURIComponent(organizationId)}`;
             
             if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
               console.warn('Skipping webhook setup on localhost');
             } else {
-              const whRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+              // With this org's own secret_token — the webhook drops updates without it.
+              const whRes = await setTelegramWebhook(token, webhookUrl, organizationId);
+              if (!whRes) return jsonResponse(500, { error: 'Server missing TELEGRAM_WEBHOOK_SECRET' });
               if (!whRes.ok) {
                 const errTxt = await whRes.text();
                 console.error('Webhook set error:', errTxt);

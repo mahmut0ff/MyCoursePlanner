@@ -3,7 +3,7 @@
  */
 import { adminDb } from './firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
-import { sendTelegramToUser, TELEGRAM_BOT_TOKEN } from './telegram';
+import { sendTelegramToUser, getTelegramBotToken } from './telegram';
 import { sendJoinApprovalButtons } from './join-approvals';
 
 /**
@@ -14,6 +14,8 @@ import { sendJoinApprovalButtons } from './join-approvals';
 const SUPERADMIN_TELEGRAM_CHAT_ID = process.env.SUPERADMIN_TELEGRAM_CHAT_ID || '1343553158';
 
 export async function notifySuperAdminTelegram(text: string): Promise<void> {
+  const botToken = getTelegramBotToken();
+  if (!botToken) return;
   const chatIds = new Set<string>();
   if (SUPERADMIN_TELEGRAM_CHAT_ID) chatIds.add(SUPERADMIN_TELEGRAM_CHAT_ID);
   try {
@@ -23,7 +25,7 @@ export async function notifySuperAdminTelegram(text: string): Promise<void> {
     console.warn('Super-admin lookup failed (non-fatal):', e);
   }
   await Promise.allSettled([...chatIds].map(chatId =>
-    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
@@ -108,10 +110,13 @@ async function relayToParents(studentId: string, title: string, message: string)
   const chatIds: string[] = Array.isArray(data.parentTelegramChatIds) ? data.parentTelegramChatIds : [];
   if (chatIds.length === 0) return;
 
+  const botToken = getTelegramBotToken();
+  if (!botToken) return;
+
   const childName = data.displayName || 'Ваш ребёнок';
   const text = `👨‍👩‍👦 <b>${childName}</b>\n\n🔔 <b>${title}</b>\n${message}`;
   await Promise.allSettled(chatIds.map(chatId =>
-    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),

@@ -29,13 +29,13 @@ export function initials(name: string) {
 }
 
 export function ChatAvatar({ name, url, size = 'md' }: { name: string; url?: string; size?: 'sm' | 'md' }) {
-  const box = size === 'sm' ? 'w-8 h-8 text-[11px]' : 'w-10 h-10 text-xs';
+  const box = size === 'sm' ? 'w-7 h-7 text-[11px]' : 'w-9 h-9 text-xs';
   if (url) {
     return <img src={url} alt={name} className={`${box} rounded-full object-cover shrink-0`} />;
   }
   return (
-    <div className={`${box} rounded-full shrink-0 flex items-center justify-center font-semibold
-      bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300`}>
+    <div className={`${box} rounded-full shrink-0 flex items-center justify-center font-medium
+      bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200`}>
       {initials(name)}
     </div>
   );
@@ -51,21 +51,21 @@ function Dialog({ title, onClose, children }: { title: string; onClose: () => vo
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
       onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl
+        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-[480px] shadow-pop
           overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 px-4 py-3
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3
           border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           <button type="button" onClick={onClose} aria-label={t('common.close', 'Закрыть')}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
-            <X className="w-4 h-4" />
+            className="-mr-1 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
         {children}
@@ -87,28 +87,28 @@ export function PersonRow({
     <>
       <ChatAvatar name={person.name} url={person.avatarUrl} size="sm" />
       <div className="min-w-0 flex-1 text-left">
-        <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{person.name}</div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{person.name}</div>
         <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
           {t(`roles.${person.role}`, ROLE_LABELS_RU[person.role] || person.role)}
         </div>
       </div>
       {trailing}
       {selected !== undefined && (
-        <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected
+        <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selected
           ? 'bg-primary-600 border-primary-600 text-white'
           : 'border-slate-300 dark:border-slate-600'}`}>
-          {selected && <Check className="w-3.5 h-3.5" />}
+          {selected && <Check className="w-3 h-3" />}
         </span>
       )}
     </>
   );
 
   if (!onClick) {
-    return <div className="w-full flex items-center gap-2.5 px-4 py-2.5">{content}</div>;
+    return <div className="w-full min-h-[44px] flex items-center gap-2.5 px-4 py-1.5">{content}</div>;
   }
   return (
     <button type="button" onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors
+      className="w-full min-h-[44px] flex items-center gap-2.5 px-4 py-1.5 transition-colors
         hover:bg-slate-50 dark:hover:bg-slate-700/50">
       {content}
     </button>
@@ -174,9 +174,9 @@ function useSearch(people: ChatDirectoryEntry[], search: string) {
 function SearchField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
       <input type="search" value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder} className="input pl-9" />
+        placeholder={placeholder} className="input pl-8" />
     </div>
   );
 }
@@ -231,11 +231,11 @@ export function NewGroupDialog({ onClose, onCreated }: NewGroupProps) {
         {loading ? (
           <div className="p-4 space-y-2">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
+              <div key={i} className="h-10 rounded-md bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400">
+          <div className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
             {search
               ? t('chat.noMatches', 'Никого не нашли')
               : t('chat.noPeople', 'Писать пока некому — в организации нет других активных участников')}
@@ -244,9 +244,9 @@ export function NewGroupDialog({ onClose, onCreated }: NewGroupProps) {
           <div key={key}>
             {/* Липкий заголовок: в организации на сотню человек без него не
                 видно, где кончились студенты и начались преподаватели. */}
-            <div className="sticky top-0 z-10 px-4 py-1.5 text-[11px] font-medium uppercase
-              tracking-wide text-slate-400 bg-white/95 dark:bg-slate-800/95 backdrop-blur
-              border-b border-slate-100 dark:border-slate-700/50">
+            <div className="sticky top-0 z-10 h-7 flex items-center px-4 text-xs font-medium uppercase
+              text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800
+              border-b border-slate-200 dark:border-slate-700">
               {t(`chat.cat.${key}`, CATEGORY_LABELS_RU[key] || key)}
               <span className="ml-1.5 normal-case tracking-normal">{bucket.length}</span>
             </div>
@@ -266,9 +266,9 @@ export function NewGroupDialog({ onClose, onCreated }: NewGroupProps) {
         <span className="text-xs text-slate-500 dark:text-slate-400 flex-1">
           {t('chat.selectedCount', 'Выбрано: {{n}}', { n: selected.length })}
         </span>
-        <button type="button" className="btn-primary text-sm flex items-center gap-2"
+        <button type="button" className="btn-primary inline-flex items-center gap-1.5"
           disabled={busy || !title.trim() || selected.length === 0} onClick={createGroup}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
           {t('chat.createGroup', 'Создать')}
         </button>
       </div>
@@ -322,7 +322,7 @@ export function RoomMembersDialog({ room, selfUid, canManage, onClose }: Members
   return (
     <Dialog title={t('chat.members', 'Участники')} onClose={onClose}>
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-4 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <div className="px-4 pt-3 pb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
           {t('chat.inRoom', 'В чате — {{n}}', { n: current.length })}
         </div>
         {current.map((p) => (
@@ -335,9 +335,9 @@ export function RoomMembersDialog({ room, selfUid, canManage, onClose }: Members
             trailing={canManage && p.uid !== selfUid ? (
               <button type="button" onClick={() => mutate(p.uid, false)} disabled={busyUid === p.uid}
                 title={t('chat.removeMember', 'Убрать из чата')}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600
+                className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-red-600
                   hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50">
-                {busyUid === p.uid ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
+                {busyUid === p.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
               </button>
             ) : undefined}
           />
@@ -346,7 +346,7 @@ export function RoomMembersDialog({ room, selfUid, canManage, onClose }: Members
         {canManage && (
           <>
             <div className="px-4 pt-4 pb-2 border-t border-slate-200 dark:border-slate-700 mt-2">
-              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                 {t('chat.addPeople', 'Добавить')}
               </div>
               <SearchField value={search} onChange={setSearch}
@@ -355,11 +355,11 @@ export function RoomMembersDialog({ room, selfUid, canManage, onClose }: Members
             {loading ? (
               <div className="px-4 pb-4 space-y-2">
                 {[0, 1].map((i) => (
-                  <div key={i} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
+                  <div key={i} className="h-10 rounded-md bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
                 ))}
               </div>
             ) : candidates.length === 0 ? (
-              <div className="px-4 pb-6 text-sm text-slate-400">
+              <div className="px-4 pb-4 text-xs text-slate-500 dark:text-slate-400">
                 {t('chat.noneToAdd', 'Добавить больше некого')}
               </div>
             ) : candidates.slice(0, 50).map((p) => (
@@ -367,8 +367,8 @@ export function RoomMembersDialog({ room, selfUid, canManage, onClose }: Members
                 key={p.uid}
                 person={p}
                 trailing={
-                  <span className="p-1.5 text-slate-400">
-                    {busyUid === p.uid ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  <span className="w-7 h-7 flex items-center justify-center text-slate-400">
+                    {busyUid === p.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
                   </span>
                 }
                 onClick={() => { if (!busyUid) mutate(p.uid, true); }}

@@ -52,7 +52,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
   const allDone = projects.length > 0 && catJury.length > 0 && catJury.every((j) => doneBy(j.uid) === projects.length);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <CategoryPicker categories={contest.categories} value={catId} onChange={selectCategory}
         extra={(c) => t('contests.projects', { count: participants.filter((p) => p.categoryId === c.id && p.status === 'arrived').length, defaultValue: '{{count}} проектов' })} />
 
@@ -62,25 +62,25 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
             <WarnNote>{t('contests.mon.pressStart', 'Чтобы открыть оценивание, нажмите «Начать день конкурса» вверху страницы.')}</WarnNote>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             {/* Управление категорией */}
-            <section className={`${cardCls} p-5 xl:col-span-2`}>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-primary-500" />{t('contests.categoryCode', 'Категория {{code}}', { code: cat.code })} <JudgingBadge state={cat.judging} />
+            <section className={`${cardCls} p-4 xl:col-span-2`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Megaphone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />{t('contests.categoryCode', 'Категория {{code}}', { code: cat.code })} <JudgingBadge state={cat.judging} />
                 </h2>
                 {editable && cat.judging !== 'approved' && (
                   cat.judging === 'open'
-                    ? <button onClick={() => setJudging('closed')} disabled={busy} className={allDone ? primaryBtn : secondaryBtn}><Pause className="w-4 h-4" />{t('contests.mon.closeJudging', 'Закрыть оценивание')}</button>
-                    : <button onClick={() => setJudging('open')} disabled={busy || contest.status !== 'judging'} className={primaryBtn}><Play className="w-4 h-4" />{cat.judging === 'closed' ? t('contests.mon.reopen', 'Открыть снова') : t('contests.mon.openJudging', 'Открыть оценивание')}</button>
+                    ? <button onClick={() => setJudging('closed')} disabled={busy} className={allDone ? primaryBtn : secondaryBtn}><Pause className="w-3.5 h-3.5" />{t('contests.mon.closeJudging', 'Закрыть оценивание')}</button>
+                    : <button onClick={() => setJudging('open')} disabled={busy || contest.status !== 'judging'} className={primaryBtn}><Play className="w-3.5 h-3.5" />{cat.judging === 'closed' ? t('contests.mon.reopen', 'Открыть снова') : t('contests.mon.openJudging', 'Открыть оценивание')}</button>
                 )}
               </div>
 
               {/* Закрыто или утверждено: вместо пульта — дорога дальше. */}
               {cat.judging === 'closed' || cat.judging === 'approved' ? (
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3 flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex-1">
-                    <div className="font-bold text-slate-900 dark:text-white">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
                       {cat.judging === 'approved' ? t('contests.mon.approvedTitle', 'Итоги утверждены, места зафиксированы.') : allDone ? t('contests.mon.allDone', 'Все жюри оценили все проекты.') : t('contests.mon.closedTitle', 'Оценивание закрыто.')}
                     </div>
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
@@ -90,51 +90,51 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                     </p>
                   </div>
                   {/* Вызов из старых данных: сервер снимает его при закрытии только с этой версии. */}
-                  {editable && current && <button onClick={() => call(null)} disabled={busy} className={secondaryBtn}><XCircle className="w-4 h-4" />{t('contests.mon.clearCallN', 'Снять вызов {{number}}', { number: current.number })}</button>}
-                  <button onClick={() => goTab('results', cat.id)} className={primaryBtn}><Trophy className="w-4 h-4" />{t('contests.mon.categoryResults', 'Итоги категории {{code}}', { code: cat.code })}<ChevronRight className="w-4 h-4" /></button>
+                  {editable && current && <button onClick={() => call(null)} disabled={busy} className={secondaryBtn}><XCircle className="w-3.5 h-3.5" />{t('contests.mon.clearCallN', 'Снять вызов {{number}}', { number: current.number })}</button>}
+                  <button onClick={() => goTab('results', cat.id)} className={primaryBtn}><Trophy className="w-3.5 h-3.5" />{t('contests.mon.categoryResults', 'Итоги категории {{code}}', { code: cat.code })}<ChevronRight className="w-3.5 h-3.5" /></button>
                 </div>
               ) : hostMode ? (
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3 flex flex-col sm:flex-row sm:items-center gap-4">
                   {current ? (
                     <>
                       <NumberChip value={current.number} large />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">{t('contests.mon.nowJudging', 'Сейчас на оценке')}{cat.currentSetAt ? ` · ${t('contests.mon.since', 'с {{time}}', { time: new Date(cat.currentSetAt).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' }) })}` : ''}</div>
-                        <div className="font-bold text-slate-900 dark:text-white truncate">{current.projectTitle}</div>
-                        <div className="text-[13px] text-slate-600 dark:text-slate-300 truncate">{current.authors.map((a) => a.name).join(', ')}</div>
-                        <div className="text-[12px] text-slate-600 dark:text-slate-300 mt-1">{t('contests.mon.scoredBy', 'Оценили: {{x}} из {{y}}', { x: catJury.filter((j) => scoreOf(current.id, j.uid)).length, y: catJury.length })}</div>
+                        <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t('contests.mon.nowJudging', 'Сейчас на оценке')}{cat.currentSetAt ? ` · ${t('contests.mon.since', 'с {{time}}', { time: new Date(cat.currentSetAt).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' }) })}` : ''}</div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{current.projectTitle}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-300 truncate">{current.authors.map((a) => a.name).join(', ')}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{t('contests.mon.scoredBy', 'Оценили: {{x}} из {{y}}', { x: catJury.filter((j) => scoreOf(current.id, j.uid)).length, y: catJury.length })}</div>
                       </div>
                       {editable && (
                         <div className="flex flex-wrap gap-2">
-                          {nextProject && <button onClick={() => call(nextProject.id)} disabled={busy} className={primaryBtn}><SkipForward className="w-4 h-4" />{t('contests.mon.next', 'Следующий: {{number}}', { number: nextProject.number })}</button>}
-                          <button onClick={() => call(null)} disabled={busy} className={secondaryBtn}><XCircle className="w-4 h-4" />{t('contests.mon.clearCall', 'Снять вызов')}</button>
+                          {nextProject && <button onClick={() => call(nextProject.id)} disabled={busy} className={primaryBtn}><SkipForward className="w-3.5 h-3.5" />{t('contests.mon.next', 'Следующий: {{number}}', { number: nextProject.number })}</button>}
+                          <button onClick={() => call(null)} disabled={busy} className={secondaryBtn}><XCircle className="w-3.5 h-3.5" />{t('contests.mon.clearCall', 'Снять вызов')}</button>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <p className="text-sm text-slate-600 dark:text-slate-300">{t('contests.mon.callHint', 'Вызовите проект — у всех жюри категории он откроется на телефоне сам.')}</p>
-                      {canCall && projects[0] && <button onClick={() => call(projects[0].id)} disabled={busy} className={primaryBtn}><Megaphone className="w-4 h-4" />{t('contests.mon.startWith', 'Начать с {{number}}', { number: projects[0].number })}</button>}
+                      {canCall && projects[0] && <button onClick={() => call(projects[0].id)} disabled={busy} className={primaryBtn}><Megaphone className="w-3.5 h-3.5" />{t('contests.mon.startWith', 'Начать с {{number}}', { number: projects[0].number })}</button>}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-4 text-sm text-slate-600 dark:text-slate-300">
-                  <b className="text-slate-900 dark:text-white">{judgingModeLabel('free').title}.</b> {judgingModeLabel('free').hint} {t('contests.mon.modeOnOverview', 'Режим меняется на вкладке «Обзор».')}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3 text-sm text-slate-600 dark:text-slate-300">
+                  <b className="text-slate-900 dark:text-slate-100">{judgingModeLabel('free').title}.</b> {judgingModeLabel('free').hint} {t('contests.mon.modeOnOverview', 'Режим меняется на вкладке «Обзор».')}
                 </div>
               )}
 
               {cat.judging === 'pending' && waiting > 0 && (
-                <p className="text-[13px] text-slate-600 dark:text-slate-300 mt-3 flex items-center gap-2">
-                  <Users className="w-4 h-4" />{t('contests.notMarkedArrived', 'Не отмечены пришедшими: {{n}}', { n: waiting })}.
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5" />{t('contests.notMarkedArrived', 'Не отмечены пришедшими: {{n}}', { n: waiting })}.
                   <button onClick={() => goTab('participants')} className="underline underline-offset-2 font-medium">{t('contests.mon.markOnParticipants', 'Отметить на вкладке «Участники»')}</button>
                 </p>
               )}
             </section>
 
             {/* Прогресс жюри */}
-            <section className={`${cardCls} p-5`}>
-              <h2 className="font-bold text-slate-900 dark:text-white mb-3">{t('contests.mon.juryProgress', 'Прогресс жюри')}</h2>
+            <section className={`${cardCls} p-4`}>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('contests.mon.juryProgress', 'Прогресс жюри')}</h2>
               {!catJury.length && <p className="text-sm text-slate-600 dark:text-slate-300">{t('contests.mon.noJury', 'На категорию не назначено жюри.')} <button onClick={() => goTab('jury')} className="underline underline-offset-2 font-medium">{t('contests.mon.assign', 'Назначить')}</button></p>}
               <ul className="space-y-3">
                 {catJury.map((j) => {
@@ -146,10 +146,10 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                     <li key={j.uid}>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-800 dark:text-slate-100 truncate">{j.name}</span>
-                        <span className={`font-semibold ${done ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}/{all}</span>
+                        <span className={`font-medium tabular-nums ${done ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}/{all}</span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 mt-1 overflow-hidden" role="progressbar" aria-valuenow={d} aria-valuemax={all} aria-label={t('contests.mon.progressAria', '{{name}}: оценено {{x}} из {{y}}', { name: j.name, x: d, y: all })}>
-                        <div className={`h-full ${done ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${pct}%` }} />
+                      <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700 mt-1 overflow-hidden" role="progressbar" aria-valuenow={d} aria-valuemax={all} aria-label={t('contests.mon.progressAria', '{{name}}: оценено {{x}} из {{y}}', { name: j.name, x: d, y: all })}>
+                        <div className={`h-full ${done ? 'bg-emerald-500' : 'bg-primary-600'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </li>
                   );
@@ -160,27 +160,27 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
 
           {/* Матрица проекты × жюри */}
           <section className={`${cardCls} overflow-hidden`}>
-            <div className="px-5 py-4 flex items-center justify-between gap-3">
-              <h2 className="font-bold text-slate-900 dark:text-white">{t('contests.mon.matrix', 'Проекты × жюри')}</h2>
-              <span className="text-[12px] text-slate-600 dark:text-slate-300">{t('contests.mon.maxPerJury', 'максимум от одного жюри: {{max}}', { max })}</span>
+            <div className="px-3 py-2.5 flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('contests.mon.matrix', 'Проекты × жюри')}</h2>
+              <span className="text-xs text-slate-600 dark:text-slate-300">{t('contests.mon.maxPerJury', 'максимум от одного жюри: {{max}}', { max })}</span>
             </div>
             {!projects.length ? (
-              <p className="text-sm text-slate-600 dark:text-slate-300 text-center pb-8 px-5">
+              <p className="text-sm text-slate-600 dark:text-slate-300 text-center py-8 px-4">
                 {t('contests.mon.noArrived', 'Нет пришедших участников в этой категории.')}{' '}
                 <button onClick={() => goTab('participants')} className="underline underline-offset-2 font-medium">{t('contests.mon.markArrivedOnParticipants', 'Отметить «Пришёл» на вкладке «Участники»')}</button>
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-4 py-2.5 text-left font-semibold">{t('contests.csv.project', 'Проект')}</th>
-                      {catJury.map((j) => <th key={j.uid} className="px-3 py-2.5 text-center font-semibold whitespace-nowrap">{j.name}</th>)}
-                      <th className="px-3 py-2.5 text-center font-semibold">{t('contests.mon.average', 'Среднее')}</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">{t('common.actions', 'Действия')}</th>
+                      <th className="h-8 px-3 text-left font-medium">{t('contests.csv.project', 'Проект')}</th>
+                      {catJury.map((j) => <th key={j.uid} className="h-8 px-3 text-center font-medium whitespace-nowrap">{j.name}</th>)}
+                      <th className="h-8 px-3 text-center font-medium">{t('contests.mon.average', 'Среднее')}</th>
+                      <th className="h-8 px-3 text-right font-medium">{t('common.actions', 'Действия')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {projects.map((p) => {
                       const own = catJury.map((j) => scoreOf(p.id, j.uid));
                       const got = own.filter(Boolean) as ContestScore[];
@@ -190,7 +190,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                       return (
                         <React.Fragment key={p.id}>
                           <tr className={isCurrent ? 'bg-emerald-50/60 dark:bg-emerald-500/5' : ''}>
-                            <td className="px-4 py-2.5">
+                            <td className="px-3 py-1.5">
                               <button onClick={() => setExpanded(isOpen ? null : p.id)} aria-expanded={isOpen} className="flex items-center gap-2 text-left">
                                 {isOpen ? <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden /> : <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden />}
                                 <NumberChip value={p.number} />
@@ -199,27 +199,27 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                               </button>
                             </td>
                             {own.map((s, k) => (
-                              <td key={catJury[k].uid} className="px-3 py-2.5 text-center">
+                              <td key={catJury[k].uid} className="px-3 py-1.5 text-center tabular-nums">
                                 {s
-                                  ? <span className="inline-flex items-center gap-1 font-semibold text-slate-900 dark:text-white" title={`${fmtTime(s.updatedAt)}${s.updatedByRole === 'admin' ? ` · ${t('contests.mon.fixedByAdmin', 'исправлено администратором')}` : ''}`}>
+                                  ? <span className="inline-flex items-center gap-1 font-semibold text-slate-900 dark:text-slate-100" title={`${fmtTime(s.updatedAt)}${s.updatedByRole === 'admin' ? ` · ${t('contests.mon.fixedByAdmin', 'исправлено администратором')}` : ''}`}>
                                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" aria-hidden />{round2(s.total)}{s.updatedByRole === 'admin' && <span className="text-amber-600" title={t('contests.mon.fixedByAdminCap', 'Исправлено администратором')}>*</span>}
                                     </span>
                                   : <span className="inline-flex" title={t('contests.mon.notScoredCap', 'Не оценён')}><Circle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" aria-hidden /><span className="sr-only">{t('contests.mon.notScored', 'не оценён')}</span></span>}
                               </td>
                             ))}
-                            <td className="px-3 py-2.5 text-center font-bold text-slate-900 dark:text-white">{round2(avg)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                            <td className="px-3 py-1.5 text-center font-semibold tabular-nums text-slate-900 dark:text-slate-100">{round2(avg)}</td>
+                            <td className="px-3 py-1.5 text-right whitespace-nowrap">
                               {canCall && !isCurrent && (
-                                <button onClick={() => call(p.id)} disabled={busy} className={ghostBtn}><Megaphone className="w-4 h-4" aria-hidden />{t('contests.mon.call', 'Вызвать')}</button>
+                                <button onClick={() => call(p.id)} disabled={busy} className={ghostBtn}><Megaphone className="w-3.5 h-3.5" aria-hidden />{t('contests.mon.call', 'Вызвать')}</button>
                               )}
-                              <button onClick={() => setHistory(p)} className={ghostBtn}><History className="w-4 h-4" aria-hidden />{t('contests.mon.history', 'История')}</button>
+                              <button onClick={() => setHistory(p)} className={ghostBtn}><History className="w-3.5 h-3.5" aria-hidden />{t('contests.mon.history', 'История')}</button>
                             </td>
                           </tr>
                           {isOpen && (
                             <tr className="bg-slate-50/60 dark:bg-slate-900/30">
                               <td colSpan={catJury.length + 3} className="px-4 py-3">
                                 <div className="overflow-x-auto">
-                                  <table className="text-[13px]">
+                                  <table className="text-sm">
                                     <thead><tr className="text-slate-600 dark:text-slate-300">
                                       <th className="pr-4 py-1 text-left font-medium">{t('contests.crit.criterion', 'Критерий')}</th>
                                       {catJury.map((j) => <th key={j.uid} className="px-3 py-1 font-medium">{j.name}</th>)}
@@ -242,7 +242,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                                           <td className="pr-4 pt-2 text-slate-600 dark:text-slate-300">{t('contests.mon.fixForJury', 'Исправить за жюри:')}</td>
                                           {catJury.map((j, k) => (
                                             <td key={j.uid} className="px-3 pt-2 text-center">
-                                              <button onClick={() => setEdit({ p, j, s: own[k] })} className={`${ghostBtn} text-[12px]`}><Pencil className="w-3 h-3" aria-hidden />{own[k] ? t('contests.mon.fix', 'Исправить') : t('contests.mon.set', 'Выставить')}</button>
+                                              <button onClick={() => setEdit({ p, j, s: own[k] })} className={`${ghostBtn} text-xs`}><Pencil className="w-3 h-3" aria-hidden />{own[k] ? t('contests.mon.fix', 'Исправить') : t('contests.mon.set', 'Выставить')}</button>
                                             </td>
                                           ))}
                                           <td />
@@ -333,14 +333,14 @@ const HistoryModal: React.FC<{
       {items && !items.length && <p className="text-sm text-slate-600 dark:text-slate-300">{t('contests.mon.noHistory', 'Оценок ещё не было.')}</p>}
       <ul className="space-y-3 pb-4">
         {items?.map((e) => (
-          <li key={e.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-3 text-sm">
+          <li key={e.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2">
               <span><b>{e.byName}</b> {e.byRole === 'admin' ? <span className="text-amber-700 dark:text-amber-400">{t('contests.mon.fixedFor', 'исправил(а) оценку за {{name}}', { name: nameOf(e.juryUid) })}</span> : e.before ? t('contests.mon.changedOwn', 'изменил(а) свою оценку') : t('contests.mon.gave', 'выставил(а) оценку')}</span>
               <span className="text-slate-500 dark:text-slate-400">{fmtTime(e.at)}</span>
             </div>
             <div className="mt-1 text-slate-600 dark:text-slate-300">{t('contests.cat.amount', 'Сумма')}: {e.before ? `${round2(e.before.total)} → ` : ''}<b>{round2(e.after.total)}</b></div>
-            {e.before && diff(e).length > 0 && <div className="text-[12px] text-slate-600 dark:text-slate-300 mt-1">{diff(e).join(' · ')}</div>}
-            {e.comment && <div className="mt-1 text-[13px] italic text-slate-600 dark:text-slate-300">«{e.comment}»</div>}
+            {e.before && diff(e).length > 0 && <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{diff(e).join(' · ')}</div>}
+            {e.comment && <div className="mt-1 text-sm italic text-slate-600 dark:text-slate-300">«{e.comment}»</div>}
           </li>
         ))}
       </ul>

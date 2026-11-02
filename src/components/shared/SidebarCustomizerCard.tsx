@@ -35,31 +35,31 @@ const SidebarCustomizerCard: React.FC<{ className?: string }> = ({ className }) 
   if (!sections.length || !sections.some((s) => s.items.length)) return null;
 
   return (
-    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 ${className || ''}`}>
+    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 ${className || ''}`}>
       <div className="flex items-center justify-between gap-3 mb-1">
         <div className="flex items-center gap-2 min-w-0">
-          <SlidersHorizontal className="w-4 h-4 text-teal-500 shrink-0" />
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('sidebar.customize', 'Настройка меню')}</h2>
+          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('sidebar.customize', 'Настройка меню')}</h2>
         </div>
         <button
           type="button"
           onClick={reset}
           disabled={!hidden.length}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors inline-flex items-center gap-1.5 shrink-0 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:hover:bg-slate-100 dark:disabled:hover:bg-slate-700"
+          className="btn-ghost inline-flex items-center gap-1.5 shrink-0"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           {t('sidebar.showAll', 'Показать всё')}
         </button>
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
         {t('sidebar.customizeHint', 'Выберите, какие пункты показывать в боковом меню. Это меняет только меню и не влияет на права доступа.')}
       </p>
 
-      <div className="space-y-4">
+      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 items-start">
         {sections.filter((s) => s.items.length).map((section) => (
           <div key={section.id}>
             {section.label && (
-              <p className="px-1 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <p className="px-1 mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 {section.label}
               </p>
             )}
@@ -70,9 +70,9 @@ const SidebarCustomizerCard: React.FC<{ className?: string }> = ({ className }) 
                 return (
                   <label
                     key={item.id}
-                    className="flex items-center gap-2.5 px-1 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                    className="flex items-center gap-2.5 px-1 h-8 rounded-md cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${visible ? 'text-slate-500 dark:text-slate-400' : 'text-slate-300 dark:text-slate-600'}`} />
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${visible ? 'text-slate-500 dark:text-slate-400' : 'text-slate-300 dark:text-slate-600'}`} />
                     <span className={`text-sm truncate ${visible ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>
                       {item.label}
                     </span>
@@ -84,7 +84,7 @@ const SidebarCustomizerCard: React.FC<{ className?: string }> = ({ className }) 
                       className="sr-only peer"
                     />
                     {/* Track + knob; the real input above stays focusable for a11y. */}
-                    <span className="ml-auto shrink-0 relative w-9 h-5 rounded-full bg-slate-200 dark:bg-slate-600 peer-checked:bg-teal-500 peer-focus-visible:ring-2 peer-focus-visible:ring-teal-400/50 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
+                    <span className="ml-auto shrink-0 relative w-8 h-[18px] rounded-full bg-slate-300 dark:bg-slate-600 peer-checked:bg-primary-600 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/30 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-3.5 after:h-3.5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-3.5" />
                   </label>
                 );
               })}

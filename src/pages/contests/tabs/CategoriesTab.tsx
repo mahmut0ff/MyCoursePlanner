@@ -62,9 +62,9 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
 
   return (
     <div className="space-y-4">
-      <div className={`${cardCls} p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}>
-        <span className="text-slate-500 dark:text-slate-400">{t('contests.cashPrizes', 'Денежные призы')}: <b className="text-slate-900 dark:text-white">{formatMoney(prizes)}</b></span>
-        <span className="text-slate-500 dark:text-slate-400">{t('contests.cat.declaredFund', 'Заявленный фонд')}: <b className="text-slate-900 dark:text-white">{contest.prizeFund ? formatMoney(contest.prizeFund) : '—'}</b></span>
+      <div className={`${cardCls} p-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm`}>
+        <span className="text-slate-500 dark:text-slate-400">{t('contests.cashPrizes', 'Денежные призы')}: <b className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatMoney(prizes)}</b></span>
+        <span className="text-slate-500 dark:text-slate-400">{t('contests.cat.declaredFund', 'Заявленный фонд')}: <b className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{contest.prizeFund ? formatMoney(contest.prizeFund) : '—'}</b></span>
         {contest.prizeFund > 0 && (
           <span className={`font-semibold ${diff < 0 ? 'text-rose-600 dark:text-rose-400' : diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
             {diff === 0 ? t('contests.cat.fundMatches', 'Сходится с фондом') : diff > 0 ? t('contests.cat.undistributed', 'Не распределено: {{amount}}', { amount: formatMoney(diff) }) : t('contests.cat.overFund', 'Превышение фонда: {{amount}}', { amount: formatMoney(-diff) })}
@@ -74,28 +74,29 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
 
       {overlaps.length > 0 && (
         <WarnNote className="flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>{t('contests.cat.overlaps', 'Возрастные диапазоны пересекаются: {{pairs}}. Участник попадёт в первую подходящую категорию.', { pairs: overlaps.map((o) => t('contests.cat.pair', '{{a}} и {{b}}', { a: codeOf(o.a), b: codeOf(o.b) })).join(', ') })}</span>
         </WarnNote>
       )}
 
+      {rows.length > 0 && <div className="grid gap-4 2xl:grid-cols-2 items-start">
       {rows.map((r, i) => {
         const count = r.id ? participants.filter((p) => p.categoryId === r.id).length : 0;
         const live = r.id ? serverCat.get(r.id) : undefined;
         const judging = live?.judging;
         const codeLocked = !!live?.nextSeq && live.nextSeq > 1;
         return (
-          <section key={r.id || `new-${i}`} className={`${cardCls} p-5`}>
-            <div className="flex items-center justify-between gap-3 mb-4">
+          <section key={r.id || `new-${i}`} className={`${cardCls} p-4`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-9 h-9 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-bold">{r.code || '?'}</span>
+                <span className="w-7 h-7 rounded-md bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100 flex items-center justify-center text-sm font-semibold">{r.code || '?'}</span>
                 <span className="text-sm text-slate-500 dark:text-slate-400">{t('contests.participantsShort', { count, defaultValue: '{{count}} участн.' })}</span>
                 {judging && <JudgingBadge state={judging} />}
               </div>
               {!disabled && (
                 <button onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))} disabled={count > 0 || (!!judging && judging !== 'pending')}
                   title={count > 0 ? t('contests.cat.hasParticipants', 'В категории есть участники') : t('contests.cat.delete', 'Удалить категорию')} className={`${ghostBtn} text-rose-600`}>
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -103,7 +104,7 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
               <div>
                 <Label>{t('contests.cat.code', 'Код')}</Label>
                 <input value={r.code} maxLength={3} disabled={codeLocked} title={codeLocked ? t('contests.cat.codeLocked', 'Номера уже присвоены — код не меняется') : undefined}
-                  onChange={(e) => patch(i, { code: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })} className={`${inputCls} font-mono font-bold`} />
+                  onChange={(e) => patch(i, { code: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })} className={`${inputCls} font-mono font-semibold`} />
               </div>
               <div>
                 <Label>{t('contests.title', 'Название')}</Label>
@@ -119,12 +120,12 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
               </div>
             </fieldset>
 
-            <div className="mt-5">
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2"><Award className="w-3.5 h-3.5" />{t('contests.cat.prizePlaces', 'Призовые места')}</div>
+            <div className="mt-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2"><Award className="w-3.5 h-3.5" />{t('contests.cat.prizePlaces', 'Призовые места')}</div>
               <div className="space-y-2">
                 {r.prizes.map((p, j) => (
                   <fieldset key={j} disabled={disabled} className="grid grid-cols-[44px_1fr_120px_32px] gap-2 items-center">
-                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300 text-center">{j + 1}</span>
+                    <span className="text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400 text-center">{j + 1}</span>
                     <input value={p.title} onChange={(e) => patchPrize(i, j, { title: e.target.value })} placeholder={t('contests.cat.prizePh', 'Кубок, диплом {{place}} степени', { place: ['I', 'II', 'III'][j] ?? String(j + 1) })} className={inputCls} />
                     <input type="number" min={0} inputMode="numeric" value={p.amount || ''} onChange={(e) => patchPrize(i, j, { amount: Number(e.target.value) || 0 })} placeholder={t('contests.cat.amount', 'Сумма')} className={inputCls} />
                     {!disabled && (
@@ -142,14 +143,15 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
           </section>
         );
       })}
+      </div>}
 
       {!rows.length && <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">{t('contests.cat.empty', 'Категорий пока нет. Пример: A — 12–15 лет, B — 16–20, C — 21–25.')}</p>}
 
       {!disabled && (
-        <div className={`flex flex-wrap items-center justify-between gap-3 ${dirty ? 'sticky bottom-0 z-10 -mx-1 px-4 py-3 rounded-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur border border-slate-200 dark:border-slate-700 shadow-lg' : ''}`}>
-          <button onClick={add} className={secondaryBtn}><Plus className="w-4 h-4" />{t('contests.category', 'Категория')}</button>
+        <div className={`flex flex-wrap items-center justify-between gap-3 ${dirty ? 'sticky bottom-0 z-10 -mx-1 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-pop' : ''}`}>
+          <button onClick={add} className={secondaryBtn}><Plus className="w-3.5 h-3.5" />{t('contests.category', 'Категория')}</button>
           <div className="flex items-center gap-3">
-            {dirty && <span className="text-[13px] text-slate-600 dark:text-slate-300">{t('contests.unsaved', 'Есть несохранённые изменения')}</span>}
+            {dirty && <span className="text-sm text-slate-600 dark:text-slate-300">{t('contests.unsaved', 'Есть несохранённые изменения')}</span>}
             <button onClick={save} disabled={!dirty || saving} className={primaryBtn}>{saving ? '…' : t('contests.cat.save', 'Сохранить категории')}</button>
           </div>
         </div>

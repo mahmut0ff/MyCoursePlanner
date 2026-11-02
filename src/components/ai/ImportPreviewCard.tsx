@@ -171,9 +171,9 @@ const ImportPreviewCard: React.FC<{
   // ── Result state ──
   if (result) {
     return (
-      <div className="w-full rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/60 dark:bg-emerald-900/15 p-3.5">
+      <div className="w-full rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/20 p-3">
         <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
-          <PartyPopper className="w-4.5 h-4.5" />
+          <PartyPopper className="w-3.5 h-3.5" />
           {t('assistant.import.doneTitle', 'Импорт завершён')}
         </div>
         <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-200">
@@ -204,7 +204,7 @@ const ImportPreviewCard: React.FC<{
 
   if (cancelled) {
     return (
-      <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-slate-400 dark:text-slate-500">
+      <div className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-400 dark:text-slate-500">
         {t('assistant.import.cancelled', 'Импорт отменён')}
       </div>
     );
@@ -212,8 +212,8 @@ const ImportPreviewCard: React.FC<{
 
   // ── Reusable bits ──
   const seg = (active: boolean) =>
-    `px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-      active ? 'bg-primary-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+    `h-7 px-2 rounded-md text-sm transition-colors ${
+      active ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
     }`;
 
   const StudentRow: React.FC<{ row: RowState; usable: boolean; onPatch: (p: Partial<RowState>) => void; allowAdd: boolean }> =
@@ -222,7 +222,7 @@ const ImportPreviewCard: React.FC<{
         const adding = allowAdd && usable && row.dupAction === 'add';
         return (
           <div className="flex items-start gap-2 py-1.5">
-            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
               <div className="text-sm text-slate-800 dark:text-slate-100 truncate">
                 {row.name}{row.phone ? <span className="text-slate-400"> · {row.phone}</span> : null}
@@ -231,7 +231,7 @@ const ImportPreviewCard: React.FC<{
                 {t('assistant.import.dupOf', 'Возможный дубликат')}: {row.duplicate.name}
               </div>
               {allowAdd && (
-                <div className="mt-1 inline-flex bg-slate-100 dark:bg-slate-900/60 rounded-lg p-0.5">
+                <div className="mt-1 inline-flex gap-0.5">
                   <button className={seg(row.dupAction === 'skip')} onClick={() => onPatch({ dupAction: 'skip' })}>
                     {t('assistant.import.dupSkip', 'Не добавлять')}
                   </button>
@@ -256,7 +256,7 @@ const ImportPreviewCard: React.FC<{
             type="checkbox"
             checked={row.include}
             onChange={e => onPatch({ include: e.target.checked })}
-            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+            className="w-3.5 h-3.5 accent-primary-600"
           />
           <span className={`text-sm truncate ${row.include ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 line-through'}`}>
             {row.name}{row.phone ? <span className="text-slate-400 no-underline"> · {row.phone}</span> : null}
@@ -266,11 +266,11 @@ const ImportPreviewCard: React.FC<{
     };
 
   return (
-    <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+    <div className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
-        <div className="w-7 h-7 rounded-lg bg-primary-600/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
-          <Users className="w-4 h-4" />
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+        <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+          <Users className="w-3.5 h-3.5" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight">
@@ -294,7 +294,7 @@ const ImportPreviewCard: React.FC<{
             <select
               value={branchId}
               onChange={e => setBranchId(e.target.value)}
-              className="flex-1 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100"
+              className="input flex-1"
             >
               <option value="">{t('assistant.import.branchNone', 'Не указывать')}</option>
               {catalog.branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -318,7 +318,7 @@ const ImportPreviewCard: React.FC<{
                 </div>
 
                 {/* Mode switch */}
-                <div className="inline-flex bg-slate-100 dark:bg-slate-900/60 rounded-lg p-0.5 flex-wrap">
+                <div className="inline-flex gap-0.5 flex-wrap">
                   {canCreateGroups && (
                     <button className={seg(g.mode === 'new')} onClick={() => patchGroup(gi, { mode: 'new' })}>
                       {t('assistant.import.modeNew', 'Новая группа')}
@@ -338,15 +338,15 @@ const ImportPreviewCard: React.FC<{
                       value={g.name}
                       onChange={e => patchGroup(gi, { name: e.target.value })}
                       placeholder={t('assistant.import.groupNamePh', 'Название новой группы')}
-                      className="w-full text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100"
+                      className="input w-full"
                     />
                     <div className="flex items-center gap-1.5">
                       <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <select
                         value={g.courseId}
                         onChange={e => patchGroup(gi, { courseId: e.target.value })}
-                        className={`flex-1 text-sm bg-white dark:bg-slate-900 border rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100 ${
-                          needsCourse ? 'border-amber-400 dark:border-amber-600' : 'border-slate-200 dark:border-slate-700'
+                        className={`input flex-1 ${
+                          needsCourse ? 'border-amber-400 dark:border-amber-600' : ''
                         }`}
                       >
                         <option value="">{t('assistant.import.pickCourse', 'Выберите курс…')}</option>
@@ -367,7 +367,7 @@ const ImportPreviewCard: React.FC<{
                   <select
                     value={g.groupId}
                     onChange={e => patchGroup(gi, { groupId: e.target.value })}
-                    className="w-full text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100"
+                    className="input w-full"
                   >
                     <option value="">{t('assistant.import.pickGroup', 'Выберите группу…')}</option>
                     {catalog.groups.map(cg => (
@@ -383,7 +383,7 @@ const ImportPreviewCard: React.FC<{
                 )}
               </div>
 
-              <div className="px-2.5 py-1 divide-y divide-slate-100 dark:divide-slate-700/50">
+              <div className="px-2.5 py-1 divide-y divide-slate-200 dark:divide-slate-700">
                 {g.students.map((row, ri) => (
                   <StudentRow
                     key={ri}
@@ -406,7 +406,7 @@ const ImportPreviewCard: React.FC<{
               {t('assistant.import.ungrouped', 'Без группы')}
               <span className="ml-auto">{ungrouped.length} {t('assistant.import.peopleShort', 'чел.')}</span>
             </div>
-            <div className="px-2.5 py-1 divide-y divide-slate-100 dark:divide-slate-700/50">
+            <div className="px-2.5 py-1 divide-y divide-slate-200 dark:divide-slate-700">
               {ungrouped.map((row, ri) => (
                 <StudentRow key={ri} row={row} usable={false} allowAdd={false} onPatch={p => patchLoose(ri, p)} />
               ))}
@@ -438,15 +438,15 @@ const ImportPreviewCard: React.FC<{
           <button
             onClick={commit}
             disabled={committing || nothingToDo || incompleteGroups.length > 0}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors active:scale-[0.99]"
+            className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5"
           >
-            {committing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {committing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
             {t('assistant.import.confirm', 'Импортировать')}
           </button>
           <button
             onClick={() => { setCancelled(true); onCancel(); }}
             disabled={committing}
-            className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="btn-ghost"
           >
             {t('assistant.import.cancel', 'Отмена')}
           </button>

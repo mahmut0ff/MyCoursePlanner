@@ -253,12 +253,12 @@ const TeacherRow: React.FC<Props> = ({
   const teacherPayouts = payouts ?? [];
 
   return (
-    <div className="border-b border-slate-100 dark:border-slate-700/50 last:border-0">
+    <div className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 tabular-nums">
       {/* Шапка строки — вся кликабельная: раскрытие это основное действие. */}
       <button
         onClick={onToggle}
         aria-expanded={expanded}
-        className="w-full text-left px-4 sm:px-5 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+        className="w-full text-left px-3 py-2 min-h-[48px] flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
       >
         <ChevronDown
           className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -266,13 +266,13 @@ const TeacherRow: React.FC<Props> = ({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <p className="font-medium text-slate-900 dark:text-white leading-tight truncate">
+            <p className="font-medium text-slate-900 dark:text-slate-100 leading-tight truncate">
               {teacher.teacherName || teacher.teacherId}
             </p>
             {/* Серый, а не красный: человек ушёл — это факт, а не поломка.
                 Красным здесь мы бы просили чинить то, что чинить не нужно. */}
             {isFormer && (
-              <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+              <span className="shrink-0 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                 {t('payroll.formerTeacher', 'Не работает')}
               </span>
             )}
@@ -311,13 +311,13 @@ const TeacherRow: React.FC<Props> = ({
           <p className="text-[11px] text-slate-400">
             {line ? t('payroll.colAccruedShort', 'Начислено') : t('payroll.colPreview', 'Выйдет')}
           </p>
-          <p className={`text-sm font-bold whitespace-nowrap ${
-            hasRule ? 'text-slate-900 dark:text-white' : 'text-slate-400'
+          <p className={`text-sm font-semibold whitespace-nowrap ${
+            hasRule ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400'
           }`}>
             {hasRule ? formatMinor(salaryMinor) : '—'}
           </p>
           {manualTotal !== 0 && (
-            <p className={`text-[11px] whitespace-nowrap ${manualTotal < 0 ? 'text-rose-600' : 'text-violet-600'}`}>
+            <p className={`text-[11px] whitespace-nowrap ${manualTotal < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-primary-600 dark:text-primary-400'}`}>
               {formatMinorSigned(manualTotal)}
             </p>
           )}
@@ -350,16 +350,16 @@ const TeacherRow: React.FC<Props> = ({
       </button>
 
       {expanded && (
-        <div className="px-4 sm:px-5 pb-5 space-y-4">
+        <div className="px-3 pb-4 space-y-3">
           {/* ── Деньги: сколько выдано и сколько ещё должны ── */}
           {showMoney && (
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 space-y-2">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-sm text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5">
                   <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   {t('payroll.paidOut', 'Выдано')}
                 </span>
-                <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   {formatMinor(paidMinor)}
                 </span>
               </div>
@@ -369,13 +369,13 @@ const TeacherRow: React.FC<Props> = ({
                   <span className="text-sm text-slate-600 dark:text-slate-300">
                     {t('payroll.remaining', 'Осталось выдать')}
                   </span>
-                  <span className="text-sm font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                  <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
                     {formatMinor(remainingMinor)}
                   </span>
                 </div>
               ) : paidMinor > 0 ? (
                 <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   {t('payroll.allPaid', 'Всё выдано')}
                 </p>
               ) : null}
@@ -388,9 +388,9 @@ const TeacherRow: React.FC<Props> = ({
                   <button
                     onClick={onPayTeacher}
                     disabled={!canPayTeacher}
-                    className="px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 transition-colors bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600"
+                    className="h-8 px-3 rounded-md text-sm font-medium inline-flex items-center gap-1.5 transition-colors bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600"
                   >
-                    <Wallet className="w-4 h-4" />
+                    <Wallet className="w-3.5 h-3.5" />
                     {t('payroll.payOne', 'Выплатить')}
                   </button>
                   {/* Серая кнопка сама не объясняет, почему она серая. */}
@@ -403,9 +403,9 @@ const TeacherRow: React.FC<Props> = ({
           )}
 
           {/* ── Как получилась сумма ── */}
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {t('payroll.howCounted', 'Как считается')}
               </p>
               {/* Уволенному кнопку не показываем совсем: сервер на сохранение
@@ -414,7 +414,7 @@ const TeacherRow: React.FC<Props> = ({
               {canWrite && !isFormer && (
                 <button
                   onClick={onEditRate}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   {hasRule ? t('payroll.changeRate', 'Изменить ставку') : t('payroll.setRate', 'Задать ставку')}
@@ -448,7 +448,7 @@ const TeacherRow: React.FC<Props> = ({
               componentEntries.map((entry: any, i: number) => (
                 <div key={i} className="flex items-baseline justify-between gap-3">
                   <span className="text-sm text-slate-600 dark:text-slate-300">{describeBasis(entry, tr)}</span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                     {formatMinor(entry.earnedMinor)}
                   </span>
                 </div>
@@ -457,7 +457,7 @@ const TeacherRow: React.FC<Props> = ({
 
             {/* ── Потолок месяца ── */}
             {showPotential && (
-              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/50 flex items-baseline justify-between gap-3">
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-baseline justify-between gap-3">
                 <span className="text-sm text-slate-500 dark:text-slate-400">
                   {t('payroll.potentialLine', 'Если оплатят все счета месяца')}
                   {expectedStudents > 0 && (
@@ -484,8 +484,8 @@ const TeacherRow: React.FC<Props> = ({
 
           {/* ── Где заработано ── */}
           {showByBranch && (
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {t('payroll.byBranchTitle', 'Где заработано')}
               </p>
               {byBranch.map(share => (
@@ -498,7 +498,7 @@ const TeacherRow: React.FC<Props> = ({
                       {share.branchName || t('payroll.branchUnassigned', 'Без филиала')}
                     </span>
                   </span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                     {formatMinor(share.amountMinor)}
                   </span>
                 </div>
@@ -516,10 +516,10 @@ const TeacherRow: React.FC<Props> = ({
               const studentsSum = group.students.reduce((sum, s) => sum + s.paidMinor, 0);
               const otherMinor = group.collectedMinor - studentsSum;
               return (
-                <div key={group.groupId} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+                <div key={group.groupId} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{group.name}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{group.name}</p>
                       {/* Курс и филиал одной строкой: у преподавателя, ведущего
                           в двух зданиях, только филиал и отличает две похоже
                           названные группы друг от друга. */}
@@ -540,15 +540,15 @@ const TeacherRow: React.FC<Props> = ({
                   </div>
 
                   {group.students.length === 0 ? (
-                    <p className="px-4 py-3 text-xs text-slate-400">
+                    <p className="px-3 py-2 text-xs text-slate-400">
                       {t('payroll.groupEmpty', 'В группе нет студентов')}
                     </p>
                   ) : (
-                    <ul className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                       {group.students.map(student => (
                         <li
                           key={`${group.groupId}:${student.studentId}`}
-                          className="px-4 py-2 flex items-center justify-between gap-3"
+                          className="px-3 py-1.5 flex items-center justify-between gap-3"
                         >
                           <span className="text-xs text-slate-600 dark:text-slate-300 truncate inline-flex items-center gap-1.5">
                             <UserRound className="w-3 h-3 text-slate-400 shrink-0" />
@@ -572,7 +572,7 @@ const TeacherRow: React.FC<Props> = ({
                           строки — нет, и разницу надо назвать, иначе колонка не
                           сходится сама с собой. */}
                       {otherMinor !== 0 && (
-                        <li className="px-4 py-2 flex items-center justify-between gap-3">
+                        <li className="px-3 py-1.5 flex items-center justify-between gap-3">
                           <span className="text-xs text-slate-400">
                             {t('payroll.paymentsWithoutStudent', 'Платежи без указания студента')}
                           </span>
@@ -592,7 +592,7 @@ const TeacherRow: React.FC<Props> = ({
               {teacher.manualLines.map(manual => (
                 <li
                   key={manual.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-violet-50/70 dark:bg-violet-900/10 px-4 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5"
                 >
                   <span className="text-xs text-slate-600 dark:text-slate-300 min-w-0 truncate">
                     <span className="font-medium">
@@ -603,15 +603,15 @@ const TeacherRow: React.FC<Props> = ({
                     {manual.note ? ` — ${manual.note}` : ''}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-bold whitespace-nowrap ${
-                      manual.finalMinor < 0 ? 'text-rose-600' : 'text-violet-700 dark:text-violet-300'
+                    <span className={`text-xs font-semibold whitespace-nowrap ${
+                      manual.finalMinor < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-primary-700 dark:text-primary-300'
                     }`}>
                       {formatMinorSigned(manual.finalMinor)}
                     </span>
                     {canDeleteLine && !frozen && (
                       <button
                         onClick={() => onDeleteLine(manual)}
-                        className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:text-rose-400 dark:hover:bg-slate-800 transition-colors"
                         aria-label={t('payroll.deleteLine', 'Удалить строку')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -627,7 +627,7 @@ const TeacherRow: React.FC<Props> = ({
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 onClick={() => onAddManual('manual_bonus')}
-                className="text-xs font-medium text-violet-600 hover:text-violet-700 inline-flex items-center gap-1"
+                className="text-xs font-medium text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />{t('payroll.addBonus', 'Премия')}
               </button>
@@ -640,7 +640,7 @@ const TeacherRow: React.FC<Props> = ({
               {line && (
                 <button
                   onClick={() => onEditAmount(line)}
-                  className="text-xs font-medium text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1"
+                  className="text-xs font-medium text-slate-500 hover:text-primary-600 inline-flex items-center gap-1"
                 >
                   <Pencil className="w-3.5 h-3.5" />{t('payroll.editAmount', 'Изменить сумму')}
                 </button>
@@ -650,8 +650,8 @@ const TeacherRow: React.FC<Props> = ({
 
           {/* ── Выплаты этому преподавателю ── */}
           {teacherPayouts.length > 0 && (
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5">
                 <History className="w-3.5 h-3.5" />
                 {t('payroll.historyTeacher', 'Выплаты этому преподавателю')}
               </p>
@@ -668,7 +668,7 @@ const TeacherRow: React.FC<Props> = ({
                           : t('payroll.historyManual', 'заведено вручную в кассе')}
                       </span>
                     </span>
-                    <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                       {formatMinor(payout.amountMinor)}
                     </span>
                   </li>

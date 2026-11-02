@@ -127,7 +127,7 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
           value={selectedValue}
           disabled={disabled || loading}
           onChange={(e) => handleSelect(e.target.value)}
-          className="input bg-slate-50 dark:bg-slate-900/50 flex-1"
+          className="input flex-1"
         >
           <option value="">
             {loading ? t('common.loading', 'Загрузка…') : t('classrooms.none', 'Без кабинета')}
@@ -155,9 +155,9 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
             onClick={() => { setCreating(true); setNewName(orphan?.linked ? '' : orphan?.label || ''); setError(''); }}
             disabled={disabled}
             title={t('classrooms.addNew', 'Добавить кабинет')}
-            className="shrink-0 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/50 transition-colors disabled:opacity-50"
+            className="btn-secondary shrink-0 w-8 !px-0 inline-flex items-center justify-center"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -173,30 +173,30 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
               if (e.key === 'Escape') { setCreating(false); setError(''); }
             }}
             placeholder={t('classrooms.namePlaceholder', 'напр. Каб. 305')}
-            className="input bg-slate-50 dark:bg-slate-900/50 flex-1"
+            className="input flex-1"
           />
           <button
             type="button"
             onClick={handleCreate}
             disabled={saving || !newName.trim()}
-            className="shrink-0 p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
+            className="btn-primary shrink-0 w-8 !px-0 inline-flex items-center justify-center"
           >
-            <Check className="w-4 h-4" />
+            <Check className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => { setCreating(false); setError(''); }}
-            className="shrink-0 p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       {!loading && !classrooms.length && !creating && (
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {canCreate
             ? t('classrooms.emptyHint', 'В этом филиале ещё нет кабинетов — добавьте первый кнопкой «+».')
             : t('classrooms.emptyReadonly', 'В этом филиале ещё нет кабинетов.')}

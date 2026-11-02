@@ -1,11 +1,10 @@
 import { adminDb } from './firebase-admin';
-import { normalizePlanId } from '../../../src/lib/subscription-plans';
+import { forbidden, isSuperAdmin } from './auth';
+import { PLAN_LIMITS, FEATURE_MIN_PLAN, normalizePlanId, planHasFeature, type PlanFeature } from '../../../src/lib/subscription-plans';
 
-export const PLAN_LIMITS: Record<string, { maxStudents: number; maxTeachers: number; maxExams: number }> = {
-  starter: { maxStudents: 50, maxTeachers: 5, maxExams: 20 },
-  professional: { maxStudents: 200, maxTeachers: 20, maxExams: -1 },
-  enterprise: { maxStudents: -1, maxTeachers: -1, maxExams: -1 },
-};
+// Количественные лимиты живут в общем модуле тарифов вместе с ценами и составом —
+// иначе клиент, лендинг и сервер снова разойдутся в цифрах.
+export { PLAN_LIMITS };
 
 /**
  * Plans that include the AI sales manager / assistant.
@@ -21,7 +20,7 @@ export function planHasAIManager(planId?: string | null): boolean {
 
 export async function getOrgLimits(organizationId: string) {
   let limits = { ...PLAN_LIMITS.starter };
-  
+
   try {
     // 1. Get Plan ID
     const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
@@ -52,4 +51,29 @@ export async function getOrgLimits(organizationId: string) {
   }
 
   return limits;
+}
+
+type AuthUserLike = Parameters<typeof isSuperAdmin>[0];
+
+/**
+ * Серверный гейт платного модуля. Возвращает 403, если тариф организации
+ * (organizations.planId — то же поле, по которому считаются лимиты) модуль не
+ * включает; null — проход.
+ *
+ * До этого состав тарифа проверял только клиент (PlanContext.canAccess): кнопки
+ * прятались, но эндпоинты отвечали любому — Starter-организация могла вести
+ * финансы, зарплату, филиалы и сертификаты прямыми запросами, то есть получать
+ * Professional/Enterprise бесплатно.
+ *
+ * Гейтятся ЗАПИСИ платных эндпоинтов. Чтение намеренно открыто: страницы
+ * Starter-организаций читают эти данные попутно (бейдж оплаты у студента,
+ * сводки), и отказ в чтении ломал бы их, не экономя ничего — создать данные
+ * платного модуля без записи нельзя.
+ */
+export async function requirePlanFeature(user: AuthUserLike, feature: PlanFeature) {
+  if (isSuperAdmin(user)) return null;
+  if (!user.organizationId) return forbidden('No organization');
+  const orgDoc = await adminDb.collection('organizations').doc(user.organizationId).get();
+  if (planHasFeature(orgDoc.data()?.planId, feature)) return null;
+  return forbidden(`This feature requires the ${FEATURE_MIN_PLAN[feature]} plan`);
 }

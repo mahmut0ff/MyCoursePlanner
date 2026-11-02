@@ -199,45 +199,41 @@ const TeacherActivityPage: React.FC = () => {
   };
 
   const summary = [
-    { label: t('teacherActivity.activeTeachers', 'Активных преподавателей'), value: `${totals.activeTeachers} / ${totals.teachers}`, icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
-    { label: t('teacherActivity.totalActions', 'Всего действий'), value: formatNumber(totals.totalActions), icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/30' },
-    { label: t('teacherActivity.avgPerTeacher', 'В среднем на преподавателя'), value: formatNumber(totals.avgActionsPerTeacher), icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/30' },
-    { label: t('teacherActivity.topTeacher', 'Лидер'), value: topRow ? topRow.name : '—', sub: topRow ? `${topRow.kpiScore} KPI` : undefined, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { label: t('teacherActivity.activeTeachers', 'Активных преподавателей'), value: `${totals.activeTeachers} / ${totals.teachers}`, icon: Users, color: 'text-slate-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { label: t('teacherActivity.totalActions', 'Всего действий'), value: formatNumber(totals.totalActions), icon: Activity, color: 'text-slate-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
+    { label: t('teacherActivity.avgPerTeacher', 'В среднем на преподавателя'), value: formatNumber(totals.avgActionsPerTeacher), icon: Zap, color: 'text-slate-400', bg: 'bg-violet-50 dark:bg-violet-900/30' },
+    { label: t('teacherActivity.topTeacher', 'Лидер'), value: topRow ? topRow.name : '—', sub: topRow ? `${topRow.kpiScore} KPI` : undefined, icon: Trophy, color: 'text-slate-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Activity className="w-6 h-6 text-primary-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary-500" />
             {t('teacherActivity.title', 'Активность преподавателей')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('teacherActivity.subtitle', 'Кто ставит оценки и посещаемость, проверяет ДЗ, создаёт материалы и когда заходит — с KPI по каждому преподавателю. Объём делится на нагрузку, поэтому большие группы сами по себе баллов не дают.')}
           </p>
         </div>
         <button
           onClick={exportCsv}
           disabled={!rows.length}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+          className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
-          <Download className="w-4 h-4" /> {t('teacherActivity.export', 'Экспорт CSV')}
+          <Download className="w-3.5 h-3.5" /> {t('teacherActivity.export', 'Экспорт CSV')}
         </button>
       </div>
 
       {/* Period selector */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-0.5">
         {PERIODS.map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              period === p
-                ? 'bg-primary-500 text-white'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-            }`}
+            className={`h-7 px-2 text-sm rounded-md transition-colors ${period === p ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
           >
             {t(`teacherActivity.period.${p}`, PERIOD_FALLBACK[p])}
           </button>
@@ -245,14 +241,14 @@ const TeacherActivityPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-100 dark:border-rose-900/40">
+        <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-200 dark:border-rose-900/40">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[0, 1, 2, 3].map(i => <CardSkeleton key={i} />)}
           </div>
           <CardSkeleton />
@@ -260,22 +256,22 @@ const TeacherActivityPage: React.FC = () => {
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {summary.map(s => (
-              <div key={s.label} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
-                  <div className={`p-2 rounded-lg ${s.bg} ${s.color}`}><s.icon className="w-4 h-4" /></div>
+              <div key={s.label} className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+                  <div className={`${s.color}`}><s.icon className="w-3.5 h-3.5" /></div>
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white truncate" title={String(s.value)}>{s.value}</h3>
-                {s.sub && <p className="text-xs text-slate-400 mt-0.5">{s.sub}</p>}
+                <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100 truncate" title={String(s.value)}>{s.value}</h3>
+                {s.sub && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.sub}</p>}
               </div>
             ))}
           </div>
 
           {/* Table */}
           {rows.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
               <EmptyState
                 icon={Activity}
                 title={t('teacherActivity.emptyTitle', 'Пока нет данных об активности')}
@@ -283,10 +279,10 @@ const TeacherActivityPage: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <Th label={t('teacherActivity.col.teacher', 'Преподаватель')} sortKey="name" sort={sort} onSort={toggleSort} align="left" />
                       <Th label={t('teacherActivity.col.students', 'Учеников')} sortKey="students" sort={sort} onSort={toggleSort} />
@@ -300,7 +296,7 @@ const TeacherActivityPage: React.FC = () => {
                       <Th label="KPI" sortKey="kpiScore" sort={sort} onSort={toggleSort} />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {sortedRows.map(r => {
                       const tone = scoreTone(r.kpiScore);
                       const online = presence.isOnline(r.teacherId);
@@ -308,25 +304,25 @@ const TeacherActivityPage: React.FC = () => {
                         <tr
                           key={r.teacherId}
                           onClick={() => setSelected(r)}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors"
+                          className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                         >
-                          <td className="px-5 py-3.5">
+                          <td className="px-3 py-1.5">
                             <div className="flex items-center gap-2.5">
                               <div className="relative shrink-0">
-                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-500 dark:text-slate-300">
+                                <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-700 dark:text-slate-200">
                                   {initials(r.name)}
                                 </div>
                                 <PresenceDot online={online} className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5" title={online ? t('presence.online', 'В сети') : undefined} />
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-slate-900 dark:text-white truncate max-w-[180px]">{r.name}</p>
-                                <p className="text-xs text-slate-400">
+                                <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px]">{r.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
                                   {r.lastActivityAt ? t('teacherActivity.lastAction', { time: rel(r.lastActivityAt), defaultValue: 'посл. действие {{time}}' }) : t('teacherActivity.noActivity', 'нет активности')}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 tabular-nums text-slate-500 dark:text-slate-400" title={workloadTitle(r)}>
+                          <td className="px-3 py-1.5 tabular-nums text-slate-500 dark:text-slate-400" title={workloadTitle(r)}>
                             {r.students || 0}
                             <span className="text-slate-300 dark:text-slate-600"> · {t('courses.list.groupsShort', '{{count}} гр.', { count: r.groups || 0 })}</span>
                           </td>
@@ -338,7 +334,7 @@ const TeacherActivityPage: React.FC = () => {
                           <NumCell v={r.counts.login || 0} />
                           <NumCell v={r.activeDays} />
                           <td
-                            className="px-5 py-3.5"
+                            className="px-3 py-1.5"
                             title={t('teachers.detail.engagementLine', 'вовлечённость {{engagement}}% · стабильность {{consistency}}%', { engagement: r.engagementPct ?? 0, consistency: r.consistencyPct })}
                           >
                             <div className="flex items-center gap-2">
@@ -377,13 +373,13 @@ const TeacherActivityPage: React.FC = () => {
 
 // ── Ячейки/заголовки таблицы ──
 const NumCell: React.FC<{ v: number }> = ({ v }) => (
-  <td className={`px-5 py-3.5 tabular-nums ${v > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>{v}</td>
+  <td className={`px-3 py-1.5 tabular-nums ${v > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>{v}</td>
 );
 
 const Th: React.FC<{ label: string; sortKey: SortKey; sort: { key: SortKey; dir: 'asc' | 'desc' }; onSort: (k: SortKey) => void; align?: 'left' | 'right' }> = ({ label, sortKey, sort, onSort, align = 'right' }) => {
   const active = sort.key === sortKey;
   return (
-    <th className={`px-5 py-3.5 font-medium whitespace-nowrap ${align === 'left' ? 'text-left' : 'text-left'}`}>
+    <th className={`px-3 py-1.5 font-medium whitespace-nowrap ${align === 'left' ? 'text-left' : 'text-left'}`}>
       <button onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ${active ? 'text-slate-700 dark:text-slate-200' : ''}`}>
         {label}
         <ArrowUpDown className={`w-3 h-3 ${active ? 'opacity-100' : 'opacity-30'}`} />
@@ -420,35 +416,35 @@ const TeacherDrawer: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-xl flex flex-col">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-float h-full flex flex-col">
         {/* Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{row.name}</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{row.name}</h2>
               <PresenceDot online={online} className="w-2.5 h-2.5" />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {online ? t('presence.online', 'В сети') : lastSeenMs ? t('presence.lastSeen', { time: rel(new Date(lastSeenMs).toISOString()), defaultValue: 'был(а) в сети {{time}}' }) : t('presence.offline', 'Не в сети')}
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 shrink-0">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 shrink-0">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* KPI и то, из чего он сложился: половина за вовлечённость, половина за
             стабильность. Обе половины на виду — иначе балл читается как приговор
             без объяснения. Нагрузка рядом, потому что она знаменатель первой. */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-4 gap-2">
             <Stat label="KPI" value={String(row.kpiScore)} valueClass={tone.text} />
             <Stat label={t('teacherActivity.engagement', 'Вовлечённость')} value={`${row.engagementPct ?? 0}%`} />
             <Stat label={t('teacherActivity.consistency', 'Стабильность')} value={`${row.consistencyPct}%`} />
             <Stat label={t('teacherActivity.activeDaysShort', 'Активных дней')} value={String(row.activeDays)} />
           </div>
-          <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">
+          <p className="text-xs text-slate-400 mt-3 leading-relaxed">
             {t('teacherActivity.workloadLine', {
               students: row.students || 0,
               groups: row.groups || 0,
@@ -463,15 +459,15 @@ const TeacherDrawer: React.FC<{
         </div>
 
         {/* Breakdown */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">{t('teacherActivity.breakdown', 'Разбивка')}</h3>
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('teacherActivity.breakdown', 'Разбивка')}</h3>
           <div className="grid grid-cols-2 gap-2.5">
             {breakdown.map(b => (
-              <div key={b.type} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+              <div key={b.type} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
                 <b.icon className={`w-4 h-4 shrink-0 ${b.color}`} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white tabular-nums leading-none">{b.value}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{t(`teacherActivity.type.${b.type}`, b.label)}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums leading-none">{b.value}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t(`teacherActivity.type.${b.type}`, b.label)}</p>
                 </div>
               </div>
             ))}
@@ -479,8 +475,8 @@ const TeacherDrawer: React.FC<{
         </div>
 
         {/* Timeline */}
-        <div className="p-5 overflow-y-auto flex-1">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">{t('teacherActivity.timeline', 'Последние действия')}</h3>
+        <div className="p-4 overflow-y-auto flex-1">
+          <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('teacherActivity.timeline', 'Последние действия')}</h3>
           {tlError && <p className="text-sm text-rose-500">{tlError}</p>}
           {!events && !tlError && <p className="text-sm text-slate-400">{t('common.loading', 'Загрузка…')}</p>}
           {events && events.length === 0 && <p className="text-sm text-slate-400">{t('teacherActivity.noActivity', 'нет активности')}</p>}
@@ -492,7 +488,7 @@ const TeacherDrawer: React.FC<{
                 const { names, more } = peopleOf(e.meta);
                 return (
                   <li key={e.id} className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
                       <Icon className={`w-3.5 h-3.5 ${meta.color}`} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -500,7 +496,7 @@ const TeacherDrawer: React.FC<{
                         {t(`teacherActivity.type.${e.type}`, meta.label)}
                         {e.count > 1 && <span className="text-slate-400"> ×{e.count}</span>}
                       </p>
-                      {e.entityLabel && <p className="text-xs text-slate-400 truncate">{e.entityLabel}</p>}
+                      {e.entityLabel && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{e.entityLabel}</p>}
                       {names.length > 0 && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                           {names.join(', ')}
@@ -508,7 +504,7 @@ const TeacherDrawer: React.FC<{
                         </p>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">{rel(e.createdAt)}</span>
+                    <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">{rel(e.createdAt)}</span>
                   </li>
                 );
               })}
@@ -522,8 +518,8 @@ const TeacherDrawer: React.FC<{
 
 const Stat: React.FC<{ label: string; value: string; valueClass?: string }> = ({ label, value, valueClass }) => (
   <div className="text-center">
-    <p className={`text-xl font-bold ${valueClass || 'text-slate-900 dark:text-white'}`}>{value}</p>
-    <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
+    <p className={`text-xl font-semibold tabular-nums ${valueClass || 'text-slate-900 dark:text-slate-100'}`}>{value}</p>
+    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{label}</p>
   </div>
 );
 

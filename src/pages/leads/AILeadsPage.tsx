@@ -39,7 +39,7 @@ const AILeadsPage: React.FC = () => {
   const { t } = useTranslation();
   const STATUS_LABEL: Record<string, string> = {
     new: t('leads.status.new', 'Новая'),
-    contacted: t('leads.status.contacted', 'В обработке'),
+    contacted: t('leads.status.contacted', 'В работе'),
     resolved: t('leads.status.resolved', 'Закрыта'),
   };
   const SOURCE_LABEL: Record<string, string> = {
@@ -209,18 +209,18 @@ const AILeadsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('leads.title', 'Заявки')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('leads.title', 'Заявки')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('leads.subtitle', 'Входящие заявки от клиентов, телеграм-бота и AI-ассистента.')}
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0"
+          className="btn-primary flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4" />
           {t('leads.add', 'Добавить')}
@@ -229,13 +229,13 @@ const AILeadsPage: React.FC = () => {
 
       {/* List */}
       {leads.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
-          <Inbox className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">{t('leads.empty', 'Пока нет заявок')}</p>
-          <p className="text-sm text-slate-400 mt-1">{t('leads.emptyText', 'Как только клиент оставит заявку, она появится здесь.')}</p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-10 px-6 text-center">
+          <Inbox className="w-6 h-6 mx-auto text-slate-400 dark:text-slate-500 mb-2" />
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t('leads.empty', 'Пока нет заявок')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('leads.emptyText', 'Как только клиент оставит заявку, она появится здесь.')}</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           {leads.map((lead, idx) => {
             const cfg = STATUS_CFG[lead.status] || STATUS_CFG.new;
             const isExpanded = expandedId === lead.id;
@@ -244,18 +244,18 @@ const AILeadsPage: React.FC = () => {
             return (
               <div
                 key={lead.id}
-                className={`${idx > 0 ? 'border-t border-slate-100 dark:border-slate-700/60' : ''}`}
+                className={`${idx > 0 ? 'border-t border-slate-200 dark:border-slate-700' : ''}`}
               >
                 {/* Main row */}
-                <div className="flex items-center gap-3 px-4 py-3 sm:px-5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                <div className="flex items-center gap-3 px-3 py-2 min-h-[44px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   {/* Status badge */}
-                  <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md shrink-0 ${cfg.cls}`}>
+                  <span className={`hidden sm:inline-flex items-center gap-1 h-5 px-1.5 text-xs font-medium rounded shrink-0 ${cfg.cls}`}>
                     {cfg.icon} {STATUS_LABEL[lead.status] || STATUS_LABEL.new}
                   </span>
 
                   {/* Name */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{lead.name}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {/* Mobile status */}
                       <span className={`sm:hidden inline-flex items-center gap-0.5 text-[10px] font-bold ${cfg.cls} px-1.5 py-0.5 rounded`}>{cfg.icon} {STATUS_LABEL[lead.status] || STATUS_LABEL.new}</span>
@@ -266,12 +266,12 @@ const AILeadsPage: React.FC = () => {
                   </div>
 
                   {/* Source tag */}
-                  <span className="hidden md:inline-block text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shrink-0">
+                  <span className="hidden md:inline-flex items-center h-5 text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-1.5 rounded shrink-0">
                     {srcLabel}
                   </span>
 
                   {/* Date */}
-                  <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap shrink-0 hidden sm:block">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap shrink-0 hidden sm:block">
                     {format(new Date(lead.createdAt), 'dd.MM.yyyy HH:mm')}
                   </span>
 
@@ -279,17 +279,17 @@ const AILeadsPage: React.FC = () => {
                   <select
                     value={lead.status}
                     onChange={(e) => updateStatus(lead.id, e.target.value)}
-                    className="h-8 pl-2 pr-6 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500 shrink-0"
+                    className="h-7 pl-2 pr-6 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/30 shrink-0"
                   >
                     <option value="new">{t('leads.status.new', 'Новая')}</option>
-                    <option value="contacted">{t('leads.status.contactedOption', 'Связались')}</option>
+                    <option value="contacted">{t('leads.status.contacted', 'В работе')}</option>
                     <option value="resolved">{t('leads.status.resolved', 'Закрыта')}</option>
                   </select>
 
                   {/* Expand reason */}
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : lead.id)}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 ${isExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : ''}`}
+                    className={`w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 ${isExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : ''}`}
                     title={t('leads.showReason', 'Показать цель заявки')}
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -298,7 +298,7 @@ const AILeadsPage: React.FC = () => {
                   {/* Edit */}
                   <button
                     onClick={() => openEdit(lead)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
                     title={t('leads.edit', 'Редактировать')}
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -307,7 +307,7 @@ const AILeadsPage: React.FC = () => {
                   {/* Delete */}
                   <button
                     onClick={() => deleteLead(lead.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors shrink-0"
                     title={t('leads.delete', 'Удалить')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -316,7 +316,7 @@ const AILeadsPage: React.FC = () => {
 
                 {/* Collapsible reason + test result */}
                 {isExpanded && (
-                  <div className="px-5 pb-4 pt-1 bg-slate-50/50 dark:bg-slate-900/20 border-t border-slate-100/80 dark:border-slate-700/40 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start px-5 pb-4 pt-1 bg-slate-50/50 dark:bg-slate-900/20 border-t border-slate-100/80 dark:border-slate-700/40 animate-in fade-in slide-in-from-top-1 duration-200">
                     {/* Reason */}
                     <div className="mb-2">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('leads.reason', 'Цель заявки')}</p>
@@ -331,7 +331,7 @@ const AILeadsPage: React.FC = () => {
 
                     {/* Test result */}
                     {lead.testResult && (
-                      <div className="mt-3 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-3.5 relative overflow-hidden">
+                      <div className="mt-3 lg:mt-0 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-3.5 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-2 opacity-5">
                           <Target className="w-12 h-12 text-indigo-500" />
                         </div>
@@ -413,18 +413,18 @@ const AILeadsPage: React.FC = () => {
 
       {/* Add Lead Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{editingId ? t('leads.editTitle', 'Редактировать заявку') : t('leads.addTitle', 'Добавить заявку')}</h2>
-              <button onClick={closeModal} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={closeModal}>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{editingId ? t('leads.editTitle', 'Редактировать заявку') : t('leads.addTitle', 'Добавить заявку')}</h2>
+              <button onClick={closeModal} className="w-7 h-7 -mr-1 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 rounded-md transition-colors">
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                <label className="label">
                   {t('leads.clientName', 'Имя клиента')}
                 </label>
                 <input
@@ -439,7 +439,7 @@ const AILeadsPage: React.FC = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                <label className="label">
                   {t('leads.phone', 'Номер телефона')}
                 </label>
                 <input
@@ -453,7 +453,7 @@ const AILeadsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                <label className="label">
                   {t('leads.reason', 'Цель заявки')}
                 </label>
                 <textarea
@@ -464,7 +464,7 @@ const AILeadsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-3">
+              <div className="pt-1 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeModal}
@@ -475,7 +475,7 @@ const AILeadsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="h-9 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('leads.save', 'Сохранить')}
                 </button>

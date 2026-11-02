@@ -3,6 +3,8 @@
 // Multi-Tenant SaaS Platform
 // ============================================================
 
+import { PLAN_LIMITS, planPrice, type PlanFeature } from '../lib/subscription-plans';
+
 // ---- Roles ----
 
 // 'jury' — учётка «только оценивание» конкурсов (см. src/lib/contests.ts): без
@@ -18,7 +20,7 @@ export type OrgStatus = 'active' | 'suspended' | 'deleted';
 export interface Plan {
   id: PlanId;
   name: string;
-  price: number; // monthly in USD
+  price: number; // monthly, KGS (from lib/subscription-plans)
   features: string[];
   limits: PlanLimits;
 }
@@ -43,11 +45,10 @@ export interface PlanLimits {
 
 }
 
-/** Canonical feature keys for plan gating */
-export type PlanFeature =
-  | 'finances' | 'payroll' | 'gradebook' | 'certificates'
-  | 'branches' | 'advancedAnalytics' | 'rbac'
-  | 'ai' | 'aiAnalytics';
+/** Canonical feature keys and their minimum plan live with the price table so the
+    server gate (netlify/functions/utils/plan-limits.ts) reads the same mapping. */
+export type { PlanFeature } from '../lib/subscription-plans';
+export { FEATURE_MIN_PLAN } from '../lib/subscription-plans';
 
 /** Map PlanFeature → PlanLimits key */
 export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
@@ -62,24 +63,11 @@ export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
   aiAnalytics: 'aiAnalytics',
 };
 
-/** Minimum plan required per feature (for UpgradeWall display) */
-export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
-  finances: 'professional',
-  payroll: 'professional',
-  gradebook: 'professional',
-  certificates: 'professional',
-  advancedAnalytics: 'professional',
-  rbac: 'professional',
-  branches: 'enterprise',
-  ai: 'enterprise',
-  aiAnalytics: 'enterprise',
-};
-
 export const PLANS: Plan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 1990,
+    price: planPrice('starter'),
     features: [
       'Up to 50 students',
       'Up to 5 teachers',
@@ -89,14 +77,14 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, payrollEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, rbacEnabled: false },
+    limits: { ...PLAN_LIMITS.starter, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, payrollEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, rbacEnabled: false },
   },
   {
     id: 'professional',
     name: 'Professional',
-    price: 4990,
+    price: planPrice('professional'),
     features: [
-      'Up to 200 students',
+      'Up to 300 students',
       'Up to 20 teachers',
       'Unlimited exams',
       'Everything in Starter',
@@ -104,12 +92,12 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, rbacEnabled: true },
+    limits: { ...PLAN_LIMITS.professional, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, rbacEnabled: true },
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 14900,
+    price: planPrice('enterprise'),
     features: [
       'Unlimited students',
       'Unlimited teachers',
@@ -120,7 +108,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, rbacEnabled: true },
+    limits: { ...PLAN_LIMITS.enterprise, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, rbacEnabled: true },
   },
 ];
 

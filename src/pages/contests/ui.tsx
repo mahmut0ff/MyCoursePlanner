@@ -11,23 +11,23 @@ import { ageRangeLabel, contestStatusLabel, judgingLabel, participantStatusLabel
 
 
 export const Label: React.FC<{ children: React.ReactNode; htmlFor?: string }> = ({ children, htmlFor }) => (
-  <label htmlFor={htmlFor} className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">{children}</label>
+  <label htmlFor={htmlFor} className="label mb-1 block">{children}</label>
 );
 
 export const Field: React.FC<{ label: string; children: React.ReactNode; hint?: string; className?: string }> = ({ label, children, hint, className }) => (
   <div className={className}>
     <Label>{label}</Label>
     {children}
-    {hint && <p className="text-[12px] text-slate-600 dark:text-slate-400 mt-1">{hint}</p>}
+    {hint && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{hint}</p>}
   </div>
 );
 
 export const ErrorNote: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p role="alert" className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-700 dark:text-red-400">{children}</p>
+  <p role="alert" className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg text-sm text-red-700 dark:text-red-400">{children}</p>
 );
 
 export const WarnNote: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-sm text-amber-800 dark:text-amber-300 ${className}`}>{children}</div>
+  <div className={`px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg text-sm text-amber-800 dark:text-amber-300 ${className}`}>{children}</div>
 );
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -79,19 +79,19 @@ export const Modal: React.FC<{
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <div
         ref={boxRef}
         role="dialog" aria-modal="true" aria-label={title}
-        className={`bg-white dark:bg-slate-800 rounded-t-3xl sm:rounded-3xl w-full ${wide ? 'sm:max-w-2xl' : 'sm:max-w-md'} shadow-2xl border border-slate-200/50 dark:border-slate-700/50 max-h-[92vh] flex flex-col`}
+        className={`bg-white dark:bg-slate-800 rounded-t-xl sm:rounded-xl w-full ${wide ? 'sm:max-w-[640px]' : 'sm:max-w-[480px]'} shadow-pop border border-slate-200 dark:border-slate-700 max-h-[92vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-2 -mr-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" aria-label={t('common.close', 'Закрыть')}><X className="w-4 h-4" /></button>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+          <button onClick={onClose} className="w-7 h-7 -mr-1 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700" aria-label={t('common.close', 'Закрыть')}><X className="w-3.5 h-3.5" /></button>
         </div>
-        <div className="px-6 pb-2 overflow-y-auto space-y-4">{children}</div>
-        {footer && <div className="flex justify-end gap-3 px-6 py-4">{footer}</div>}
+        <div className="px-4 py-2 overflow-y-auto space-y-3">{children}</div>
+        {footer && <div className="flex justify-end gap-2 px-4 pt-2 pb-4">{footer}</div>}
       </div>
     </div>
   );
@@ -101,8 +101,8 @@ export const ModalFooter: React.FC<{ onCancel: () => void; onSave: () => void; s
   const { t } = useTranslation();
   return (
   <>
-    <button onClick={onCancel} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
-    <button onClick={onSave} disabled={saving || disabled} className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50">
+    <button onClick={onCancel} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
+    <button onClick={onSave} disabled={saving || disabled} className="btn-primary inline-flex items-center gap-1.5">
       {saving ? '…' : saveLabel || t('common.save', 'Сохранить')}
     </button>
   </>
@@ -116,7 +116,7 @@ const STATUS_TONE: Record<ContestStatus, string> = {
   finished: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
 };
 export const StatusBadge: React.FC<{ status: ContestStatus }> = ({ status }) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold ${STATUS_TONE[status]}`}>{contestStatusLabel(status)}</span>
+  <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${STATUS_TONE[status]}`}>{contestStatusLabel(status)}</span>
 );
 
 const JUDGING_TONE: Record<CategoryJudging, string> = {
@@ -126,7 +126,7 @@ const JUDGING_TONE: Record<CategoryJudging, string> = {
   approved: 'bg-primary-100 text-primary-800 dark:bg-primary-500/15 dark:text-primary-300',
 };
 export const JudgingBadge: React.FC<{ state: CategoryJudging }> = ({ state }) => (
-  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${JUDGING_TONE[state]}`}>
+  <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium ${JUDGING_TONE[state]}`}>
     {state === 'open' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />}
     {judgingLabel(state)}
   </span>
@@ -138,12 +138,12 @@ const P_TONE: Record<ParticipantStatus, string> = {
   withdrawn: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
 };
 export const ParticipantBadge: React.FC<{ status: ParticipantStatus }> = ({ status }) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${P_TONE[status]}`}>{participantStatusLabel(status)}</span>
+  <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium whitespace-nowrap ${P_TONE[status]}`}>{participantStatusLabel(status)}</span>
 );
 
 /** Номер проекта — моноширинная «табличка». */
 export const NumberChip: React.FC<{ value: string; large?: boolean }> = ({ value, large }) => (
-  <span className={`inline-flex items-center justify-center font-mono font-bold rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 ${large ? 'px-3 py-1.5 text-lg' : 'px-2 py-0.5 text-xs'}`}>{value}</span>
+  <span className={`inline-flex items-center justify-center font-mono font-semibold tabular-nums rounded border border-slate-200 dark:border-slate-700 bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 ${large ? 'px-2.5 py-1 text-lg' : 'h-5 px-1.5 text-xs'}`}>{value}</span>
 );
 
 /**
@@ -164,13 +164,13 @@ export const CategoryPicker: React.FC<{
       const on = c.id === value;
       return (
         <button key={c.id} type="button" aria-pressed={on} onClick={() => onChange(c.id)}
-          className={`flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition-colors ${on
-            ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 ring-2 ring-slate-900 dark:ring-white'
+          className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${on
+            ? 'border-primary-600 dark:border-primary-500 bg-primary-50 dark:bg-primary-950 ring-1 ring-primary-600 dark:ring-primary-500'
             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">{c.code}</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">{c.code}</span>
           <span className="flex flex-col gap-0.5">
             <JudgingBadge state={c.judging} />
-            <span className="text-[11px] text-slate-600 dark:text-slate-400">{extra ? extra(c) : ageRangeLabel(c)}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{extra ? extra(c) : ageRangeLabel(c)}</span>
           </span>
         </button>
       );

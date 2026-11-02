@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Certificates — generate and verify exam certificates.
  *
@@ -47,6 +48,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'POST') {
     const user = await verifyAuth(event);
     if (!user) return unauthorized(event);
+    const gate = await requirePlanFeature(user, 'certificates'); if (gate) return gate;
 
     const body = JSON.parse(event.body || '{}');
     if (!body.attemptId) return badRequest('attemptId required');

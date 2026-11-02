@@ -180,15 +180,15 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('finances.newPlanTitle', 'Новый счёт на оплату')}</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('finances.newPlanTitle', 'Новый счёт на оплату')}</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="px-4 py-2 space-y-3">
           <div className="relative">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.student', 'Студент')} *</label>
+            <label className="label">{t('finances.student', 'Студент')} *</label>
             {pickable ? (
               <>
                 <input
@@ -201,25 +201,25 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
                     if (!e.target.value) setForm(f => ({ ...f, studentId: '', studentName: '' }));
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-sm dark:text-white ${
-                    form.studentId ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-slate-700'
+                  className={`input ${
+                    form.studentId ? 'border-emerald-400 dark:border-emerald-600' : ''
                   }`}
                   placeholder={t('finances.studentSearchPlaceholder', 'Начните вводить имя студента...')}
                 />
                 {form.studentId && (
-                  <div className="absolute right-3 top-[34px] text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>
+                  <div className="absolute right-2.5 top-[28px] text-emerald-500"><CheckCircle2 className="w-3.5 h-3.5" /></div>
                 )}
                 {showDropdown && query && !form.studentId && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-pop max-h-48 overflow-y-auto py-1">
                     {matches.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">{t('finances.noStudentsFound', 'Студенты не найдены')}</div>
+                      <div className="px-3 py-2 text-sm text-slate-400">{t('finances.noStudentsFound', 'Студенты не найдены')}</div>
                     ) : matches.map(s => (
                       <button key={s.uid || s.id} type="button" onClick={() => selectStudent(s)}
-                        className="w-full px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors">
+                        className="w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2.5 transition-colors">
                         {s.avatarUrl ? (
                           <img src={s.avatarUrl} className="w-7 h-7 rounded-full object-cover" alt="" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs text-slate-700 dark:text-slate-200 font-semibold">
                             {s.displayName?.[0]?.toUpperCase() || '?'}
                           </div>
                         )}
@@ -233,15 +233,15 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
                 )}
               </>
             ) : (
-              <div className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white">
+              <div className="w-full h-8 flex items-center px-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm font-medium text-slate-900 dark:text-slate-100">
                 {form.studentName || '—'}
               </div>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.course', 'Курс')} *</label>
+            <label className="label">{t('finances.course', 'Курс')} *</label>
             <select value={form.courseId} onChange={e => selectCourse(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white">
+              className="input">
               <option value="">{t('finances.selectCourse', 'Выберите курс...')}</option>
               {visibleCourses.map(c => (
                 <option key={c.id} value={c.id}>
@@ -253,7 +253,7 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
             {form.courseId === NO_COURSE && (
               <input type="text" value={form.courseName}
                 onChange={e => setForm(f => ({ ...f, courseName: e.target.value }))}
-                className="w-full mt-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                className="input mt-2"
                 placeholder={t('finances.planPurposePlaceholder', 'За что счёт: учебники, экзамен...')}
               />
             )}
@@ -262,16 +262,16 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {t('finances.amount', 'Сумма')} ({CURRENCY_SUFFIX}) *
             </label>
             <input type="number" min="1" autoFocus={!pickable || !!form.studentId} value={form.totalAmount}
               onChange={e => { setAmountTouched(true); setForm(f => ({ ...f, totalAmount: e.target.value })); }}
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
+              className="input font-medium tabular-nums"
               placeholder="5000"
             />
             {agreedRate !== undefined && (
-              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium tabular-nums mt-1">
                 {t('finances.agreedPriceFull', 'Своя цена студента')}: {formatMoney(agreedRate)}
                 {hasPrice(selectedCourse) && (
                   <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(selectedCourse.price)}</span>
@@ -280,17 +280,17 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.deadline', 'Срок оплаты')}</label>
+            <label className="label">{t('finances.deadline', 'Срок оплаты')}</label>
             <input type="date" value={form.deadline}
               onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))}
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+              className="input"
             />
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost">{t('finances.cancel', 'Отмена')}</button>
           <button onClick={handleCreate} disabled={saving || !canSubmit}
-            className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all">
+            className="btn-primary">
             {saving ? t('finances.creating', 'Создание...') : t('finances.createPlan', 'Создать счёт')}
           </button>
         </div>

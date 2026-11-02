@@ -21,6 +21,15 @@ vi.mock('../utils/notifications', () => ({
   notifyOrgAdmins: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Writes to the finance endpoints are plan-gated (requirePlanFeature reads
+// organizations/{org}). The collection routers below don't model that document,
+// so the gate is stubbed open here; its own behaviour is covered by
+// plan-feature-gate.test.ts.
+vi.mock('../utils/plan-limits', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/plan-limits')>();
+  return { ...actual, requirePlanFeature: vi.fn().mockResolvedValue(null) };
+});
+
 import { adminDb } from '../utils/firebase-admin';
 import { verifyAuth, recordInBranchScope } from '../utils/auth';
 import { derivePlanStatus } from '../utils/finance-names';

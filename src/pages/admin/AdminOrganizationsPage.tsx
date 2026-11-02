@@ -47,19 +47,19 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-pop w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
             {result ? t('admin.orgs.create.created', 'Организация создана') : t('admin.orgs.create.newTitle', 'Новая организация')}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {result ? (
-          <div className="p-5 space-y-4">
+          <div className="p-4 space-y-4">
             <div className="rounded-xl border-2 border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-4">
               <div className="flex items-start gap-3">
                 <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -78,15 +78,15 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
               <div><span className="text-slate-500">{t('admin.orgs.create.password', 'Пароль:')}</span> <span className="font-mono text-slate-900 dark:text-white select-all">{result.tempPassword}</span></div>
             </div>
 
-            <button onClick={copyCredentials} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-semibold">
+            <button onClick={copyCredentials} className="btn-secondary w-full inline-flex items-center justify-center gap-1.5">
               {copied ? <><Check className="w-4 h-4 text-emerald-600" /> {t('support.copied', 'Скопировано')}</> : <><Copy className="w-4 h-4" /> {t('admin.orgs.create.copyData', 'Скопировать данные')}</>}
             </button>
-            <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-colors">
+            <button onClick={onClose} className="btn-primary w-full">
               {t('admin.orgs.create.done', 'Готово')}
             </button>
           </div>
         ) : (
-          <form onSubmit={submit} className="p-5 space-y-4">
+          <form onSubmit={submit} className="p-4 space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('admin.orgs.create.intro', 'Создаём организацию и аккаунт владельца. Сервер сгенерирует временный пароль — вы передадите его владельцу.')}
             </p>
@@ -112,10 +112,10 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
             </div>
             {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-sm transition-colors">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1">
                 {t('common.cancel', 'Отмена')}
               </button>
-              <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+              <button type="submit" disabled={submitting} className="btn-primary flex-1 disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('admin.orgs.create.creating', 'Создаём…')}</> : t('common.create', 'Создать')}
               </button>
             </div>
@@ -160,24 +160,24 @@ const AdminOrganizationsPage: React.FC = () => {
     <div>
       {/* Left: Table */}
       <div>
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.orgs.title')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{data.total} {t('admin.orgs.total')}</p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('admin.orgs.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-xs">{data.total} {t('admin.orgs.total')}</p>
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm shadow-lg shadow-primary-500/20 transition-all"
+            className="btn-primary inline-flex items-center gap-1.5"
           >
-            <Plus className="w-4 h-4" /> {t('admin.orgs.create.button', 'Создать организацию')}
+            <Plus className="w-3.5 h-3.5" /> {t('admin.orgs.create.button', 'Создать организацию')}
           </button>
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-4">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder={t('admin.orgs.search')} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-8" placeholder={t('admin.orgs.search')} />
           </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.orgs.allStatus')}</option>
@@ -194,26 +194,26 @@ const AdminOrganizationsPage: React.FC = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700"><tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.orgs.title')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.orgs.plan')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.orgs.status')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.orgs.created')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.orgs.actions')}</th>
+            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><tr>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.orgs.title')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.orgs.plan')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.orgs.status')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.orgs.created')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.orgs.actions')}</th>
             </tr></thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {data.organizations.map((org) => (
-                <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer" onClick={() => navigate(`/admin/organizations/${org.id}`)}>
-                  <td className="px-4 py-3">
+                <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer" onClick={() => navigate(`/admin/organizations/${org.id}`)}>
+                  <td className="px-3 py-2">
                     <p className="font-medium text-slate-900 dark:text-white text-sm">{org.name}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{org.ownerEmail}</p>
                   </td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PLAN_COLORS[org.planId] || ''}`}>{t(`admin.plans.${org.planId}`) as string}</span></td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[org.status] || ''}`}>{t(`admin.statuses.${org.status}`) as string}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(org.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${PLAN_COLORS[org.planId] || ''}`}>{t(`admin.plans.${org.planId}`) as string}</span></td>
+                  <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${STATUS_COLORS[org.status] || ''}`}>{t(`admin.statuses.${org.status}`) as string}</span></td>
+                  <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{new Date(org.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       {org.status === 'active' && <button onClick={() => { if (confirm(t('admin.orgs.confirmSuspend'))) { adminSuspendOrg(org.id).then(load).catch((e: any) => toast.error(e.message || t('common.error'))); } }} className="text-red-400 hover:text-red-600" title={t('admin.orgs.suspend')}><Ban className="w-4 h-4" /></button>}
                       {org.status === 'suspended' && <button onClick={() => { adminActivateOrg(org.id).then(load).catch((e: any) => toast.error(e.message || t('common.error'))); }} className="text-emerald-500 hover:text-emerald-700" title={t('admin.orgs.activate')}><RotateCcw className="w-4 h-4" /></button>}

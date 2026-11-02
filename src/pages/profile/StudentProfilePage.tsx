@@ -5,6 +5,7 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { auth, storage } from '../../lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUser } from '../../services/users.service';
+import { isIssuedLoginEmail } from '../../lib/loginEmail';
 import toast from 'react-hot-toast';
 import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2, Phone } from 'lucide-react';
 import i18n from '../../i18n';
@@ -31,8 +32,6 @@ const StudentProfilePage: React.FC = () => {
   const [name, setName] = useState(profile?.displayName || '');
   const [username, setUsername] = useState(profile?.username || '');
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const [bio, setBio] = useState(profile?.bio || '');
-  const [skills, setSkills] = useState(profile?.skills?.join(', ') || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
   const [phone, setPhone] = useState(profile?.phone || '');
   const [pinnedBadges, setPinnedBadges] = useState<string[]>(profile?.pinnedBadges || []);
@@ -76,13 +75,10 @@ const StudentProfilePage: React.FC = () => {
     }
     setSaving(true);
     try {
-      const parsedSkills = skills.split(',').map(s => s.trim()).filter(Boolean);
       await updateProfile(auth.currentUser, { displayName: name.trim(), photoURL: avatarUrl || auth.currentUser.photoURL });
       await updateUser(auth.currentUser.uid, { 
         displayName: name.trim(),
         username: username.trim().toLowerCase(),
-        bio: bio.trim(),
-        skills: parsedSkills,
         avatarUrl,
         phone: phone.trim(),
         pinnedBadges
@@ -162,27 +158,27 @@ const StudentProfilePage: React.FC = () => {
     toast.success(`${t('profile.language')}: ${UI_LANGUAGES.find(l => l.code === lang)?.label || lang}`);
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 text-slate-400 animate-spin" /></div>;
   if (!profile) return null;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('profile.title')}</h1>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('profile.title')}</h1>
       </div>
 
       {/* Active role switcher — only shows for members holding more than one role */}
-      <ActiveOrgCard className="mb-6" />
-      <ActiveRoleCard className="mb-6" />
-      <SidebarCustomizerCard className="mb-6" />
+      <ActiveOrgCard className="mb-4" />
+      <ActiveRoleCard className="mb-4" />
 
       {
-        <div className="space-y-6">
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <div className="space-y-4">
           {/* Avatar & Basic Info */}
-          <div className="card p-5">
-            <div className="flex items-center gap-6 mb-6">
+          <div className="card p-4">
+            <div className="flex items-start gap-4 mb-4">
               <div className="relative group">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shrink-0">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-2xl font-semibold text-slate-700 dark:text-slate-200 shrink-0">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -194,48 +190,50 @@ const StudentProfilePage: React.FC = () => {
                   disabled={avatarLoading}
                   className="absolute inset-0 bg-black/50 text-white rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >
-                  <Camera className="w-6 h-6 mb-1" />
+                  <Camera className="w-4 h-4 mb-1" />
                   <span className="text-xs font-medium">{t('profile.change', 'Change')}</span>
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleAvatarChange} accept="image/*" className="hidden" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.displayName')}</label>
+                  <label className="label">{t('profile.displayName')}</label>
                   <PinnedBadgesDisplay badges={pinnedBadges} emptyPlaceholder className="mb-0" />
                 </div>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="input mb-4" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} className="input mb-3" />
                 
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('auth.username', 'Никнейм')}</label>
+                <label className="label">{t('auth.username', 'Никнейм')}</label>
                 <div className="relative mb-2">
-                  <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder={t('profile.usernamePlaceholder', 'aibek_7')} />
-                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                    {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
-                    {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                    {usernameStatus === 'taken' && <XCircle className="w-4 h-4 text-red-500" />}
+                  <AtSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-8 pr-8" placeholder={t('profile.usernamePlaceholder', 'aibek_7')} />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    {usernameStatus === 'checking' && <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />}
+                    {usernameStatus === 'available' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                    {usernameStatus === 'taken' && <XCircle className="w-3.5 h-3.5 text-red-500" />}
                   </div>
                 </div>
                 {usernameStatus === 'taken' && <p className="text-xs text-red-500 mt-1 mb-2">{t('auth.usernameTaken', 'Этот никнейм уже занят')}</p>}
                 
-                {/* Telegram-registered accounts use a service email and log in by username — hide the address. */}
-                {(profile?.email || '').endsWith('@tg.sabakhub.app') ? (
+                {/* Centre-issued logins (…@student.sabakhub.app, …@tg.sabakhub.app) are service addresses, not a mailbox — hide them. */}
+                {isIssuedLoginEmail(profile?.email) ? (
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 shrink-0" />
-                    {t('profile.tgLoginHint', 'Вход в систему — по никнейму выше и паролю (или через Telegram).')}
+                    {(profile?.email || '').endsWith('@tg.sabakhub.app')
+                      ? t('profile.tgLoginHint', 'Вход в систему — по никнейму выше и паролю (или через Telegram).')
+                      : t('profile.issuedLoginHint', 'Вход по логину «{{login}}» и паролю, который выдал центр.', { login: (profile?.email || '').split('@')[0] })}
                   </p>
                 ) : (
                   <>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel', 'Email')}</label>
+                    <label className="label">{t('teacherSettings.emailLabel', 'Email')}</label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input type="email" value={profile?.email || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                      <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input type="email" value={profile?.email || ''} readOnly className="input pl-8 cursor-not-allowed" />
                     </div>
                   </>
                 )}
                 
-                <label className="block mt-4 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-slate-400" />
+                <label className="label flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-slate-400" />
                   {t('profile.phone', 'Телефон')}
                   <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
                 </label>
@@ -252,37 +250,9 @@ const StudentProfilePage: React.FC = () => {
             </div>
             
             <div className="space-y-3">
-              {profile?.role !== 'admin' && profile?.role !== 'super_admin' && (
-                <>
-                  <div>
-                    <div className="flex justify-between items-end mb-1">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.bio', 'О себе')}</label>
-                      <span className="text-xs text-slate-400">{bio.length}/500</span>
-                    </div>
-                    <textarea
-                      value={bio}
-                      onChange={e => setBio(e.target.value)}
-                      maxLength={500}
-                      className="input min-h-[80px]"
-                      placeholder={t('profile.bioPlaceholder', 'Расскажите немного о себе...')}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.skills', 'Навыки (через запятую)')}</label>
-                    <input
-                      type="text"
-                      value={skills}
-                      onChange={e => setSkills(e.target.value)}
-                      className="input"
-                      placeholder={t('profile.skillsPlaceholder', 'напр. JavaScript, Дизайн, Python')}
-                    />
-                  </div>
-
-                </>
-              )}
-              <div className="pt-4 flex justify-end">
-                <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary flex items-center gap-2">
-                  <Save className="w-4 h-4" />{saving ? '...' : t('profile.save')}
+              <div className="pt-3 flex justify-end">
+                <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary inline-flex items-center gap-1.5">
+                  <Save className="w-3.5 h-3.5" />{saving ? '...' : t('profile.save')}
                 </button>
               </div>
             </div>
@@ -290,27 +260,27 @@ const StudentProfilePage: React.FC = () => {
 
           {/* ----- Pinned Badges ----- */}
           {myBadges && myBadges.badges.length > 0 && (
-            <div className="card p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{t('profile.pinnedBadges', 'Закрепленные бейджи')}</h3>
-              <p className="text-sm text-slate-500 mb-4">{t('profile.pinnedBadgesHint', 'Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.')}</p>
+            <div className="card p-4">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">{t('profile.pinnedBadges', 'Закрепленные бейджи')}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('profile.pinnedBadgesHint', 'Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.')}</p>
               
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2">
                 {myBadges.badgeDetails?.map(badge => {
                   const isPinned = pinnedBadges.includes(badge.id);
                   return (
                     <button
                       key={badge.id}
                       onClick={() => togglePinBadge(badge.id)}
-                      className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all shadow-sm ${
+                      className={`relative w-11 h-11 rounded-lg border flex items-center justify-center text-xl transition-colors ${
                         isPinned 
-                          ? 'ring-4 ring-primary-500 bg-primary-50 dark:bg-primary-900/40 scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 cursor-pointer grayscale-[50%] opacity-80'
+                          ? 'border-primary-600 ring-1 ring-primary-600 bg-primary-50 dark:bg-primary-950 dark:border-primary-500 dark:ring-primary-500'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer grayscale-[50%] opacity-80'
                       }`}
                       title={badge.title}
                     >
                       {badge.icon}
                       {isPinned && (
-                        <div className="absolute -top-1 -right-1 bg-primary-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm">
+                        <div className="absolute -top-1.5 -right-1.5 bg-primary-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
                            ★
                         </div>
                       )}
@@ -318,48 +288,19 @@ const StudentProfilePage: React.FC = () => {
                   );
                 })}
               </div>
-              <div className="text-right mt-4">
-                 <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary flex items-center justify-center gap-2 ml-auto">
-                   <Save className="w-4 h-4" /> {t('profile.save', 'Сохранить')}
+              <div className="text-right mt-3">
+                 <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary inline-flex items-center justify-center gap-1.5 ml-auto">
+                   <Save className="w-3.5 h-3.5" /> {t('profile.save', 'Сохранить')}
                  </button>
               </div>
             </div>
           )}
 
-          {/* Language */}
-          <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Globe className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.language')}</h3>
-            </div>
-            <div className="flex gap-2">
-              {UI_LANGUAGES.map(({ code: lang, label, flag }) => (
-                <button
-                  key={lang}
-                  onClick={() => handleLanguageChange(lang)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    i18n.language === lang
-                      ? 'bg-primary-600 text-white shadow-md'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                  }`}
-                >
-                  {flag} {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Telegram Link */}
-          <TelegramLinkCard />
-
-          {/* Уведомления — тот же блок, что на /notifications; раньше жил ещё в /teacher-settings. */}
-          <NotificationPreferencesCard />
-
           {/* Password */}
-          <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Lock className="w-5 h-5 text-amber-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.changePassword')}</h3>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('profile.changePassword')}</h3>
             </div>
             <div className="space-y-3 max-w-sm">
               <input type="password" placeholder={t('profile.currentPassword')} value={currentPw} onChange={e => setCurrentPw(e.target.value)} className="input" />
@@ -374,6 +315,41 @@ const StudentProfilePage: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Language */}
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Globe className="w-3.5 h-3.5 text-slate-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('profile.language')}</h3>
+            </div>
+            <div className="flex gap-2">
+              {UI_LANGUAGES.map(({ code: lang, label, flag }) => (
+                <button
+                  key={lang}
+                  onClick={() => handleLanguageChange(lang)}
+                  className={`h-8 px-3 rounded-md border text-sm font-medium transition-colors ${
+                    i18n.language === lang
+                      ? 'bg-primary-100 dark:bg-primary-950 border-primary-200 dark:border-primary-900 text-slate-900 dark:text-slate-100'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {flag} {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Telegram Link */}
+          <TelegramLinkCard />
+
+          {/* Уведомления — тот же блок, что на /notifications; раньше жил ещё в /teacher-settings. */}
+          <NotificationPreferencesCard />
+
+          <SidebarCustomizerCard />
+        </div>
+
         </div>
       }
 

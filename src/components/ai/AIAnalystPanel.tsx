@@ -48,19 +48,19 @@ const AIAnalystPanel: React.FC = () => {
   return (
     <section
       aria-labelledby="ai-analyst-heading"
-      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col overflow-hidden"
+      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-col overflow-hidden"
     >
-      <div className="flex items-start justify-between gap-3 px-5 pt-5">
+      <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div>
-          <h2 id="ai-analyst-heading" className="font-semibold text-slate-900 dark:text-white">{t('ai.analyst.title', 'AI-аналитик')}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <h2 id="ai-analyst-heading" className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('ai.analyst.title', 'AI-аналитик')}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t('ai.analyst.subtitle', 'Спросите о центре обычными словами — отвечу по вашим цифрам за текущий период.')}
           </p>
         </div>
         {started && (
           <button
             onClick={() => setMessages([])}
-            className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            className="btn-ghost shrink-0 inline-flex items-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" /> {t('ai.analyst.restart', 'Заново')}
           </button>
@@ -69,18 +69,18 @@ const AIAnalystPanel: React.FC = () => {
 
       <div
         ref={scrollRef}
-        className={`px-5 py-4 space-y-5 overflow-y-auto flex-1 ${started ? 'max-h-[460px] min-h-[240px]' : ''}`}
+        className={`px-4 py-3 space-y-4 overflow-y-auto flex-1 ${started ? 'max-h-[460px] min-h-[240px]' : ''}`}
       >
         {!started && (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-700/70 -mx-2">
+          <ul className="divide-y divide-slate-200 dark:divide-slate-700 -mx-2">
             {SUGGESTIONS.map(([key, fb]) => { const s = t(key, fb); return (
               <li key={key}>
                 <button
                   onClick={() => ask(s)}
-                  className="group w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="group w-full flex items-center gap-3 px-2 min-h-[40px] py-1.5 text-left rounded-md hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 >
                   <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{s}</span>
-                  <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" />
+                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" />
                 </button>
               </li>
             ); })}
@@ -89,7 +89,7 @@ const AIAnalystPanel: React.FC = () => {
 
         {messages.map((m, i) => (
           m.role === 'user' ? (
-            <p key={i} className="text-[15px] font-semibold text-slate-900 dark:text-white max-w-[65ch]">
+            <p key={i} className="text-sm font-semibold text-slate-900 dark:text-slate-100 max-w-[65ch]">
               {m.content}
             </p>
           ) : (
@@ -98,11 +98,11 @@ const AIAnalystPanel: React.FC = () => {
                 {m.content}
               </p>
               {m.highlights && m.highlights.length > 0 && (
-                <dl className="flex flex-wrap gap-x-8 gap-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <dl className="flex flex-wrap gap-x-6 gap-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                   {m.highlights.map((h, j) => (
                     <div key={j} className="min-w-0">
                       <dt className="text-xs text-slate-500 dark:text-slate-400 truncate">{h.label}</dt>
-                      <dd className="text-lg font-semibold text-slate-900 dark:text-white truncate tabular-nums">{h.value}</dd>
+                      <dd className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate tabular-nums">{h.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -113,14 +113,14 @@ const AIAnalystPanel: React.FC = () => {
 
         {loading && (
           <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> {t('ai.analyst.thinking', 'Считаю по вашим данным…')}
+            <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> {t('ai.analyst.thinking', 'Считаю по вашим данным…')}
           </p>
         )}
       </div>
 
       <form
         onSubmit={(e) => { e.preventDefault(); ask(input); }}
-        className="border-t border-slate-100 dark:border-slate-700 p-3 flex items-center gap-2"
+        className="border-t border-slate-200 dark:border-slate-700 p-3 flex items-center gap-2"
       >
         <label htmlFor="ai-analyst-input" className="sr-only">{t('ai.analyst.inputLabel', 'Вопрос AI-аналитику')}</label>
         <input
@@ -128,14 +128,14 @@ const AIAnalystPanel: React.FC = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t('ai.analyst.placeholder', 'Например: какой курс самый прибыльный?')}
-          className="flex-1 h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400 transition-colors"
+          className="input flex-1"
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="h-10 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+          className="btn-primary inline-flex items-center gap-1.5 shrink-0"
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : <Send className="w-4 h-4" />}
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : <Send className="w-3.5 h-3.5" />}
           <span className="hidden sm:inline">{t('ai.analyst.ask', 'Спросить')}</span>
         </button>
       </form>

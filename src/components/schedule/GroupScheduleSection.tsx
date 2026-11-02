@@ -284,15 +284,15 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
     const room = roomLabel(ev);
     const body = (
       <>
-        <span className="block text-sm font-bold text-slate-900 dark:text-white tabular-nums leading-tight">
+        <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums leading-tight">
           {ev.startTime}{ev.endTime ? `–${ev.endTime}` : ''}
         </span>
         {dateLabel && (
-          <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+          <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {dateLabel}
           </span>
         )}
-        <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 min-w-0">
+        <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 min-w-0">
           <MapPin className="w-3 h-3 shrink-0" />
           <span className="truncate">{room || t('classrooms.none', 'Без кабинета')}</span>
         </span>
@@ -302,18 +302,18 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
     return (
       <div
         key={ev.id}
-        className="group/lesson relative rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+        className="group/lesson relative rounded-md bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
       >
         {canEdit ? (
           <button
             onClick={() => openEdit(ev)}
             aria-label={`${t('common.edit', 'Изменить')}: ${ev.startTime}${room ? `, ${room}` : ''}`}
-            className="w-full text-left px-3 py-2.5 pr-8 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white"
+            className="w-full text-left px-2.5 py-2 pr-8 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           >
             {body}
           </button>
         ) : (
-          <div className="px-3 py-2.5">{body}</div>
+          <div className="px-2.5 py-2">{body}</div>
         )}
 
         {canRemove && (
@@ -323,7 +323,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
             title={t('common.delete', 'Удалить')}
             // slate-500, а не slate-400: иконка на плитке slate-50 иначе даёт ~2.5:1
             // и не дотягивает до порога 3:1 для нетекстовых элементов.
-            className="absolute top-1 right-1 p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-70 sm:opacity-0 group-hover/lesson:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-opacity"
+            className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-70 sm:opacity-0 group-hover/lesson:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-opacity"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -333,10 +333,10 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm mb-8">
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
-        <h2 className="font-extrabold uppercase tracking-wider text-sm text-slate-900 dark:text-white">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden mb-4">
+      <div className="px-3 py-2 min-h-[48px] border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-x-2 gap-y-2">
+        <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
           {t('schedule.groupSchedule', 'Расписание группы')}
         </h2>
 
@@ -348,10 +348,10 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
               <select
                 value={roomFilter}
                 onChange={e => setRoomFilter(e.target.value)}
-                className={`text-xs font-semibold rounded-xl border px-2.5 py-1.5 bg-white dark:bg-slate-800 transition-colors ${
+                className={`input w-auto h-8 py-0 transition-colors ${
                   roomFilter
-                    ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                    ? '!border-primary-500 text-slate-900 dark:text-slate-100'
+                    : 'text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <option value="">{t('classrooms.all', 'Все кабинеты')}</option>
@@ -365,13 +365,13 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
             <>
               <button
                 onClick={() => openCreate(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                className="btn-primary inline-flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />{t('schedule.addWeekly', 'Урок в неделю')}
               </button>
               <button
                 onClick={() => openCreate(false)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50 transition-colors"
+                className="btn-secondary inline-flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />{t('schedule.addOneOff', 'Разовое')}
               </button>
@@ -380,15 +380,15 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
         </div>
       </div>
 
-      <div className="p-4 sm:p-5">
+      <div className="p-3">
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {DAY_SHORT.map((_, i) => (
-              <div key={i} className="h-24 rounded-xl bg-slate-100 dark:bg-slate-700/40 animate-pulse" />
+              <div key={i} className="h-24 rounded-md bg-slate-100 dark:bg-slate-700/40 animate-pulse" />
             ))}
           </div>
         ) : !hasAnything ? (
-          <p className="py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
             {roomFilter
               ? t('schedule.groupEmptyFiltered', 'В этом кабинете у группы занятий нет')
               : t('schedule.groupEmpty', 'У группы пока нет занятий в расписании')}
@@ -402,21 +402,21 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                 const isToday = day === today;
                 return (
                   <div key={day} className="min-w-0">
-                    <p className={`px-1 pb-1.5 text-[11px] font-bold uppercase tracking-widest ${
+                    <p className={`px-1 pb-1 text-xs font-medium ${
                       isToday
-                        ? 'text-slate-900 dark:text-white'
+                        ? 'text-slate-900 dark:text-slate-100'
                         : 'text-slate-500 dark:text-slate-400'
                     }`}>
                       <span className="lg:hidden">{DAY_NAMES[day]}</span>
                       <span className="hidden lg:inline">{DAY_SHORT[day]}</span>
                       {isToday && (
-                        <span className="ml-1 font-semibold normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                        <span className="ml-1 font-normal normal-case tracking-normal text-slate-400 dark:text-slate-500">
                           · {t('schedule.today', 'сегодня')}
                         </span>
                       )}
                     </p>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       {list.map(ev => renderLesson(ev))}
 
                       {list.length === 0 && (
@@ -427,12 +427,12 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                             onClick={() => openCreate(true, day)}
                             aria-label={`${t('schedule.addOnDay', 'Поставить урок в этот день')}: ${DAY_NAMES[day]}`}
                             title={t('schedule.addOnDay', 'Поставить урок в этот день')}
-                            className="w-full h-[62px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:border-slate-400 hover:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white transition-colors flex items-center justify-center"
+                            className="w-full h-[62px] rounded-md border border-dashed border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:border-slate-400 hover:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-colors flex items-center justify-center"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <div className="h-[62px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700" />
+                          <div className="h-[62px] rounded-md border border-dashed border-slate-200 dark:border-slate-700" />
                         )
                       )}
                     </div>
@@ -442,8 +442,8 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
             </div>
 
             {visibleUpcoming.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                <p className="pb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                   {t('schedule.upcoming', 'Ближайшие разовые')}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -457,18 +457,18 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
 
       {modalOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
           onClick={() => setModalOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="group-lesson-dialog-title"
-            className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-200/50 dark:border-slate-700/50"
+            className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm shadow-pop border border-slate-200 dark:border-slate-700"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between mb-5">
-              <h3 id="group-lesson-dialog-title" className="text-lg font-bold text-slate-900 dark:text-white">
+            <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
+              <h3 id="group-lesson-dialog-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {form.editingId
                   ? t('schedule.editLesson', 'Изменить занятие')
                   : form.recurring
@@ -478,24 +478,24 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
               <button
                 onClick={() => setModalOpen(false)}
                 aria-label={t('common.close', 'Закрыть')}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 px-4 py-2">
               {form.recurring ? (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  <label className="label">
                     {t('schedule.dayOfWeek', 'День недели')}
                     {!form.editingId && (
-                      <span className="ml-1.5 font-semibold normal-case tracking-normal text-slate-400">
+                      <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">
                         {t('schedule.severalDaysHint', '— можно выбрать несколько')}
                       </span>
                     )}
                   </label>
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1">
                     {DAY_SHORT.map((name, i) => {
                       const on = form.days.includes(i);
                       return (
@@ -505,9 +505,9 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                           aria-pressed={on}
                           aria-label={DAY_NAMES[i]}
                           onClick={() => toggleDay(i)}
-                          className={`py-2 rounded-xl text-xs font-bold transition-all ${on
-                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                            : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'}`}
+                          className={`h-7 rounded-md text-sm transition-colors ${on
+                            ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                           {name}
                         </button>
@@ -515,7 +515,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                     })}
                   </div>
                   {form.days.length > 1 && (
-                    <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       {t('schedule.willRepeatEveryWeek', 'Уроки будут повторяться каждую неделю:')}{' '}
                       {form.days.map(d => DAY_NAMES[d].toLowerCase()).join(', ')}
                     </p>
@@ -523,20 +523,20 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                 </div>
               ) : (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  <label className="label">
                     {t('common.date', 'Дата')}
                   </label>
                   <input
                     type="date" value={form.date}
                     onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                    className="input bg-slate-50 dark:bg-slate-900/50"
+                    className="input"
                   />
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  <label className="label">
                     {t('org.schedule.startTime', 'Начало')}
                   </label>
                   {/* Сдвиг начала тянет конец за собой, сохраняя длительность. */}
@@ -552,23 +552,23 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                         ? { ...f, startTime: e.target.value }
                         : { ...f, startTime: e.target.value, endTime: minsToTime(next + span) };
                     })}
-                    className="input bg-slate-50 dark:bg-slate-900/50"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  <label className="label">
                     {t('org.schedule.endTime', 'Конец')}
                   </label>
                   <input
                     type="time" value={form.endTime}
                     onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
-                    className="input bg-slate-50 dark:bg-slate-900/50"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                <label className="label">
                   {t('schedule.classroom', 'Аудитория / Кабинет')}
                 </label>
                 <ClassroomSelect
@@ -580,13 +580,13 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
             </div>
 
             {error && (
-              <div className="mt-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 space-y-2.5">
+              <div className="mx-4 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400 space-y-2">
                 <p>{error}</p>
                 {canForce && (
                   <button
                     onClick={() => save(true)}
                     disabled={saving}
-                    className="px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    className="btn-danger"
                   >
                     {t('schedule.forceCreate', 'Поставить всё равно')}
                   </button>
@@ -594,17 +594,17 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
               </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-2 px-4 pt-2 pb-4">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm"
+                className="btn-ghost"
               >
                 {t('common.cancel', 'Отмена')}
               </button>
               <button
                 onClick={() => save()}
                 disabled={saving || (form.recurring ? !form.days.length : !form.date)}
-                className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
+                className="btn-primary"
               >
                 {saving ? '…' : t('common.save', 'Сохранить')}
               </button>

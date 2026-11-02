@@ -65,10 +65,10 @@ const GeneralTab: React.FC<{
   const INST_ICONS: Record<string, React.ElementType> = { center: GraduationCap, school: School, language: Languages, academy: Globe };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Institution type */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-1 text-sm">{t('org.settings.institutionType', 'Тип заведения')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('org.settings.institutionType', 'Тип заведения')}</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.institutionTypeDesc', 'Меняет терминологию (группы/классы, студенты/ученики) и шкалу оценок по умолчанию для новых курсов')}</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {INSTITUTION_LIST.map((inst) => {
@@ -81,43 +81,45 @@ const GeneralTab: React.FC<{
                 onClick={() => onTypeChange(inst.id)}
                 disabled={switchingType}
                 aria-pressed={active}
-                className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all disabled:cursor-wait disabled:opacity-60 ${active ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${active ? 'border-primary-600 ring-1 ring-primary-600 dark:border-primary-500 dark:ring-primary-500' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
               >
-                <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                <span className={`text-sm font-medium ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-700 dark:text-slate-300'}`}>{t(inst.labelKey, inst.label)}</span>
-                <span className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">{t(inst.descKey, inst.desc)}</span>
+                <Icon className={`w-4 h-4 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
+                <span className={`text-sm font-medium ${active ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>{t(inst.labelKey, inst.label)}</span>
+                <span className="text-xs leading-tight text-slate-500 dark:text-slate-400">{t(inst.descKey, inst.desc)}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+      <div className="space-y-4">
       {/* Branding / Logo */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.branding', 'Брендинг')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.branding', 'Брендинг')}</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.logoUrl', 'Логотип организации')}</label>
-            <div className="flex items-center gap-6">
+            <label className="label">{t('org.settings.logoUrl', 'Логотип организации')}</label>
+            <div className="flex items-center gap-3">
               <div className="relative group">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden shadow-lg">
+                <div className="w-16 h-16 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-center overflow-hidden">
                   {settings.logo ? (
-                    <img src={settings.logo} alt="Logo" className="w-24 h-24 object-cover rounded-2xl" />
+                    <img src={settings.logo} alt="Logo" className="w-16 h-16 object-cover rounded-lg" />
                   ) : (
-                    <Building2 className="w-10 h-10 text-violet-600 dark:text-violet-400" />
+                    <Building2 className="w-6 h-6 text-slate-400" />
                   )}
                 </div>
                 <button
                   onClick={() => logoInputRef.current?.click()}
                   disabled={uploading}
-                  className="absolute inset-0 bg-black/50 text-white rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="absolute inset-0 bg-black/50 text-white rounded-lg flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >
-                  {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                 </button>
                 <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" />
               </div>
               <div className="text-sm text-slate-500 dark:text-slate-400">
-                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.uploadLogo', 'Загрузите логотип')}</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">{t('org.settings.uploadLogo', 'Загрузите логотип')}</p>
                 <p className="text-xs">{t('org.settings.logoHint', 'Рекомендуемый размер: 256×256 px')}</p>
               </div>
             </div>
@@ -125,20 +127,20 @@ const GeneralTab: React.FC<{
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.general')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.general')}</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgName')}</label>
+            <label className="label">{t('org.settings.orgName')}</label>
             <input value={settings.name} onChange={(e) => update('name', e.target.value)} className="input" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription', 'Описание организации')}</label>
+            <label className="label">{t('org.settings.orgDescription', 'Описание организации')}</label>
             <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[80px]" placeholder={t('org.settings.orgDescriptionPlaceholder')} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.timezone')}</label>
+              <label className="label">{t('org.settings.timezone')}</label>
               <select value={settings.timezone} onChange={(e) => update('timezone', e.target.value)} className="input">
                 <option value="Asia/Bishkek">Asia/Bishkek (UTC+6)</option>
                 <option value="Asia/Almaty">Asia/Almaty (UTC+6)</option>
@@ -147,7 +149,7 @@ const GeneralTab: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.language')}</label>
+              <label className="label">{t('org.settings.language')}</label>
               <select value={settings.locale} onChange={(e) => update('locale', e.target.value)} className="input">
                 <option value="ru">🇷🇺 Русский</option>
                 <option value="en">🇬🇧 English</option>
@@ -157,7 +159,7 @@ const GeneralTab: React.FC<{
             </div>
           </div>
           
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.isOnline', 'Формат обучения')}</p>
@@ -165,48 +167,50 @@ const GeneralTab: React.FC<{
               </div>
               <button
                 onClick={() => update('isOnline', !settings.isOnline)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${settings.isOnline ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                className={`relative w-8 h-[18px] rounded-full transition-colors ${settings.isOnline ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.isOnline ? 'left-[22px]' : 'left-0.5'}`} />
+                <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${settings.isOnline ? 'left-4' : 'left-0.5'}`} />
               </button>
             </div>
           </div>
         </div>
       </div>
 
+      </div>
       {/* Teacher permissions */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-2">
-          <Users className="w-4 h-4" />{t('org.settings.teacherPermissions', 'Права преподавателей')}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+          <Users className="w-3.5 h-3.5 text-slate-400" />{t('org.settings.teacherPermissions', 'Права преподавателей')}
         </h3>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-          <div className="flex items-center justify-between py-3">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          <div className="flex items-center justify-between py-2.5">
             <div className="pr-4">
               <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.teacherGroupManagement', 'Управление своими группами')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.teacherGroupManagementDesc', 'Разрешить преподавателям создавать, редактировать и удалять группы, которые они сами создали')}</p>
             </div>
             <button
               onClick={() => update('teacherGroupManagement', !settings.teacherGroupManagement)}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.teacherGroupManagement ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              className={`relative w-8 h-[18px] rounded-full transition-colors shrink-0 ${settings.teacherGroupManagement ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
               aria-pressed={!!settings.teacherGroupManagement}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.teacherGroupManagement ? 'left-[22px]' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${settings.teacherGroupManagement ? 'left-4' : 'left-0.5'}`} />
             </button>
           </div>
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between py-2.5">
             <div className="pr-4">
               <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.teacherGroupStatus', 'Изменение статуса групп')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.teacherGroupStatusDesc', 'Разрешить преподавателям архивировать и менять статус групп, которые они ведут')}</p>
             </div>
             <button
               onClick={() => update('teacherGroupStatus', !settings.teacherGroupStatus)}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.teacherGroupStatus ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              className={`relative w-8 h-[18px] rounded-full transition-colors shrink-0 ${settings.teacherGroupStatus ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
               aria-pressed={!!settings.teacherGroupStatus}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.teacherGroupStatus ? 'left-[22px]' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${settings.teacherGroupStatus ? 'left-4' : 'left-0.5'}`} />
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -216,13 +220,13 @@ const GeneralTab: React.FC<{
 const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
   return (
-    <div className="space-y-5">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.academic')}</h3>
+    <div className="grid gap-4 lg:grid-cols-2 items-start">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.academic')}</h3>
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.gradingScale')}</label>
+              <label className="label">{t('org.settings.gradingScale')}</label>
               <select value={settings.gradingScale || 'percentage'} onChange={(e) => update('gradingScale', e.target.value)} className="input">
                 <option value="percentage">{t('org.settings.scalePercentage')}</option>
                 <option value="letter">{t('org.settings.scaleLetter')}</option>
@@ -230,7 +234,7 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.passingScore')}</label>
+              <label className="label">{t('org.settings.passingScore')}</label>
               <input type="number" min={0} max={100} value={settings.passingScore} onChange={(e) => update('passingScore', Number(e.target.value))} className="input" />
             </div>
           </div>
@@ -238,25 +242,25 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
       </div>
 
       {/* ── Contact & Info ── */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-2"><MapPin className="w-4 h-4" />{t('org.settings.contactInfo', 'Контакты и расположение')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />{t('org.settings.contactInfo', 'Контакты и расположение')}</h3>
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Mail className="w-3 h-3" />{t('org.settings.contactEmail', 'Email')}</span></label>
+              <label className="label"><span className="flex items-center gap-1"><Mail className="w-3 h-3" />{t('org.settings.contactEmail', 'Email')}</span></label>
               <input type="email" value={settings.contactEmail || ''} onChange={(e) => update('contactEmail', e.target.value)} className="input" placeholder="info@myschool.kg" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Phone className="w-3 h-3" />{t('org.settings.contactPhone', 'Телефон')}</span></label>
+              <label className="label"><span className="flex items-center gap-1"><Phone className="w-3 h-3" />{t('org.settings.contactPhone', 'Телефон')}</span></label>
               <input type="text" value={settings.contactPhone || ''} onChange={(e) => update('contactPhone', e.target.value)} className="input" placeholder="+996 XXX XXX XXX" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t('org.settings.address', 'Адрес')}</span></label>
+            <label className="label"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t('org.settings.address', 'Адрес')}</span></label>
             <input type="text" value={settings.address || ''} onChange={(e) => update('address', e.target.value)} className="input" placeholder={t('org.settings.addressPh', 'г. Бишкек, ул. ...')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t('org.settings.workingHours', 'Рабочие часы')}</span></label>
+            <label className="label"><span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t('org.settings.workingHours', 'Рабочие часы')}</span></label>
             <input type="text" value={settings.workingHours || ''} onChange={(e) => update('workingHours', e.target.value)} className="input" placeholder={t('org.settings.workingHoursPh', 'Пн-Пт 09:00-18:00, Сб 10:00-15:00')} />
           </div>
         </div>
@@ -326,7 +330,7 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
           ${settings.description ? `<p class="desc">${settings.description}</p>` : ''}
           <div class="qr"><img src="${qrDataUrl}" /></div>
           <p class="url">${publicUrl}</p>
-          <div class="cta">${t('org.settings.scanToJoin', 'Отсканируйте QR чтобы вступить')}</div>
+          <div class="cta">${t('org.settings.learnMore', 'Узнайте о нас больше')}</div>
         </div>
       </body></html>
     `);
@@ -335,42 +339,32 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Enable Public Profile */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><QrCode className="w-4 h-4" />{t('org.settings.visitCard', 'Визитка организации')}</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2"><QrCode className="w-3.5 h-3.5 text-slate-400" />{t('org.settings.visitCard', 'Визитка организации')}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.visitCardDesc', 'Публичная страница для привлечения студентов через QR-код')}</p>
           </div>
           <button
             onClick={() => update('publicProfileEnabled', !settings.publicProfileEnabled)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${settings.publicProfileEnabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+            className={`relative w-8 h-[18px] rounded-full transition-colors ${settings.publicProfileEnabled ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.publicProfileEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+            <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${settings.publicProfileEnabled ? 'left-4' : 'left-0.5'}`} />
           </button>
         </div>
 
         {settings.publicProfileEnabled && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700">
+          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.studentLink', 'Для учеников')}</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">{t('org.settings.publicLink', 'Публичная страница')}</p>
                   <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate block">{publicUrl}</a>
                 </div>
-                <button onClick={() => copyLink(publicUrl, 'student')} className="ml-4 p-2 shrink-0 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition">
-                  {copied === 'student' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-400" />}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700">
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.teacherLink', 'Для преподавателей')}</p>
-                  <a href={`${publicUrl}?role=teacher`} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate block">{publicUrl}?role=teacher</a>
-                </div>
-                <button onClick={() => copyLink(`${publicUrl}?role=teacher`, 'teacher')} className="ml-4 p-2 shrink-0 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition">
-                  {copied === 'teacher' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-400" />}
+                <button onClick={() => copyLink(publicUrl, 'student')} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors ml-3 shrink-0">
+                  {copied === 'student' ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
@@ -379,13 +373,13 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
       </div>
 
       {settings.publicProfileEnabled && (
-        <>
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
           {/* Social Links */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.socialLinks', 'Социальные сети')}</h3>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.socialLinks', 'Социальные сети')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   <span className="flex items-center gap-1"><Send className="w-3 h-3 text-blue-500" /> Telegram</span>
                 </label>
                 <input type="text" value={links.telegram || ''}
@@ -393,7 +387,7 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
                   className="input" placeholder="@username" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3 text-green-600" /> WhatsApp</span>
                 </label>
                 <input type="text" value={links.whatsapp || ''}
@@ -401,7 +395,7 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
                   className="input" placeholder="+996XXXXXXXXX" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   <span className="flex items-center gap-1"><svg className="w-3 h-3 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> Instagram</span>
                 </label>
                 <input type="text" value={links.instagram || ''}
@@ -409,8 +403,8 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
                   className="input" placeholder="@username" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-violet-600" /> {t('org.settings.websiteLabel', 'Веб-сайт')}</span>
+                <label className="label">
+                  <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-primary-600" /> {t('org.settings.websiteLabel', 'Веб-сайт')}</span>
                 </label>
                 <input type="text" value={links.website || ''}
                   onChange={(e) => update('contactLinks', { ...links, website: e.target.value })}
@@ -420,32 +414,32 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
           </div>
 
           {/* QR Code */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.qrCode', 'QR-код')}</h3>
-            <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.qrCode', 'QR-код')}</h3>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
               {qrDataUrl ? (
-                <div className="w-48 h-48 bg-white rounded-2xl p-3 shadow-lg border border-slate-200 dark:border-slate-600">
+                <div className="w-40 h-40 bg-white rounded-lg p-2 border border-slate-200 dark:border-slate-700">
                   <img src={qrDataUrl} alt="QR" className="w-full h-full" />
                 </div>
               ) : (
-                <div className="w-48 h-48 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
-                  <QrCode className="w-12 h-12 text-slate-400" />
+                <div className="w-40 h-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center">
+                  <QrCode className="w-6 h-6 text-slate-400" />
                 </div>
               )}
               <div className="space-y-3 text-center sm:text-left">
                 <p className="text-sm text-slate-500 dark:text-slate-400">{t('org.settings.qrDesc', 'Распечатайте этот QR-код и разместите на ресепшене, визитках или баннерах')}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={downloadQR} disabled={!qrDataUrl} className="btn-primary text-sm flex items-center gap-2">
-                    <Download className="w-4 h-4" /> {t('org.settings.downloadQR', 'Скачать QR')}
+                  <button onClick={downloadQR} disabled={!qrDataUrl} className="btn-primary inline-flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5" /> {t('org.settings.downloadQR', 'Скачать QR')}
                   </button>
-                  <button onClick={printPoster} disabled={!qrDataUrl} className="btn-secondary text-sm flex items-center gap-2">
-                    <Printer className="w-4 h-4" /> {t('org.settings.printPoster', 'Печать постера')}
+                  <button onClick={printPoster} disabled={!qrDataUrl} className="btn-secondary inline-flex items-center gap-1.5">
+                    <Printer className="w-3.5 h-3.5" /> {t('org.settings.printPoster', 'Печать постера')}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -455,50 +449,50 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
 const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
   return (
-    <div className="space-y-6">
+    <div className="grid gap-4 lg:grid-cols-2 items-start">
       {/* Push — working */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white">{t('org.settings.notifications')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('org.settings.notifications')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.notificationsDesc')}</p>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {/* Push notifications toggle — functional */}
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.pushNotifications', 'Push-уведомления')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.pushNotificationsDesc', 'Получайте push-уведомления в браузере и мобильном приложении')}</p>
             </div>
             <button
               onClick={() => update('pushNotifications', !settings.pushNotifications)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${settings.pushNotifications ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              className={`relative w-8 h-[18px] rounded-full transition-colors ${settings.pushNotifications ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.pushNotifications ? 'left-[22px]' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${settings.pushNotifications ? 'left-4' : 'left-0.5'}`} />
             </button>
           </div>
 
           {/* Email notifications — coming soon */}
-          <div className="px-6 py-4 flex items-center justify-between opacity-60">
+          <div className="px-4 py-3 flex items-center justify-between opacity-60">
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.emailNotifications', 'Email-уведомления')}</p>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                   {t('common.soon', 'Скоро')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.emailNotificationsDesc', 'Получайте уведомления по email о важных событиях')}</p>
             </div>
-            <button disabled className="relative w-11 h-6 rounded-full bg-slate-200 dark:bg-slate-700 cursor-not-allowed">
-              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
+            <button disabled className="relative w-8 h-[18px] rounded-full bg-slate-200 dark:bg-slate-700 cursor-not-allowed">
+              <span className="absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full" />
             </button>
           </div>
         </div>
       </div>
 
       {/* What gets notified */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">{t('org.settings.notificationTypes', 'Типы уведомлений')}</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.notificationTypesDesc', 'Push-уведомления отправляются автоматически при следующих событиях:')}</p>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">{t('org.settings.notificationTypes', 'Типы уведомлений')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.notificationTypesDesc', 'Push-уведомления отправляются автоматически при следующих событиях:')}</p>
         <div className="flex flex-wrap gap-2">
           {[
             { icon: '📝', label: t('org.settings.notifExamResult', 'Результат экзамена') },
@@ -508,7 +502,7 @@ const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v:
             { icon: '📋', label: t('org.settings.notifHomework', 'Домашнее задание') },
             { icon: '🎓', label: t('org.settings.notifGrade', 'Оценка') },
           ].map((item) => (
-            <span key={item.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+            <span key={item.label} className="inline-flex items-center gap-1.5 h-6 px-2 rounded text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
               {item.icon} {item.label}
             </span>
           ))}
@@ -527,25 +521,25 @@ const DataTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.exportData')}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.exportDataDesc')}</p>
-        <div className="flex gap-3">
-          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportStudents')}</button>
-          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportTeachers')}</button>
-          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportResults')}</button>
+    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3 items-start">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.exportData')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.exportDataDesc')}</p>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleMock} className="btn-secondary">{t('org.settings.exportStudents')}</button>
+          <button onClick={handleMock} className="btn-secondary">{t('org.settings.exportTeachers')}</button>
+          <button onClick={handleMock} className="btn-secondary">{t('org.settings.exportResults')}</button>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.backup')}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.backupDesc')}</p>
-        <button onClick={handleMock} className="btn-primary text-sm">{t('org.settings.createBackup')}</button>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.backup')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.backupDesc')}</p>
+        <button onClick={handleMock} className="btn-primary">{t('org.settings.createBackup')}</button>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-5">
-        <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('org.settings.dangerZone')}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.dangerZoneDesc')}</p>
-        <button onClick={handleMock} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition-colors">{t('org.settings.deleteOrg')}</button>
+      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">{t('org.settings.dangerZone')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.dangerZoneDesc')}</p>
+        <button onClick={handleMock} className="btn-danger">{t('org.settings.deleteOrg')}</button>
       </div>
     </div>
   );
@@ -563,22 +557,22 @@ const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
   const maxTeachersText = limits.maxTeachers === -1 ? '∞' : limits.maxTeachers;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.limits')}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.limitsDesc')}</p>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.limits')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.limitsDesc')}</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{currStudents} / {maxStudentsText}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.maxStudents')}</p>
+          <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{currStudents} / {maxStudentsText}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.maxStudents')}</p>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{currTeachers} / {maxTeachersText}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.maxTeachers')}</p>
+          <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{currTeachers} / {maxTeachersText}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.maxTeachers')}</p>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{settings.storageUsedMb ?? 0} MB</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.storageUsed')}</p>
+          <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{settings.storageUsedMb ?? 0} MB</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.storageUsed')}</p>
           </div>
         </div>
       </div>
@@ -641,7 +635,7 @@ const OrgSettingsPage: React.FC = () => {
     finally { setSaving(false); }
   };
 
-  if (loading || !settings) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
+  if (loading || !settings) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
 
   const renderTab = () => {
     switch (activeTab) {
@@ -660,28 +654,28 @@ const OrgSettingsPage: React.FC = () => {
   return (
     <div>
       {/* Header with save */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.settings')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('org.settings.subtitle')}</p>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('nav.settings')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('org.settings.subtitle')}</p>
         </div>
         <button onClick={handleSave} disabled={saving}
-          className={`flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium transition-all ${saved ? 'bg-emerald-500 text-white' : 'btn-primary'}`}>
-          {saved ? <><Check className="w-4 h-4" />{t('org.settings.saved')}</> : saving ? '...' : <><Save className="w-4 h-4" />{t('org.settings.save')}</>}
+          className={`inline-flex items-center gap-1.5 ${saved ? 'px-3 py-1.5 rounded-md text-[13px] leading-5 font-medium bg-emerald-600 text-white' : 'btn-primary'}`}>
+          {saved ? <><Check className="w-3.5 h-3.5" />{t('org.settings.saved')}</> : saving ? '...' : <><Save className="w-3.5 h-3.5" />{t('org.settings.save')}</>}
         </button>
       </div>
 
-      {error && <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
+      {error && <div className="mb-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
 
       {/* Active role switcher — only shows for members holding more than one role */}
-      <ActiveOrgCard className="mb-6" />
-      <ActiveRoleCard className="mb-6" />
+      <ActiveOrgCard className="mb-4" />
+      <ActiveRoleCard className="mb-4" />
 
       {/* Tabbed layout */}
-      <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row gap-3 min-h-[calc(100vh-8rem)]">
         {/* Left sidebar tabs */}
-        <div className="w-full md:w-56 shrink-0">
-          <nav className="flex md:block space-x-2 md:space-x-0 md:space-y-0.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none md:sticky md:top-4">
+        <div className="w-full md:w-52 shrink-0">
+          <nav className="flex md:block space-x-1 md:space-x-0 md:space-y-0.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none md:sticky md:top-4">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -689,13 +683,13 @@ const OrgSettingsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 md:gap-3 shrink-0 md:w-full px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 shrink-0 md:w-full h-8 px-2 rounded-md text-sm whitespace-nowrap transition-colors ${
                     isActive
-                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   {t(tab.labelKey)}
                 </button>
               );

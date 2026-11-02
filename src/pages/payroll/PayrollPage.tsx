@@ -551,28 +551,28 @@ const PayrollPage: React.FC = () => {
         // на экране ещё нет данных выбранного месяца, а после ошибки нет
         // достоверных данных вообще.
         disabled={!gate.enabled || busy || !canWrite || loading || !!error}
-        className={`w-full px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
+        className={`w-full inline-flex items-center justify-center gap-1.5 ${
           primary && gate.enabled
-            ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+            ? 'btn-primary'
+            : 'btn-secondary'
         } disabled:opacity-50`}
       >
-        <Icon className="w-4 h-4" />{label}
+        <Icon className="w-3.5 h-3.5" />{label}
       </button>
       {/* Причину пишем словами: серая кнопка молчит, и директор решает, что сломалось. */}
       {!gate.enabled && gate.reason && (
-        <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">{gate.reason}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-snug">{gate.reason}</p>
       )}
       {gate.enabled && !canWrite && (
-        <p className="text-[11px] text-slate-500 mt-1.5">{t('payroll.noWriteRight', 'Нет прав на изменение зарплаты.')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('payroll.noWriteRight', 'Нет прав на изменение зарплаты.')}</p>
       )}
     </div>
   );
 
   const payMethodField = (
     <label className="block mt-3">
-      <span className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('payroll.payMethod', 'Способ оплаты')}</span>
-      <select value={payMethod} onChange={e => setPayMethod(e.target.value)} required className="input text-sm">
+      <span className="label">{t('payroll.payMethod', 'Способ оплаты')}</span>
+      <select value={payMethod} onChange={e => setPayMethod(e.target.value)} required className="input">
         <option value="">{t('payroll.payMethodPick', '— выберите —')}</option>
         {PAYMENT_METHODS.map(m => (
           <option key={m.id} value={m.id}>{m.icon} {t(m.labelKey, m.fallback)}</option>
@@ -582,21 +582,22 @@ const PayrollPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-indigo-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             {t('nav.payroll', 'Зарплата')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t('payroll.subtitle', 'Выберите месяц и преподавателя: видно его группы, оплаты студентов и сумму к выдаче')}
           </p>
         </div>
       </div>
 
+      {/* Шапка месяца и ставка по умолчанию — рядом на широком экране */}
+      <div className="grid gap-4 xl:grid-cols-3 items-start">
       {/* Шапка месяца */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3 xl:col-span-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-wrap">
             <input
@@ -604,16 +605,16 @@ const PayrollPage: React.FC = () => {
               value={period}
               onChange={e => setPeriod(e.target.value || currentPeriodKey())}
               aria-label={t('payroll.periodField', 'Месяц')}
-              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm dark:text-white"
+              className="input w-auto"
             />
             <span className="text-sm text-slate-400">{formatPeriodLabel(period)}</span>
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${stateStyle.badge}`}>
+            <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${stateStyle.badge}`}>
               {sheet ? t(stateStyle.key, stateStyle.fallback) : t('payroll.stateNone', 'Не рассчитано')}
             </span>
             {/* Границы окна — рядом со статусом: месяц называет период, а даты
                 говорят, какие именно оплаты в него вошли. */}
             {windowLabel && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 tabular-nums">
                 <CalendarRange className="w-3 h-3" />{windowLabel}
               </span>
             )}
@@ -623,20 +624,20 @@ const PayrollPage: React.FC = () => {
               {/* Главное число — то, что ЕЩЁ предстоит отдать. После выплаты
                   части людей «к выплате: 4 200 000» было бы прямым враньём:
                   половина этих денег уже в кассе как расход. */}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {state === 'paid'
                   ? t('payroll.totalLabelPaid', 'Выплачено')
                   : sheet
                     ? t('payroll.totalLabel', 'Итого к выплате')
                     : t('payroll.totalLabelPreview', 'Выйдет по ставкам')}
               </p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMinor(state === 'paid' ? paidTotalMinor : sheet ? remainingTotalMinor : payableMinor)}
               </p>
               {/* Выплата пошла, но не закончилась: без этой строки директор видит
                   уменьшившееся число и не понимает, куда делась разница. */}
               {state !== 'paid' && paidTotalMinor > 0 && (
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                   {t('payroll.totalPaidAside', 'выдано {{paid}} из {{total}}', {
                     paid: formatMinor(paidTotalMinor),
                     total: formatMinor(payableMinor),
@@ -644,7 +645,7 @@ const PayrollPage: React.FC = () => {
                 </p>
               )}
               {unrecoveredMinor > 0 && (
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                   {t('payroll.totalAccruedAside', 'начислено нетто {{net}}', { net: formatMinor(totalMinor) })}
                 </p>
               )}
@@ -652,7 +653,7 @@ const PayrollPage: React.FC = () => {
             {teachers.length > 0 && (
               <button
                 onClick={handleExportCsv}
-                className="text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0"
+                className="btn-secondary inline-flex items-center gap-1.5 shrink-0"
               >
                 <Download className="w-3.5 h-3.5" />CSV
               </button>
@@ -669,7 +670,7 @@ const PayrollPage: React.FC = () => {
             primary={!frozen}
             onClick={runCalculate}
           />
-          <ArrowRight className="hidden sm:block w-4 h-4 text-slate-300 mt-3 shrink-0" />
+          <ArrowRight className="hidden sm:block w-3.5 h-3.5 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0" />
           <StepButton
             gate={approveGate}
             icon={Lock}
@@ -677,7 +678,7 @@ const PayrollPage: React.FC = () => {
             primary={state === 'calculated'}
             onClick={() => setConfirmApprove(true)}
           />
-          <ArrowRight className="hidden sm:block w-4 h-4 text-slate-300 mt-3 shrink-0" />
+          <ArrowRight className="hidden sm:block w-3.5 h-3.5 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0" />
           {/* «Всем», а не просто «Выплатить»: рядом, в строке преподавателя,
               теперь есть выплата поштучно, и кнопки должны различаться словами. */}
           <StepButton
@@ -693,7 +694,7 @@ const PayrollPage: React.FC = () => {
             говорят, что произойдёт и что после этого нельзя откатить: «утвердить»
             звучит как галочка, а на деле замораживает суммы навсегда. Строка
             висит всегда — читать её нужно как раз до первого нажатия. */}
-        <p className="text-[11px] text-slate-500 leading-snug">
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
           {t(
             'payroll.lifecycleHint',
             'Рассчитать — зафиксировать суммы за месяц. Утвердить — запретить изменения. Выплатить — записать расходы в кассу.',
@@ -701,7 +702,7 @@ const PayrollPage: React.FC = () => {
         </p>
 
         {!sheet && !loading && !error && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t(
               'payroll.previewHint',
               'Суммы ниже — предварительные: так выйдет по действующим ставкам на сегодняшних оплатах. Нажмите «Рассчитать», чтобы зафиксировать месяц.',
@@ -710,11 +711,11 @@ const PayrollPage: React.FC = () => {
         )}
 
         {state === 'paid' && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 text-xs text-emerald-800 dark:text-emerald-300">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/10 text-xs text-emerald-800 dark:text-emerald-300">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <p>
               {t('payroll.paidLinkHint', 'Выплаты записаны расходами в категории «Зарплата» и привязаны к этому месяцу.')}{' '}
-              <Link to="/finances?tab=expenses" className="inline-flex items-center gap-1 font-semibold underline">
+              <Link to="/finances?tab=expenses" className="inline-flex items-center gap-1 font-medium underline">
                 {t('payroll.openExpenses', 'Открыть Финансы → Расходы')}
                 <ExternalLink className="w-3 h-3" />
               </Link>
@@ -727,13 +728,14 @@ const PayrollPage: React.FC = () => {
           выбранного периода, поэтому стоит под шапкой месяца и не зависит от
           её состояния. */}
       <DefaultRateCard canWrite={canWrite} onApplied={load} />
+      </div>
 
       {loading ? (
         <ListSkeleton rows={6} />
       ) : error ? (
-        <div className="p-4 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between gap-3">
+        <div className="px-3 py-2.5 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={load} className="text-sm font-medium underline shrink-0">
+          <button onClick={load} className="btn-ghost shrink-0">
             {t('payroll.retry', 'Повторить')}
           </button>
         </div>
@@ -751,13 +753,13 @@ const PayrollPage: React.FC = () => {
             <>
               {teachers.length > 6 && (
                 <div className="relative sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="text"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder={t('payroll.searchTeachers', 'Поиск преподавателя...')}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm"
+                    className="input pl-8"
                   />
                 </div>
               )}
@@ -769,7 +771,7 @@ const PayrollPage: React.FC = () => {
                   description={t('payroll.tryOtherSearch', 'Попробуйте другое имя')}
                 />
               ) : (
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   {pageRows.map(teacher => (
                     <TeacherRow
                       key={teacher.teacherId}
@@ -802,7 +804,7 @@ const PayrollPage: React.FC = () => {
               />
 
               {canWrite && !sheet && (
-                <p className="text-xs text-slate-500 px-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
                   {t('payroll.manualNeedsSheet', 'Премии и штрафы можно добавить после того, как месяц рассчитан — им нужен расчёт, в котором они сохранятся.')}
                 </p>
               )}
@@ -813,17 +815,17 @@ const PayrollPage: React.FC = () => {
 
       {/* Зарплатный баланс */}
       {!loading && balance.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2 flex-wrap">
-            <Scale className="w-4 h-4 text-slate-400" />
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2 flex-wrap">
+            <Scale className="w-3.5 h-3.5 text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {t('payroll.balanceTitle', 'Зарплатный баланс')}
             </h3>
             {/* Таблица считает НАЧИСЛЕНИЕ минус КАССУ по всем утверждённым
                 месяцам сразу, поэтому её колонки намеренно не сходятся с итогом
                 выше — и об этом надо сказать, иначе расхождение читается как
                 ошибка. */}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t(
                 'payroll.balanceHint',
                 'Начислено по утверждённым месяцам минус фактически выданное — по всем месяцам сразу, а не за выбранный. Минус означает либо переплату, либо штраф, который не из чего было удержать.',
@@ -832,24 +834,24 @@ const PayrollPage: React.FC = () => {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="px-5 py-3 font-medium text-slate-500">{t('payroll.colTeacher', 'Преподаватель')}</th>
-                  <th className="px-5 py-3 font-medium text-slate-500 text-right">{t('payroll.colAccrued', 'Начислено')}</th>
-                  <th className="px-5 py-3 font-medium text-slate-500 text-right">{t('payroll.colPaid', 'Выдано')}</th>
-                  <th className="px-5 py-3 font-medium text-slate-500 text-right">{t('payroll.colBalance', 'Баланс')}</th>
+                  <th className="h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400">{t('payroll.colTeacher', 'Преподаватель')}</th>
+                  <th className="h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right">{t('payroll.colAccrued', 'Начислено')}</th>
+                  <th className="h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right">{t('payroll.colPaid', 'Выдано')}</th>
+                  <th className="h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right">{t('payroll.colBalance', 'Баланс')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {balance.map(row => (
-                  <tr key={row.teacherId} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-5 py-3 text-slate-900 dark:text-white whitespace-nowrap">
+                  <tr key={row.teacherId} className="h-10 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <td className="px-3 py-1.5 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                       {row.teacherName || teacherName(row.teacherId)}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-500 whitespace-nowrap">{formatMinor(row.accruedMinor)}</td>
-                    <td className="px-5 py-3 text-right text-slate-500 whitespace-nowrap">{formatMinor(row.paidMinor)}</td>
-                    <td className={`px-5 py-3 text-right font-bold whitespace-nowrap ${
-                      row.balanceMinor > 0 ? 'text-amber-600' : row.balanceMinor < 0 ? 'text-rose-600' : 'text-emerald-600'
+                    <td className="px-3 py-1.5 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatMinor(row.accruedMinor)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatMinor(row.paidMinor)}</td>
+                    <td className={`px-3 py-1.5 text-right font-semibold tabular-nums whitespace-nowrap ${
+                      row.balanceMinor > 0 ? 'text-amber-600 dark:text-amber-400' : row.balanceMinor < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                     }`}>
                       {formatMinor(row.balanceMinor)}
                     </td>
@@ -880,7 +882,7 @@ const PayrollPage: React.FC = () => {
               )}
             </p>
             {unrecoveredMinor > 0 && (
-              <p className="text-slate-500">
+              <p className="text-slate-500 dark:text-slate-400">
                 {t(
                   'payroll.approveConfirmPayoutNote',
                   'Из кассы при выплате уйдёт {{payable}}: у {{names}} штрафы превысили начисленное, и выплата им обнуляется — отрицательный расход невозможен.',

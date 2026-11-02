@@ -184,43 +184,43 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden border border-slate-200 dark:border-slate-700">
         
         {/* Header */}
-        <div className="relative overflow-hidden p-6 border-b border-slate-100 dark:border-slate-700/50 bg-gradient-to-r from-violet-600/10 to-primary-600/10 dark:from-violet-500/10 dark:to-primary-500/10">
+        <div className="relative overflow-hidden px-4 pt-4 pb-2">
           <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-primary-600 flex items-center justify-center text-white shadow-lg">
-                <Sparkles className="w-5 h-5 animate-pulse" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-md bg-primary-100 dark:bg-primary-950 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t('ai.factory.title', 'AI Конструктор')}</h2>
-                <p className="text-xs font-medium text-primary-600 dark:text-primary-400">{t('ai.factory.subtitle', 'Автоматически создаст Урок + Квиз')}</p>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('ai.factory.title', 'AI Конструктор')}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('ai.factory.subtitle', 'Автоматически создаст Урок + Квиз')}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 transition-colors">
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="-mr-1 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-5">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="px-4 py-2 space-y-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('ai.factory.intro', 'Опишите тему, вставьте ссылку на YouTube или загрузите материал. Gemini 🔥 сгенерирует полноценный урок и тут же добавит к нему интерактивный тест на 10 вопросов.')}
           </p>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label !mb-0">
                 {t('ai.factory.topicLabel', 'О чем будет урок?')}
               </label>
               {isSupported && (
                 <button
                   type="button"
                   onClick={toggleListening}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isListening ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-primary-50 hover:text-primary-600'}`}
+                  className={`flex items-center gap-1 h-6 px-2 rounded-md text-xs font-medium transition-colors ${isListening ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-100'}`}
                   title={isListening ? t('ai.voice.stopRecording', 'Остановить запись') : t('ai.voice.speak', 'Говорить голосом')}
                 >
                   {isListening ? <><MicOff className="w-3.5 h-3.5" /> {t('ai.voice.stop', 'Стоп')}</> : <><Mic className="w-3.5 h-3.5" /> {t('ai.voice.voice', 'Голос')}</>}
@@ -229,7 +229,7 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
             </div>
             <div className="relative">
               <textarea
-                className={`input min-h-[100px] resize-y transition-all text-sm ${isListening ? 'ring-2 ring-red-300 border-red-300' : ''}`}
+                className={`input min-h-[100px] resize-y ${isListening ? 'border-red-400 dark:border-red-700' : ''}`}
                 placeholder={isListening ? t('ai.voice.listening', '🎙️ Слушаю...') : t('ai.factory.placeholder', 'Например: Подробный урок про Французскую революцию, разбей на причины, ход событий и итоги.')}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -237,32 +237,32 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-4 flex flex-col items-center justify-center text-center">
             {file ? (
               <div className="flex items-center gap-3 justify-between w-full">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
                   </div>
                   <div className="text-left min-w-0">
-                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{file.name}</p>
-                    <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => setFile(null)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                  <X className="w-4 h-4" />
+                <button type="button" onClick={() => setFile(null)} className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-md transition-colors">
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
               <>
-                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-2">
-                  <UploadCloud className="w-5 h-5 text-slate-400 text-primary-500" />
+                <div className="flex items-center justify-center mb-2">
+                  <UploadCloud className="w-6 h-6 text-slate-400" />
                 </div>
-                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                   {t('ai.factory.materials', 'Материалы для ИИ (PDF, Изображение)')}
                 </h4>
                 <input type="file" className="hidden" accept="application/pdf,image/*" ref={fileInputRef} onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline">
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline">
                   {t('ai.factory.uploadFile', 'Загрузить файл')}
                 </button>
               </>
@@ -270,8 +270,8 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
           </div>
           
           {loading && loadingState && (
-            <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-lg text-xs font-medium border border-violet-100 dark:border-violet-800/50 flex gap-2 items-center">
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 rounded-lg text-xs border border-slate-200 dark:border-slate-700 flex gap-2 items-center">
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-primary-600 dark:text-primary-400" />
               <span>{loadingState}</span>
             </div>
           )}
@@ -279,29 +279,29 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-700/50 flex gap-3 bg-slate-50 dark:bg-slate-800/50">
-          <button type="button" onClick={onClose} className="btn-secondary flex-1" disabled={loading}>
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="btn-ghost" disabled={loading}>
             {t('common.cancel')}
           </button>
           <button
             type="button"
             onClick={handleGenerate}
             disabled={loading || (!prompt.trim() && !file)}
-            className="btn-primary flex-[2] bg-gradient-to-r from-violet-600 to-primary-600 hover:from-violet-700 hover:to-primary-700 border-none relative overflow-hidden group shadow-md"
+            className="btn-primary relative overflow-hidden"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 {t('common.loading')}
               </span>
             ) : (
-              <span className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5" />
                 {t('ai.factory.create', 'Создать Урок + Квиз')}
               </span>
             )}
-            {!loading && <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />}
+            {!loading && <div className="hidden" />}
           </button>
         </div>
       </div>

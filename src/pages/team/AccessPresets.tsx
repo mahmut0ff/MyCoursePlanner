@@ -22,7 +22,7 @@ const AccessPresets: React.FC<{
   if (ACCESS_PRESETS.length === 0) return null;
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
         {t('team.presets', 'Быстрые наборы')}
       </p>
       <div className="space-y-2">
@@ -34,21 +34,21 @@ const AccessPresets: React.FC<{
               type="button"
               disabled={disabled}
               onClick={() => onToggle(p)}
-              className={`w-full text-left p-3 rounded-xl border transition-colors disabled:opacity-60 disabled:cursor-default ${
+              className={`w-full text-left p-3 rounded-lg border transition-colors disabled:opacity-60 disabled:cursor-default ${
                 on
-                  ? 'border-primary-400 bg-primary-50 dark:bg-primary-500/10 dark:border-primary-500/50'
+                  ? 'border-primary-600 ring-1 ring-primary-600 dark:border-primary-500 dark:ring-primary-500'
                   : 'border-slate-200 dark:border-slate-700 enabled:hover:bg-slate-50 dark:enabled:hover:bg-slate-800'
               }`}
             >
               <span className="flex items-center gap-2">
-                <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                  on ? 'bg-primary-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                <span className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
+                  on ? 'bg-primary-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
                 }`}>
                   {on ? <Check className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
                 </span>
-                <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">{p.label}</span>
+                <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{p.label}</span>
               </span>
-              <span className="block mt-1.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{p.description}</span>
+              <span className="block mt-1 text-xs leading-snug text-slate-500 dark:text-slate-400">{p.description}</span>
             </button>
           );
         })}

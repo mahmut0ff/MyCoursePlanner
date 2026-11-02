@@ -78,7 +78,7 @@ const SaveStatus: React.FC<Props> = ({
         <button
           type="button"
           onClick={onRetry}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+          className="btn-danger"
         >
           {t('journal.retrySave', 'Повторить')}
         </button>
@@ -87,7 +87,7 @@ const SaveStatus: React.FC<Props> = ({
           type="button"
           onClick={onSave}
           disabled={state === 'idle' || state === 'saving'}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition-colors"
+          className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t('journal.saveNow', 'Сохранить')}
         </button>

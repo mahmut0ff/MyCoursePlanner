@@ -103,24 +103,24 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-6">
         <div className="max-w-md w-full text-center">
           {/* Icon */}
-          <div className={`mx-auto mb-6 w-16 h-16 rounded-2xl flex items-center justify-center ${
+          <div className={`mx-auto mb-3 w-10 h-10 rounded-lg flex items-center justify-center ${
             isChunkError
               ? 'bg-amber-100 dark:bg-amber-900/30'
               : 'bg-red-100 dark:bg-red-900/30'
           }`}>
             {isChunkError
-              ? <WifiOff className="w-8 h-8 text-amber-600 dark:text-amber-400" />
-              : <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+              ? <WifiOff className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              : <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
             }
           </div>
 
           {/* Title */}
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
             {isChunkError ? i18n.t('error.appUpdate', 'Обновление приложения') : i18n.t('error.somethingWrong', 'Что-то пошло не так')}
           </h1>
 
           {/* Description */}
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
             {isChunkError
               ? i18n.t('error.newVersionAvailable', 'Вышла новая версия приложения. Перезагрузите страницу, чтобы получить обновление.')
               : i18n.t('error.unexpectedError', 'Произошла непредвиденная ошибка. Попробуйте перезагрузить страницу или вернуться на главную.')
@@ -129,30 +129,30 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
           {/* Error detail (collapsed by default for non-chunk errors) */}
           {!isChunkError && error && (
-            <details className="mb-6 text-left">
+            <details className="mb-4 text-left">
               <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 {i18n.t('error.errorDetails', 'Подробности ошибки')}
               </summary>
-              <pre className="mt-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-red-600 dark:text-red-400 overflow-x-auto whitespace-pre-wrap break-words border border-slate-200 dark:border-slate-700">
+              <pre className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-md text-xs text-red-600 dark:text-red-400 overflow-x-auto whitespace-pre-wrap break-words border border-slate-200 dark:border-slate-700">
                 {error.message}
               </pre>
             </details>
           )}
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <button
               onClick={this.handleReload}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium text-sm transition-colors shadow-md shadow-primary-500/20"
+              className="btn-primary inline-flex items-center justify-center gap-1.5"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-3.5 h-3.5" />
               {i18n.t('error.reload', 'Перезагрузить')}
             </button>
 
             {!isChunkError && (
               <button
                 onClick={this.handleGoHome}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-700"
+                className="btn-secondary inline-flex items-center justify-center gap-1.5"
               >
                 {i18n.t('error.goHome', 'На главную')}
               </button>

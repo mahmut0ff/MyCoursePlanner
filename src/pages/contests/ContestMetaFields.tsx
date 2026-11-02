@@ -10,7 +10,7 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
   const { t } = useTranslation();
   const set = (k: keyof MetaForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
-    <fieldset disabled={disabled} className="space-y-4">
+    <fieldset disabled={disabled} className="space-y-3">
       <Field label={t('contests.title', 'Название')}>
         <input autoFocus value={form.title} onChange={set('title')} placeholder={t('contests.titlePh', 'Инженеры будущего — 2026')} className={inputCls} />
       </Field>
@@ -48,12 +48,12 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
           options={(Object.keys(JUDGING_MODE_LABELS) as JudgingMode[]).map((m) => ({
             value: m,
             label: <>
-              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{judgingModeLabel(m).title}</span>
-              <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{judgingModeLabel(m).hint}</span>
+              <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">{judgingModeLabel(m).title}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">{judgingModeLabel(m).hint}</span>
             </>,
           }))}
           className="grid grid-cols-1 sm:grid-cols-2 gap-2"
-          optionCls={(on) => `text-left rounded-2xl border px-4 py-3 transition-colors disabled:opacity-60 ${on ? 'border-slate-900 dark:border-white bg-slate-900/[0.03] dark:bg-white/[0.06]' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`} />
+          optionCls={(on) => `text-left rounded-lg border px-3 py-2 transition-colors disabled:opacity-60 ${on ? 'border-primary-600 dark:border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`} />
       </div>
     </fieldset>
   );

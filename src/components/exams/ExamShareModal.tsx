@@ -114,31 +114,31 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 exam-slide-up" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 animate-fade-in" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-[480px] shadow-pop overflow-hidden border border-slate-200 dark:border-slate-700 exam-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
-            <QrCode className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t('exams.share.title', 'Поделиться тестом')}</h3>
+            <QrCode className="w-3.5 h-3.5 text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('exams.share.title', 'Поделиться тестом')}</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="px-4 pt-2 pb-4">
           {!published && (
-            <div className="mb-5 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
-              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+            <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800/30">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
                 <Trans i18nKey="exams.share.draftNotice" defaults="Экзамен в статусе <b>черновик</b>. Чтобы ссылка и QR-код заработали, его нужно опубликовать." components={{ b: <b /> }} />
               </p>
               {onPublish && (
                 <button
                   onClick={handlePublish}
                   disabled={publishing}
-                  className="mt-3 w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
+                  className="btn-primary mt-2 w-full flex items-center justify-center gap-1.5"
                 >
-                  {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   {publishing ? t('exams.share.publishing', 'Публикация…') : t('exams.share.publishNow', 'Опубликовать сейчас')}
                 </button>
               )}
@@ -146,14 +146,14 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
           )}
 
           {/* QR */}
-          <div className="flex justify-center mb-5">
-            <div className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative ${!liveLink ? 'opacity-40' : ''}`}>
+          <div className="flex justify-center mb-4">
+            <div className={`bg-white p-3 rounded-lg border border-slate-200 relative ${!liveLink ? 'opacity-40' : ''}`}>
               {qrDataUrl
                 ? <img src={qrDataUrl} alt={t('exams.share.qrAlt', 'QR-код теста')} className="w-52 h-52" />
                 : <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-sm">{t('exams.share.generating', 'Генерация…')}</div>}
               {published && !isAccepting && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />{t('exams.share.closedBadge', 'Закрыто')}</span>
+                  <span className="bg-slate-900/80 text-white text-xs font-medium h-6 px-2 rounded-md flex items-center gap-1.5"><Lock className="w-3 h-3" />{t('exams.share.closedBadge', 'Закрыто')}</span>
                 </div>
               )}
             </div>
@@ -161,10 +161,10 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
 
           {/* Accepting responses toggle */}
           {published && onToggleResponses && (
-            <div className="flex items-center justify-between gap-3 mb-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+            <div className="flex items-center justify-between gap-3 mb-3 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  {isAccepting ? <Unlock className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-slate-400" />}
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  {isAccepting ? <Unlock className="w-3.5 h-3.5 text-emerald-500" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
                   {isAccepting ? t('exams.share.responsesOpen', 'Приём ответов: открыт') : t('exams.share.responsesClosed', 'Приём ответов: закрыт')}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('exams.share.closeHint', 'Закройте после занятия, чтобы по старому QR больше нельзя было пройти тест.')}</p>
@@ -172,34 +172,34 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
               <button
                 onClick={handleToggleResponses}
                 disabled={toggling}
-                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${isAccepting ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}`}
+                className={`shrink-0 ${isAccepting ? 'btn-secondary text-red-600 dark:text-red-400' : 'btn-secondary'}`}
               >
                 {toggling ? '…' : (isAccepting ? t('exams.share.close', 'Закрыть') : t('exams.share.open', 'Открыть'))}
               </button>
             </div>
           )}
 
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mb-3">
             <Trans i18nKey="exams.share.howItWorks" defaults="Студент сканирует QR-код, вводит имя и телефон и проходит тест как гость. Результат и вердикт ИИ появятся в разделе <b>«Заявки»</b>." components={{ b: <b /> }} />
           </p>
 
           {/* Link row */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 mb-4">
-            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm text-indigo-600 dark:text-indigo-400 truncate hover:underline flex items-center gap-1">
+          <div className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 rounded-md pl-2.5 pr-1 h-8 mb-3">
+            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm text-primary-600 dark:text-primary-400 truncate hover:underline flex items-center gap-1">
               {publicUrl}<ExternalLink className="w-3 h-3 shrink-0" />
             </a>
-            <button onClick={copyLink} className="shrink-0 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors" title={t('exams.share.copyLink', 'Скопировать ссылку')}>
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-500" />}
+            <button onClick={copyLink} className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('exams.share.copyLink', 'Скопировать ссылку')}>
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
             </button>
           </div>
 
           {/* Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={downloadQR} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-              <Download className="w-4 h-4" /> {t('exams.share.downloadQr', 'Скачать QR')}
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={downloadQR} disabled={!qrDataUrl || !liveLink} className="btn-primary flex items-center justify-center gap-1.5">
+              <Download className="w-3.5 h-3.5" /> {t('exams.share.downloadQr', 'Скачать QR')}
             </button>
-            <button onClick={printPoster} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-              <Printer className="w-4 h-4" /> {t('exams.share.print', 'Печать')}
+            <button onClick={printPoster} disabled={!qrDataUrl || !liveLink} className="btn-secondary flex items-center justify-center gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> {t('exams.share.print', 'Печать')}
             </button>
           </div>
         </div>

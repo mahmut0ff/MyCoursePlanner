@@ -37,15 +37,15 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ imageSrc, onCropCancel, o
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Camera className="w-4 h-4 text-primary-500" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-[480px] shadow-pop overflow-hidden flex flex-col">
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Camera className="w-3.5 h-3.5 text-slate-400" />
             {t('common.cropAvatar', 'Положение и размер')}
           </h2>
-          <button onClick={onCropCancel} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onCropCancel} className="-mr-1 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
         
@@ -63,7 +63,7 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ imageSrc, onCropCancel, o
           />
         </div>
 
-        <div className="p-4 bg-white dark:bg-slate-800">
+        <div className="px-4 pt-3 pb-4 bg-white dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-4">
             <span className="text-xs text-slate-500 dark:text-slate-400">{t('common.zoom', 'Масштаб')}</span>
             <input
@@ -74,21 +74,21 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ imageSrc, onCropCancel, o
               step={0.1}
               aria-labelledby="Zoom"
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
+              className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-primary-600"
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex justify-end gap-2">
             <button
               onClick={onCropCancel}
-              className="flex-1 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100/50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors border-0"
+              className="btn-ghost"
             >
               {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 py-2 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 border-0"
+              className="btn-primary inline-flex items-center gap-1.5"
             >
               {loading ? (
                 <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

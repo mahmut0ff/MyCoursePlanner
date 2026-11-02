@@ -57,27 +57,27 @@ const StudentAccessModal: React.FC<Props> = ({ uid, studentName, hasLogin, curre
     }
   };
 
-  const field = 'w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm dark:text-white outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white';
+  const field = 'input';
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-pop max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
         {granted ? (
           <div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-              <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-8 h-8 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+              <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.students.access.granted', 'Доступ выдан')}</h2>
-            <p className="text-xs text-slate-500 mb-5">{t('org.students.access.grantedHint', 'Передайте ученику эти данные. Пароль показывается только сейчас.')}</p>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('org.students.access.granted', 'Доступ выдан')}</h2>
+            <p className="text-xs text-slate-500 mb-4">{t('org.students.access.grantedHint', 'Передайте ученику эти данные. Пароль показывается только сейчас.')}</p>
             <div className="space-y-3">
               {([[t('org.students.access.login', 'Логин'), granted.username], [t('auth.password', 'Пароль'), granted.password]] as const).map(([label, value]) => (
-                <div key={label} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                <div key={label} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase font-bold text-slate-400">{label}</p>
-                    <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{value}</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+                    <p className="text-sm font-mono font-semibold text-slate-900 dark:text-slate-100 truncate">{value}</p>
                   </div>
-                  <button onClick={() => copy(value)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0">
-                    <Copy className="w-4 h-4" />
+                  <button onClick={() => copy(value)} className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-md transition-colors shrink-0">
+                    <Copy className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))}
@@ -88,8 +88,8 @@ const StudentAccessModal: React.FC<Props> = ({ uid, studentName, hasLogin, curre
                 <Copy className="w-3.5 h-3.5" /> {t('org.students.access.copyBoth', 'Скопировать логин и пароль')}
               </button>
             </div>
-            <div className="flex justify-end mt-8">
-              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">
+            <div className="flex justify-end mt-4">
+              <button onClick={onClose} className="btn-primary">
                 {t('common.done', 'Готово')}
               </button>
             </div>
@@ -97,22 +97,22 @@ const StudentAccessModal: React.FC<Props> = ({ uid, studentName, hasLogin, curre
         ) : (
           <>
             <div className="flex items-start justify-between mb-1">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-primary-500" />
                 {hasLogin ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grantTitle', 'Выдать доступ в систему')}
               </h2>
-              <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
             </div>
-            <p className="text-xs text-slate-500 mb-5">
+            <p className="text-xs text-slate-500 mb-4">
               <b className="text-slate-700 dark:text-slate-300">{studentName}</b>
               {hasLogin && currentLogin && <> · {t('org.students.access.loginInline', 'логин:')} <span className="font-mono">{currentLogin}</span></>}
               {!hasLogin && <> · {t('org.students.access.noLoginHint', 'сейчас у ученика нет входа — это запись для журнала и оплат.')}</>}
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {!hasLogin && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.access.login', 'Логин')} *</label>
+                  <label className="label">{t('org.students.access.login', 'Логин')} *</label>
                   <input
                     autoFocus
                     value={username}
@@ -123,7 +123,7 @@ const StudentAccessModal: React.FC<Props> = ({ uid, studentName, hasLogin, curre
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">{hasLogin ? t('org.students.access.newPassword', 'Новый пароль') : t('auth.password', 'Пароль')} *</label>
+                <label className="label">{hasLogin ? t('org.students.access.newPassword', 'Новый пароль') : t('auth.password', 'Пароль')} *</label>
                 <div className="relative">
                   <input
                     autoFocus={hasLogin}
@@ -131,23 +131,23 @@ const StudentAccessModal: React.FC<Props> = ({ uid, studentName, hasLogin, curre
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••"
-                    className={`${field} pr-11`}
+                    className={`${field} pr-8`}
                   />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50">
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={onClose} disabled={saving} className="btn-ghost disabled:opacity-50">
                 {t('common.cancel', 'Отмена')}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={saving || password.length < 6 || (!hasLogin && username.trim().length < 3)}
-                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-2"
+                className="btn-primary disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
                 {hasLogin ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grant', 'Выдать доступ')}

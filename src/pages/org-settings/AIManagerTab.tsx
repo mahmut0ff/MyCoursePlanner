@@ -71,7 +71,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
       </div>
     );
   }
@@ -85,11 +85,11 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── On / off ── */}
-      <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4">
+      <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
         <div>
-          <p className="font-semibold text-slate-900 dark:text-white" id="ai-assistant-toggle-label">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white" id="ai-assistant-toggle-label">
             {settings.isActive ? t('aiManager.stateOn', 'Ассистент включён') : t('aiManager.stateOff', 'Ассистент выключен')}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -102,20 +102,20 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
           aria-checked={!!settings.isActive}
           aria-labelledby="ai-assistant-toggle-label"
           onClick={() => update('isActive', !settings.isActive)}
-          className={`relative shrink-0 w-12 h-6 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${settings.isActive ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+          className={`relative shrink-0 w-8 h-[18px] rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${settings.isActive ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
         >
-          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 motion-reduce:transition-none ${settings.isActive ? 'left-[26px]' : 'left-0.5'}`} />
+          <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all duration-200 motion-reduce:transition-none ${settings.isActive ? 'left-4' : 'left-0.5'}`} />
         </button>
       </div>
 
       {settings.isActive && (
-        <>
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
           {/* ── Core Instructions ── */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{t('aiManager.coreKnowledge', 'Базовые знания')}</h3>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('aiManager.coreKnowledge', 'Базовые знания')}</h3>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('aiManager.greeting', 'Приветственное сообщение (Начальное сообщение)')}
               </label>
               <input
@@ -128,7 +128,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('aiManager.about', 'Об организации (Обучающие данные)')}
               </label>
               <textarea
@@ -141,7 +141,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('aiManager.enrollment', 'Политика зачисления')}
                 </label>
                 <textarea
@@ -152,7 +152,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('aiManager.instructions', 'Пользовательские инструкции для AI')}
                 </label>
                 <textarea
@@ -166,26 +166,26 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
           </div>
 
           {/* ── FAQ Builder ── */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t('aiManager.faqTitle', 'Часто задаваемые вопросы (FAQ)')}</h3>
-              <button onClick={addFAQ} className="btn-secondary py-1.5 text-sm flex items-center gap-1">
-                <Plus className="w-4 h-4" /> {t('aiManager.addFaq', 'Добавить FAQ')}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('aiManager.faqTitle', 'Часто задаваемые вопросы (FAQ)')}</h3>
+              <button onClick={addFAQ} className="btn-secondary inline-flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> {t('aiManager.addFaq', 'Добавить FAQ')}
               </button>
             </div>
-            <p className="text-sm text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               {t('aiManager.faqHint', 'Добавление FAQ помогает AI-ассистенту отвечать точнее и надежнее в нестандартных ситуациях.')}
             </p>
 
             <div className="space-y-3">
               {(!settings.faq || settings.faq.length === 0) ? (
-                <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400">
+                <div className="text-center py-6 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-400">
                   {t('aiManager.faqEmpty', 'Пользовательские FAQ не заданы.')}
                 </div>
               ) : (
                 settings.faq.map((item, index) => (
-                  <div key={index} className="flex gap-3 bg-slate-50 dark:bg-slate-700/30 p-4 rounded-xl relative group">
-                    <div className="flex-1 space-y-3">
+                  <div key={index} className="flex gap-2 border border-slate-200 dark:border-slate-700 p-3 rounded-md relative group">
+                    <div className="flex-1 space-y-2">
                       <input
                         type="text"
                         value={item.question}
@@ -203,22 +203,22 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
                     <button
                       onClick={() => removeFAQ(index)}
                       aria-label={t('common.delete', 'Удалить')}
-                      className="text-red-400 hover:text-red-500 self-start p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 self-start opacity-0 group-hover:opacity-100 transition-colors"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
       
       {/* ── Save Action ── */}
       <div className="flex justify-end">
-        <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        <button onClick={handleSave} disabled={saving} className="btn-primary inline-flex items-center gap-1.5">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           {t('aiManager.save', 'Сохранить настройки AI')}
         </button>
       </div>

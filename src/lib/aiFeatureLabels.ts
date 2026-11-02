@@ -35,7 +35,7 @@ export const AI_FEATURE_LABELS: Record<string, string> = {
   sales_bot: 'Ответы абитуриентам',
   parent_summary: 'Сводки для родителей',
   parent_qa: 'Ответы родителям',
-  student_tutor: 'Репетитор для учеников',
+  student_tutor: 'Репетитор для студентов',
 
   // Student tools (api-ai-tutor)
   tutor: 'AI-репетитор',

@@ -135,22 +135,22 @@ const TeacherWheelOfFortune: React.FC<Props> = ({ initialGroups, initialStudents
       <button
         onClick={toggle}
         aria-expanded={open}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
       >
-        <Dices className="w-4 h-4 text-slate-400 shrink-0" />
+        <Dices className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('teacherDashboard.wheelTitle', 'Колесо фортуны')}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
             {t('teacherDashboard.wheelDesc', 'Случайный студент из группы')}
           </p>
         </div>
-        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 dark:border-slate-700 px-5 py-5 flex flex-col items-center">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4 flex flex-col items-center">
           {/* Group selector */}
           <div className="relative w-full max-w-[320px] mb-4">
             <select
@@ -168,19 +168,19 @@ const TeacherWheelOfFortune: React.FC<Props> = ({ initialGroups, initialStudents
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {wheelStudents.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 dark:text-slate-500 w-full">
-              <Users className="w-8 h-8 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">{t('teacherDashboard.wheelEmpty', 'В этой группе нет студентов')}</p>
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400 w-full">
+              <Users className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+              <p className="text-xs">{t('teacherDashboard.wheelEmpty', 'В этой группе нет студентов')}</p>
             </div>
           ) : (
             <>
               <div className="w-full max-w-[280px] sm:max-w-[320px] aspect-square relative mb-5">
                 {/* The Pointer */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 text-slate-800 dark:text-slate-100 drop-shadow-md">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 text-slate-800 dark:text-slate-100">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="rotate-180">
                     <path d="M12 2L2 22h20L12 2z" />
                   </svg>
@@ -189,7 +189,7 @@ const TeacherWheelOfFortune: React.FC<Props> = ({ initialGroups, initialStudents
                 {/* The SVG Wheel */}
                 <svg
                   viewBox="0 0 100 100"
-                  className="w-full h-full drop-shadow-lg"
+                  className="w-full h-full"
                   style={{
                     transform: `rotate(${rotation}deg)`,
                     transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
@@ -237,18 +237,18 @@ const TeacherWheelOfFortune: React.FC<Props> = ({ initialGroups, initialStudents
                 </svg>
 
                 {/* Winner overlay */}
-                <div className={`absolute inset-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm z-30 transition-all duration-500 rounded-full flex flex-col items-center justify-center ${showWinner ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                  <div className="bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-600 rounded-2xl p-5 text-center w-[85%]">
-                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Trophy className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                <div className={`absolute inset-0 bg-white/80 dark:bg-slate-900/80 z-30 transition-all duration-500 rounded-full flex flex-col items-center justify-center ${showWinner ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                  <div className="bg-white dark:bg-slate-800 shadow-pop border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center w-[85%]">
+                    <div className="flex items-center justify-center mx-auto mb-2">
+                      <Trophy className="w-6 h-6 text-amber-500" />
                     </div>
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('teacherDashboard.wheelWinner', 'Выбран(а)')}</p>
-                    <p className="font-bold text-xl text-slate-900 dark:text-white leading-tight mb-4">
+                    <p className="font-semibold text-lg text-slate-900 dark:text-slate-100 leading-tight mb-3">
                       {winner?.displayName}
                     </p>
                     <button
                       onClick={() => setShowWinner(false)}
-                      className="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold py-2 rounded-lg transition-colors"
+                      className="btn-secondary w-full"
                     >
                       {t('teacherDashboard.wheelContinue', 'Продолжить')}
                     </button>
@@ -260,7 +260,7 @@ const TeacherWheelOfFortune: React.FC<Props> = ({ initialGroups, initialStudents
               <button
                 onClick={spin}
                 disabled={spinning || wheelStudents.length <= 1}
-                className="btn-primary w-full max-w-[320px] text-sm font-semibold"
+                className="btn-primary w-full max-w-[320px]"
               >
                 {spinning
                   ? t('teacherDashboard.wheelSpinning', 'Вращение…')

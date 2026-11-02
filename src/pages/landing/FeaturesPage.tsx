@@ -3,23 +3,25 @@ import { useTranslation } from 'react-i18next';
 import { Wallet, ClipboardCheck, CalendarDays, Network, Send, Sparkles, Check, ArrowRight } from 'lucide-react';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 import {
-  Cta, MktNav, MktFooter, Reveal, focusRing, eyebrowCls, h2Cls, primaryBtn,
+  Cta, MktNav, MktFooter, Reveal, focusRing, h2Cls, leadCls, primaryBtn, secondaryBtn,
 } from '../../components/landing/LandingKit';
 
 /* ──────────────────────────────────────────────────────────────
-   /features — the module tour in the same paper/ink language as
-   the home page: one section per area of the center, each with
-   what it does in plain words.
+   /features — the module tour in the app shell's language: one
+   section per area of the center, what it does in plain words on
+   the left and a settings-style checklist on the right.
    ────────────────────────────────────────────────────────────── */
 
 const GROUPS = [
-  { n: 1, id: 'money', icon: Wallet, tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
-  { n: 2, id: 'study', icon: ClipboardCheck, tone: 'bg-primary-600/10 text-primary-600 dark:text-primary-300' },
-  { n: 3, id: 'schedule', icon: CalendarDays, tone: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
-  { n: 4, id: 'team', icon: Network, tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-300' },
-  { n: 5, id: 'parents', icon: Send, tone: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
-  { n: 6, id: 'ai', icon: Sparkles, tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-300' },
+  { n: 1, id: 'money', icon: Wallet },
+  { n: 2, id: 'study', icon: ClipboardCheck },
+  { n: 3, id: 'schedule', icon: CalendarDays },
+  { n: 4, id: 'team', icon: Network },
+  { n: 5, id: 'parents', icon: Send },
+  { n: 6, id: 'ai', icon: Sparkles },
 ];
+
+const hairline = 'border-slate-200 dark:border-slate-700';
 
 const FeaturesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -33,45 +35,37 @@ const FeaturesPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-paper font-marketing text-ink antialiased selection:bg-primary-600 selection:text-white">
+    <div className="min-h-screen overflow-x-clip bg-white text-slate-900 antialiased selection:bg-primary-600 selection:text-white dark:bg-slate-900 dark:text-slate-100">
       <MktNav anchors={anchors} onDemo={openDemo} />
 
       {/* ═══ Hero ═══ */}
-      <header className="mx-auto max-w-[1240px] px-5 pb-10 pt-12 sm:px-8 sm:pt-16 lg:pt-[80px]">
-        <p className={`hero-rise ${eyebrowCls}`}>{t('landing.navFeatures')}</p>
+      <header className="mx-auto max-w-[1200px] px-4 pb-12 pt-12 sm:px-8 sm:pt-20">
         <h1
-          className="hero-rise mt-[22px] max-w-[20ch] text-balance font-marketing-display text-[clamp(32px,4.4vw,60px)] font-bold leading-[1.08] tracking-[-0.01em]"
-          style={{ animationDelay: '0.06s' }}
+          className="hero-rise max-w-[20ch] text-balance text-[clamp(34px,4.6vw,56px)] font-semibold leading-[1.06] tracking-[-0.035em]"
         >
           {t('mkt.fpTitle')}
         </h1>
-        <p className="hero-rise mt-6 max-w-[60ch] text-[17px] leading-[1.65] text-ink/70 sm:text-[19px]" style={{ animationDelay: '0.12s' }}>
+        <p className={`hero-rise mt-5 max-w-[60ch] ${leadCls} sm:!text-[18px]`} style={{ animationDelay: '0.06s' }}>
           {t('mkt.fpSub')}
         </p>
-        <div className="hero-rise mt-9 flex flex-wrap items-center gap-3.5" style={{ animationDelay: '0.18s' }}>
+        <div className="hero-rise mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.12s' }}>
           <Cta onFallback={openDemo} className={primaryBtn}>
-            {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-[18px] w-[18px]" />
+            {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-4 w-4" />
           </Cta>
-          <a
-            href="/#pricing"
-            className={`inline-flex items-center gap-2.5 rounded-full border-[1.5px] border-ink/20 px-[26px] py-4 text-[17px] font-semibold text-ink transition-colors hover:border-ink ${focusRing}`}
-          >
+          <a href="/#pricing" className={secondaryBtn}>
             {t('mkt.fpPricing')}
           </a>
         </div>
       </header>
 
       {/* ═══ Section index — sticky under the nav, scrolls sideways on phones ═══ */}
-      <nav
-        aria-label={t('mkt.fpSections')}
-        className="sticky top-[72px] z-40 border-y border-ink/[0.08] bg-paper/85 backdrop-blur-xl"
-      >
-        <ul className="mx-auto flex max-w-[1240px] gap-2 overflow-x-auto px-5 py-3 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
+      <nav aria-label={t('mkt.fpSections')} className={`sticky top-14 z-40 border-y bg-white dark:bg-slate-900 ${hairline}`}>
+        <ul className="mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
           {GROUPS.map(({ n, id, icon: Icon }) => (
             <li key={id} className="shrink-0">
               <a
                 href={`#${id}`}
-                className={`inline-flex items-center gap-2 rounded-full border border-ink/10 bg-card px-4 py-2 text-sm font-semibold text-ink/75 transition-colors hover:border-ink/30 hover:text-ink ${focusRing}`}
+                className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-[14px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 ${focusRing}`}
               >
                 <Icon aria-hidden className="h-4 w-4" />
                 {t(`mkt.g${n}Tab`)}
@@ -81,27 +75,25 @@ const FeaturesPage: React.FC = () => {
         </ul>
       </nav>
 
-      {/* ═══ Module sections ═══ */}
-      <main className="mx-auto max-w-[1240px] space-y-6 px-5 py-14 sm:px-8 sm:py-20">
-        {GROUPS.map(({ n, id, icon: Icon, tone }, i) => (
-          <section key={id} id={id} className="scroll-mt-[150px]">
+      {/* ═══ Module sections, separated by hairlines rather than boxed ═══ */}
+      <main className="mx-auto max-w-[1200px] px-4 sm:px-8">
+        {GROUPS.map(({ n, id, icon: Icon }, i) => (
+          <section key={id} id={id} className={`scroll-mt-[120px] py-12 sm:py-16 ${i ? `border-t ${hairline}` : ''}`}>
             <Reveal>
-              <div className="grid items-center gap-8 rounded-[28px] border border-ink/[0.06] bg-card p-6 sm:p-10 lg:grid-cols-2 lg:gap-14 lg:p-14">
-                <div className={i % 2 ? 'lg:order-2' : ''}>
-                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${tone}`}>
-                    <Icon aria-hidden className="h-6 w-6" />
-                  </span>
-                  <p className={`mt-6 ${eyebrowCls}`}>{t(`mkt.g${n}Tab`)}</p>
-                  <h2 className={`${h2Cls} !text-[clamp(24px,2.6vw,36px)]`}>{t(`mkt.g${n}Title`)}</h2>
-                  <p className="mt-4 max-w-[52ch] text-[17px] leading-[1.65] text-ink/70">{t(`mkt.g${n}Desc`)}</p>
+              <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-16">
+                <div>
+                  <p className="flex items-center gap-2 text-[14px] font-medium text-primary-600 dark:text-primary-400">
+                    <Icon aria-hidden className="h-4 w-4" />
+                    {t(`mkt.g${n}Tab`)}
+                  </p>
+                  <h2 className={`mt-3 ${h2Cls} !text-[clamp(24px,2.6vw,32px)]`}>{t(`mkt.g${n}Title`)}</h2>
+                  <p className={`mt-4 max-w-[52ch] ${leadCls}`}>{t(`mkt.g${n}Desc`)}</p>
                 </div>
-                <ul className="grid gap-3">
+                <ul className={`divide-y overflow-hidden rounded-lg border ${hairline} divide-slate-200 dark:divide-slate-700`}>
                   {[1, 2, 3, 4].map((b) => (
-                    <li key={b} className="flex items-start gap-3.5 rounded-2xl bg-paper px-5 py-4">
-                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
-                        <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={3} />
-                      </span>
-                      <span className="text-[15px] font-medium leading-snug">{t(`mkt.g${n}B${b}`)}</span>
+                    <li key={b} className="flex items-start gap-3 px-4 py-3.5">
+                      <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" strokeWidth={2.5} />
+                      <span className="text-[15px] leading-snug">{t(`mkt.g${n}B${b}`)}</span>
                     </li>
                   ))}
                 </ul>
@@ -112,23 +104,21 @@ const FeaturesPage: React.FC = () => {
       </main>
 
       {/* ═══ CTA ═══ */}
-      <section className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-8 sm:pb-[104px]">
+      <section className="mx-auto max-w-[1200px] px-4 pb-16 pt-4 sm:px-8 sm:pb-24">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[28px] bg-primary-600 p-7 text-white sm:rounded-[36px] sm:px-16 sm:py-[72px]">
-            <div aria-hidden className="absolute -right-20 -top-20 h-[340px] w-[340px] rounded-full bg-white/[0.08]" />
-            <div aria-hidden className="absolute -bottom-[120px] right-[60px] h-[260px] w-[260px] rounded-full bg-amber-500/25" />
-            <div className="relative max-w-[60ch]">
-              <h2 className="text-balance font-marketing-display text-[clamp(26px,3.2vw,44px)] font-bold leading-[1.12]">
+          <div className="grid gap-8 rounded-3xl bg-primary-600 p-7 text-white sm:p-12 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-12 lg:p-14 dark:bg-primary-700">
+            <div className="max-w-[56ch]">
+              <h2 className="text-balance text-[clamp(26px,3vw,40px)] font-semibold leading-[1.12] tracking-[-0.03em]">
                 {t('home.ctaTitle')}
               </h2>
-              <p className="mt-5 text-[17px] leading-relaxed text-white/80">{t('home.ctaDesc')}</p>
-              <Cta
-                onFallback={openDemo}
-                className="mt-[34px] inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-[#16141f] transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
-              >
-                {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-[18px] w-[18px]" />
-              </Cta>
+              <p className="mt-4 text-[16px] leading-relaxed text-white/85">{t('home.ctaDesc')}</p>
             </div>
+            <Cta
+              onFallback={openDemo}
+              className="inline-flex h-11 items-center gap-2 justify-self-start whitespace-nowrap rounded-md bg-white px-5 text-[15px] font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+            >
+              {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-4 w-4" />
+            </Cta>
           </div>
         </Reveal>
       </section>

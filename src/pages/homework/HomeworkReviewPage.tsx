@@ -19,16 +19,16 @@ const KanbanColumn: React.FC<{ id: string; title: string; count: number; color: 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col flex-1 min-w-0 bg-slate-50/80 dark:bg-slate-800/30 border rounded-2xl transition-all ${
-        isOver ? `border-2 ${color} bg-opacity-10` : 'border-slate-200/80 dark:border-slate-700/40'
+      className={`flex flex-col flex-1 min-w-0 bg-slate-50 dark:bg-slate-800/30 border rounded-lg transition-colors ${
+        isOver ? `${color}` : 'border-slate-200 dark:border-slate-700'
       }`}
     >
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-200/60 dark:border-slate-700/40">
-        <div className={`w-2.5 h-2.5 rounded-full ${color.replace('border-', 'bg-')}`} />
-        <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-[13px] tracking-wide">{title}</h3>
-        <span className="ml-auto bg-slate-200/80 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300 w-6 h-6 flex items-center justify-center rounded-lg text-[11px] font-bold">{count}</span>
+      <div className="flex items-center gap-2 h-10 px-3 border-b border-slate-200 dark:border-slate-700">
+        <div className={`w-1.5 h-1.5 rounded-full ${color.replace('border-', 'bg-')}`} />
+        <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{title}</h3>
+        <span className="ml-auto inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-slate-200/70 text-slate-700 dark:bg-slate-700 dark:text-slate-300">{count}</span>
       </div>
-      <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar p-3 pb-4">
+      <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar p-2 pb-3">
         {children}
       </div>
     </div>
@@ -48,19 +48,19 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
       ref={setNodeRef}
       style={style}
       onClick={onClick}
-      className={`group relative bg-white dark:bg-slate-800 rounded-xl p-3.5 border cursor-pointer transition-all duration-200 ${
+      className={`group relative bg-white dark:bg-slate-800 rounded-md p-3 border cursor-pointer transition-colors ${
         isDragging
-          ? 'opacity-50 ring-2 ring-accent-teal border-transparent shadow-2xl scale-105 z-50'
+          ? 'opacity-50 ring-2 ring-primary-500 border-transparent shadow-pop z-50'
           : isActive
-            ? 'border-accent-teal ring-2 ring-accent-teal/20 shadow-md bg-accent-teal/[0.03] dark:bg-accent-teal/5'
-            : 'border-slate-200/80 dark:border-slate-700/60 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600'
+            ? 'border-primary-500 ring-2 ring-primary-500/20'
+            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
          <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{sub.studentName}</h4>
-            <p className="text-[11px] text-slate-500 truncate mt-0.5" title={sub.lessonTitle}>{sub.lessonTitle}</p>
-            {sub.groupName && <span className="inline-block mt-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.5 rounded-md truncate max-w-full">{sub.groupName}</span>}
+            <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{sub.studentName}</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5" title={sub.lessonTitle}>{sub.lessonTitle}</p>
+            {sub.groupName && <span className="inline-flex items-center mt-1 h-5 px-1.5 rounded text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 truncate max-w-full">{sub.groupName}</span>}
          </div>
          <div {...listeners} {...attributes} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
            <GripVertical className="w-3.5 h-3.5" />
@@ -69,15 +69,15 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
 
       {sub.attachments && sub.attachments.length > 0 && (
          <div className="flex gap-1.5 mb-2 mt-2">
-           {sub.attachments.some(a => a.type === 'video') && <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-1.5 py-0.5 rounded-md"><FileVideo className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'video').length}</span>}
-           {sub.attachments.some(a => a.type === 'image') && <span className="flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 px-1.5 py-0.5 rounded-md"><ImageIcon className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'image').length}</span>}
+           {sub.attachments.some(a => a.type === 'video') && <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"><FileVideo className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'video').length}</span>}
+           {sub.attachments.some(a => a.type === 'image') && <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"><ImageIcon className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'image').length}</span>}
          </div>
       )}
 
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40">
-        <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString(numericDateLocale())}</span>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <span className="text-xs text-slate-400 tabular-nums">{new Date(sub.submittedAt).toLocaleDateString(numericDateLocale())}</span>
         {sub.status === 'graded' && typeof sub.finalScore === 'number' && (
-           <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-lg">
+           <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
              {sub.finalScore}/{sub.maxPoints || 10}
            </span>
         )}
@@ -91,12 +91,12 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const { t } = useTranslation();
   const config = {
-    graded: { label: t('lessons.view.statusGraded', 'Оценено'), cls: 'bg-emerald-500' },
-    reviewing: { label: t('homework.review.statusReviewing', 'Проверяется'), cls: 'bg-amber-500' },
-    pending: { label: t('homework.panel.pending', 'Ожидает'), cls: 'bg-slate-400' },
-  }[status] || { label: status, cls: 'bg-slate-400' };
+    graded: { label: t('lessons.view.statusGraded', 'Оценено'), cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+    reviewing: { label: t('homework.review.statusReviewing', 'Проверяется'), cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    pending: { label: t('homework.panel.pending', 'Ожидает'), cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  }[status] || { label: status, cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' };
 
-  return <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest text-white font-bold ${config.cls}`}>{config.label}</span>;
+  return <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${config.cls}`}>{config.label}</span>;
 };
 
 // ─── MAIN PAGE COMPONENT ───
@@ -262,43 +262,43 @@ const HomeworkReviewPage: React.FC = () => {
   const gradedSubs = filtered.filter(s => s.status === 'graded');
   const avgScore = gradedSubs.length ? Math.round(gradedSubs.reduce((a, s) => a + (s.finalScore || 0), 0) / gradedSubs.length * 10) / 10 : 0;
 
-  if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-10 h-10 border-4 border-accent-teal border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">{t('homework.review.loading', 'Загрузка доски...')}</p></div>;
+  if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div><p className="mt-3 text-sm text-slate-500">{t('homework.review.loading', 'Загрузка доски...')}</p></div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1800px] mx-auto">
+    <div className="flex flex-col h-[calc(100vh-80px)]">
       
       {/* Header */}
-      <div className="px-6 pb-4 shrink-0 space-y-3">
+      <div className="pb-3 shrink-0 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('homework.review.title', 'Доска проверки работ')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">{t('homework.review.subtitle', 'Перетаскивайте карточки для изменения статуса')}</p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('homework.review.title', 'Доска проверки работ')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-xs">{t('homework.review.subtitle', 'Перетаскивайте карточки для изменения статуса')}</p>
             {/* ДЗ сдаётся только в Telegram-боте — без этой строки пустая доска не объясняет, откуда возьмутся работы. */}
             <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">{t('homework.review.telegramHint', 'Ученики сдают работы в Telegram-боте — они появятся здесь сами.')}</p>
           </div>
         </div>
 
         {/* Stats + Filters Row */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Stats pills */}
           <div className="flex items-center gap-1.5 mr-auto">
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-300" title={t('lessons.view.statusPending', 'Ожидает проверки')}>
+            <div className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium tabular-nums bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" title={t('lessons.view.statusPending', 'Ожидает проверки')}>
               <Clock className="w-3 h-3" /> {pendingSubs.length}
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/15 border border-blue-200/60 dark:border-blue-800/40 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-300" title={t('lessons.view.statusReviewing', 'На проверке')}>
+            <div className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium tabular-nums bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" title={t('lessons.view.statusReviewing', 'На проверке')}>
               <BarChart3 className="w-3 h-3" /> {reviewingSubs.length}
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200/60 dark:border-emerald-800/40 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-300" title={t('lessons.view.statusGraded', 'Оценено')}>
+            <div className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium tabular-nums bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" title={t('lessons.view.statusGraded', 'Оценено')}>
               <CheckCircle className="w-3 h-3" /> {gradedSubs.length}
             </div>
-            {avgScore > 0 && <span className="text-[11px] text-slate-400 font-medium ml-1">Ø {avgScore}</span>}
+            {avgScore > 0 && <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums ml-1">Ø {avgScore}</span>}
           </div>
 
           {/* Group filter */}
           {groups.length > 0 && (
             <div className="relative">
               <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-teal/30">
+              <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="input w-auto pl-8 pr-3 appearance-none cursor-pointer">
                 <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                 {groups.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
@@ -313,43 +313,43 @@ const HomeworkReviewPage: React.FC = () => {
               placeholder={t('homework.review.searchPh', 'Поиск...')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-teal/30 transition-all"
+              className="input pl-8 pr-3 w-44"
             />
           </div>
         </div>
       </div>
 
       {/* Main Content — Kanban + Detail Panel side by side */}
-      <div className="flex-1 flex gap-0 overflow-hidden min-h-0">
+      <div className="flex-1 flex gap-3 overflow-hidden min-h-0">
         
         {/* Kanban Board */}
-        <div className={`flex-1 min-w-0 overflow-x-auto overflow-y-hidden custom-scrollbar px-6 pb-4 transition-all duration-300 ${selectedSubmission ? 'hidden lg:block lg:max-w-[55%] xl:max-w-[60%]' : ''}`}>
+        <div className={`flex-1 min-w-0 overflow-x-auto overflow-y-hidden custom-scrollbar pb-3 transition-all duration-300 ${selectedSubmission ? 'hidden lg:block lg:max-w-[55%] xl:max-w-[60%]' : ''}`}>
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex gap-4 h-full items-stretch min-w-max lg:min-w-0 lg:w-full">
+            <div className="flex gap-3 h-full items-stretch min-w-max lg:min-w-0 lg:w-full">
               
               <KanbanColumn id="pending" title={t('lessons.view.statusPending', 'Ожидает проверки')} count={pendingSubs.length} color="border-slate-400">
                 {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                {pendingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><Clock className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.noNew', 'Нет новых работ')}</p></div>}
+                {pendingSubs.length === 0 && <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-md"><Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" /><p className="text-xs text-slate-500">{t('homework.review.noNew', 'Нет новых работ')}</p></div>}
               </KanbanColumn>
               
               <KanbanColumn id="reviewing" title={t('lessons.view.statusReviewing', 'На проверке')} count={reviewingSubs.length} color="border-amber-400">
                  {reviewingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {reviewingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.dropHere', 'Перетащите сюда')}</p></div>}
+                 {reviewingSubs.length === 0 && <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-md"><BarChart3 className="w-6 h-6 mx-auto mb-2 text-slate-400" /><p className="text-xs text-slate-500">{t('homework.review.dropHere', 'Перетащите сюда')}</p></div>}
               </KanbanColumn>
 
               <KanbanColumn id="graded" title={t('lessons.view.statusGraded', 'Оценено')} count={gradedSubs.length} color="border-emerald-400">
                  {gradedSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {gradedSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.gradedWorks', 'Оценённые работы')}</p></div>}
+                 {gradedSubs.length === 0 && <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-md"><CheckCircle className="w-6 h-6 mx-auto mb-2 text-slate-400" /><p className="text-xs text-slate-500">{t('homework.review.gradedWorks', 'Оценённые работы')}</p></div>}
               </KanbanColumn>
 
             </div>
 
             <DragOverlay>
               {activeDragItem ? (
-                <div className="bg-white dark:bg-slate-800 rounded-xl p-3.5 shadow-2xl opacity-90 scale-105 border-2 border-accent-teal ring-4 ring-accent-teal/20 w-[280px]">
-                   <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{activeDragItem.studentName}</h4>
-                   <p className="text-[11px] text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
-                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString(numericDateLocale())}</span>
+                <div className="bg-white dark:bg-slate-800 rounded-md p-3 shadow-pop border border-primary-500 ring-2 ring-primary-500/20 w-[280px]">
+                   <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{activeDragItem.studentName}</h4>
+                   <p className="text-xs text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
+                   <span className="text-xs text-slate-400 tabular-nums mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString(numericDateLocale())}</span>
                 </div>
               ) : null}
             </DragOverlay>
@@ -358,41 +358,41 @@ const HomeworkReviewPage: React.FC = () => {
 
         {/* Detail Panel — Inline, no modal */}
         {selectedSubmission && (
-          <div className="w-full lg:w-[45%] xl:w-[40%] lg:max-w-[560px] shrink-0 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right-4 duration-300">
+          <div className="w-full lg:w-[45%] xl:w-[40%] lg:max-w-[560px] shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden animate-in slide-in-from-right-4 duration-300">
             
             {/* Detail Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-               <button onClick={closeDetail} className="lg:hidden p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title={t('common.back', 'Назад')}>
-                  <ArrowLeft className="w-5 h-5" />
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
+               <button onClick={closeDetail} className="lg:hidden w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors" title={t('common.back', 'Назад')}>
+                  <ArrowLeft className="w-3.5 h-3.5" />
                </button>
                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">{selectedSubmission.studentName}</h3>
-                  <p className="text-[13px] text-slate-500 truncate">{selectedSubmission.lessonTitle}</p>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{selectedSubmission.studentName}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{selectedSubmission.lessonTitle}</p>
                </div>
                <div className="flex items-center gap-2 shrink-0">
                  {canAccess('ai') && (
                     <button 
                       onClick={handleAIAssist}
                       disabled={isAIGrading}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white rounded-lg text-[12px] font-semibold transition-all disabled:opacity-70 disabled:grayscale"
+                      className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-70"
                     >
                       {isAIGrading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                       {isAIGrading ? t('homework.review.thinking', 'Думает...') : t('homework.review.aiGrade', 'AI Оценка')}
                     </button>
                  )}
-                 <button onClick={closeDetail} className="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    <X className="w-5 h-5" />
+                 <button onClick={closeDetail} className="hidden lg:flex w-7 h-7 items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
+                    <X className="w-3.5 h-3.5" />
                  </button>
                </div>
             </div>
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="p-5 space-y-5">
+              <div className="p-4 space-y-4">
               
                 {/* Info Bar */}
-                <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/40 rounded-md border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">
                     <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString(numericDateLocale())}
                   </div>
                   <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
@@ -401,42 +401,42 @@ const HomeworkReviewPage: React.FC = () => {
 
                 {/* Text submission */}
                 <div>
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t('homework.review.textAnswer', 'Текстовый ответ')}</h4>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-slate-800 dark:text-slate-300 text-[14px] whitespace-pre-wrap leading-relaxed border border-slate-100 dark:border-slate-800">
-                    {selectedSubmission.content || <span className="text-slate-400 italic text-[13px]">{t('homework.review.noText', 'Студент не оставил текстового ответа')}</span>}
+                  <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('homework.review.textAnswer', 'Текстовый ответ')}</h4>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-md text-slate-800 dark:text-slate-300 text-sm whitespace-pre-wrap leading-relaxed border border-slate-200 dark:border-slate-700">
+                    {selectedSubmission.content || <span className="text-slate-400 text-sm">{t('homework.review.noText', 'Студент не оставил текстового ответа')}</span>}
                   </div>
                 </div>
 
                 {/* Attachments */}
                 {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
                   <div>
-                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-                      {t('lessons.attachments', 'Вложения')} <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold">{selectedSubmission.attachments.length}</span>
+                    <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
+                      {t('lessons.attachments', 'Вложения')} <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{selectedSubmission.attachments.length}</span>
                     </h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                        {selectedSubmission.attachments.map((att, i) => (
-                         <a key={i} href={att.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 relative hover:border-accent-teal hover:ring-2 hover:ring-accent-teal/20 transition-all">
+                         <a key={i} href={att.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 relative hover:border-slate-400 dark:hover:border-slate-500 transition-colors">
                             {att.type === 'video' ? (
                               <div className="aspect-video bg-black relative flex items-center justify-center">
                                 <video src={att.url} className="w-full h-full object-cover opacity-80" controls />
-                                {!att.url.endsWith('mp4') && <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4 text-center pointer-events-none group-hover:opacity-0 transition-opacity"><FileVideo className="w-6 h-6 mb-1"/><span className="text-[10px] font-bold">{att.name}</span></div>}
+                                {!att.url.endsWith('mp4') && <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4 text-center pointer-events-none group-hover:opacity-0 transition-opacity"><FileVideo className="w-6 h-6 mb-1"/><span className="text-[11px] font-semibold">{att.name}</span></div>}
                               </div>
                             ) : att.type === 'audio' ? (
                               <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-3">
                                  <FileAudio className="w-8 h-8 text-amber-500 mb-2" />
                                  <audio src={att.url} controls className="w-full h-8 z-10 relative" />
-                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none"><p className="text-white text-[10px] font-medium truncate w-full text-center">{att.name}</p></div>
+                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none"><p className="text-white text-[11px] font-medium truncate w-full text-center">{att.name}</p></div>
                               </div>
                             ) : att.type === 'archive' || att.type === 'document' ? (
                               <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-3 text-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
                                 {att.type === 'archive' ? <FileArchive className="w-8 h-8 text-red-500 mb-2" /> : <FileText className="w-8 h-8 text-blue-500 mb-2" />}
-                                <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
-                                <span className="mt-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full text-[9px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">{t('lessons.view.download', 'Скачать')}</span>
+                                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
+                                <span className="mt-1 inline-flex items-center h-5 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-700 dark:text-slate-300">{t('lessons.view.download', 'Скачать')}</span>
                               </div>
                             ) : (
                               <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative">
                                  <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
-                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2"><p className="text-white text-[10px] font-medium truncate">{att.name}</p></div>
+                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2"><p className="text-white text-[11px] font-medium truncate">{att.name}</p></div>
                               </div>
                             )}
                          </a>
@@ -447,46 +447,46 @@ const HomeworkReviewPage: React.FC = () => {
 
                 {/* AI Analysis Block */}
                 {selectedSubmission.aiAnalysis && (
-                  <div className="p-5 rounded-xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-900/5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="w-5 h-5 text-indigo-500" />
-                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">{t('homework.review.aiReport', 'Отчёт нейросети')}</h4>
+                  <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('homework.review.aiReport', 'Отчёт нейросети')}</h4>
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {/* Recommended grade */}
-                      <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">{t('homework.review.suggestedScore', 'Рекомендуемый балл')}</p>
-                        <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{selectedSubmission.aiAnalysis.grade} <span className="text-sm text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t('homework.review.suggestedScore', 'Рекомендуемый балл')}</p>
+                        <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{selectedSubmission.aiAnalysis.grade} <span className="text-sm text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
                       </div>
 
                       {/* Summary */}
                       {selectedSubmission.aiAnalysis.summary && (
-                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{t('homework.review.overall', 'Общая оценка')}</p>
-                          <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.summary}</p>
+                        <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('homework.review.overall', 'Общая оценка')}</p>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.summary}</p>
                         </div>
                       )}
 
                       {/* Strengths / Weaknesses */}
                       {((selectedSubmission.aiAnalysis.strengths?.length || 0) > 0 || (selectedSubmission.aiAnalysis.weaknesses?.length || 0) > 0) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {selectedSubmission.aiAnalysis.strengths && selectedSubmission.aiAnalysis.strengths.length > 0 && (
-                            <div className="p-3.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-900/10">
-                              <p className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-bold mb-2 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> {t('homework.review.pros', 'Плюсы')}</p>
+                            <div className="p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1.5 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> {t('homework.review.pros', 'Плюсы')}</p>
                               <ul className="space-y-1.5">
                                 {selectedSubmission.aiAnalysis.strengths.map((s, i) => (
-                                  <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-emerald-500 font-bold shrink-0">+</span>{s}</li>
+                                  <li key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-emerald-500 font-semibold shrink-0">+</span>{s}</li>
                                 ))}
                               </ul>
                             </div>
                           )}
                           {selectedSubmission.aiAnalysis.weaknesses && selectedSubmission.aiAnalysis.weaknesses.length > 0 && (
-                            <div className="p-3.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10">
-                              <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold mb-2 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> {t('homework.review.cons', 'Минусы')}</p>
+                            <div className="p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1.5 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> {t('homework.review.cons', 'Минусы')}</p>
                               <ul className="space-y-1.5">
                                 {selectedSubmission.aiAnalysis.weaknesses.map((s, i) => (
-                                  <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-amber-500 font-bold shrink-0">−</span>{s}</li>
+                                  <li key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-amber-500 font-semibold shrink-0">−</span>{s}</li>
                                 ))}
                               </ul>
                             </div>
@@ -496,15 +496,15 @@ const HomeworkReviewPage: React.FC = () => {
 
                       {/* Grammar issues */}
                       {selectedSubmission.aiAnalysis.grammarIssues && selectedSubmission.aiAnalysis.grammarIssues.length > 0 && (
-                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">{t('homework.review.issues', 'Замечания и правки ({{count}})', { count: selectedSubmission.aiAnalysis.grammarIssues.length })}</p>
+                        <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('homework.review.issues', 'Замечания и правки ({{count}})', { count: selectedSubmission.aiAnalysis.grammarIssues.length })}</p>
                           <ul className="space-y-2.5">
                             {selectedSubmission.aiAnalysis.grammarIssues.map((g, i) => (
-                              <li key={i} className="text-[12.5px] leading-snug">
+                              <li key={i} className="text-sm leading-snug">
                                 <span className="text-red-500 line-through decoration-red-400/60">{g.fragment}</span>
                                 <span className="mx-1.5 text-slate-400">→</span>
                                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{g.correction}</span>
-                                {g.explanation && <p className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">{g.explanation}</p>}
+                                {g.explanation && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{g.explanation}</p>}
                               </li>
                             ))}
                           </ul>
@@ -513,9 +513,9 @@ const HomeworkReviewPage: React.FC = () => {
 
                       {/* Suggestions */}
                       {selectedSubmission.aiAnalysis.suggestions && (
-                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{t('homework.review.recommendations', 'Рекомендации')}</p>
-                          <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
+                        <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('homework.review.recommendations', 'Рекомендации')}</p>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
                         </div>
                       )}
                     </div>
@@ -525,10 +525,10 @@ const HomeworkReviewPage: React.FC = () => {
             </div>
 
             {/* Grading Footer */}
-            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 space-y-3">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0 space-y-3">
               {/* Score section */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{t('homework.review.score', 'Балл')}</label>
+                <label className="label">{t('homework.review.score', 'Балл')}</label>
                 <div className="flex items-center gap-3">
                   <input 
                     type="range"
@@ -536,18 +536,18 @@ const HomeworkReviewPage: React.FC = () => {
                     max={selectedSubmission.maxPoints || 10}
                     value={gradeInput}
                     onChange={e => setGradeInput(Number(e.target.value))}
-                    className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-accent-teal"
+                    className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-primary-600"
                   />
-                  <div className="flex items-baseline gap-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 min-w-[72px] justify-center">
+                  <div className="flex items-baseline gap-0.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md px-2.5 py-1 min-w-[72px] justify-center">
                     <input 
                       type="number" 
                       min={0}
                       max={selectedSubmission.maxPoints || 10}
                       value={gradeInput}
                       onChange={e => setGradeInput(Number(e.target.value))}
-                      className="w-8 text-center text-lg font-black text-slate-900 dark:text-white bg-transparent outline-none"
+                      className="w-8 text-center text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 bg-transparent outline-none"
                     />
-                    <span className="text-[11px] text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span>
+                    <span className="text-xs text-slate-400 tabular-nums">/ {selectedSubmission.maxPoints || 10}</span>
                   </div>
                 </div>
                 {/* Visual bar */}
@@ -564,22 +564,22 @@ const HomeworkReviewPage: React.FC = () => {
               
               {/* Feedback */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{t('homework.review.feedback', 'Отзыв')}</label>
+                <label className="label">{t('homework.review.feedback', 'Отзыв')}</label>
                 <textarea 
                   value={feedbackInput}
                   onChange={e => setFeedbackInput(e.target.value)}
                   placeholder={t('homework.review.feedbackPh', 'Отличная работа, так держать!')}
                   rows={2}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-[13px] text-slate-900 dark:text-white transition-all outline-none placeholder:text-slate-400 resize-none"
+                  className="input w-full resize-none"
                 />
               </div>
 
               <button
                 onClick={handleSaveGrade}
                 disabled={isSaving}
-                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5"
+                className="btn-primary w-full flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> {t('common.saving', 'Сохранение...')}</> : <>{t('homework.review.saveGrade', 'Сохранить оценку')} <CheckCircle className="w-4 h-4" /></>}
+                {isSaving ? <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> {t('common.saving', 'Сохранение...')}</> : <>{t('homework.review.saveGrade', 'Сохранить оценку')} <CheckCircle className="w-3.5 h-3.5" /></>}
               </button>
             </div>
             

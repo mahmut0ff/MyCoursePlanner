@@ -64,11 +64,11 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!busy) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!busy) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-pop border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-1">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
         <p className="text-xs text-slate-500 mb-4">
           <b className="text-slate-700 dark:text-slate-300">{studentName}</b>
@@ -76,7 +76,7 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
         </p>
 
         {options.length === 0 ? (
-          <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-xl text-xs font-medium mb-5 border border-amber-200/50">
+          <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg text-xs font-medium mb-4 border border-amber-200 dark:border-amber-800/40">
             {mode === 'group' ? t('roster.move.noGroups', 'В организации нет групп.') : t('roster.move.noBranches', 'В организации нет филиалов.')}
           </div>
         ) : (
@@ -86,23 +86,23 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
               onChange={e => setTargetId(e.target.value)}
               disabled={busy}
               autoFocus
-              className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500 mb-2"
+              className="input mb-2"
             >
               <option value="">{t('roster.move.choose', '— Выберите —')}</option>
               {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
-            <p className="text-[11px] text-slate-400 mb-5">{hint}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{hint}</p>
           </>
         )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} disabled={busy} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50">
+          <button onClick={onClose} disabled={busy} className="btn-ghost disabled:opacity-50">
             {t('common.cancel', 'Отмена')}
           </button>
           <button
             onClick={handleMove}
             disabled={!targetId || busy}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-40 transition-all flex items-center gap-2"
+            className="btn-primary disabled:opacity-40 inline-flex items-center gap-1.5"
           >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
             {t('roster.bulk.migrate', 'Перевести')}

@@ -148,46 +148,42 @@ const NoAdmissionPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-4 pb-10">
       {/* ─── Шапка ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Ban className="w-6 h-6 text-rose-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Ban className="w-4 h-4 text-rose-500" />
             {t('noAdmission.title', 'Недопуск')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('noAdmission.subtitle', { threshold: NO_ADMISSION_THRESHOLD, defaultValue: 'Студенты, чей рейтинг ниже {{threshold}} баллов. Им нужно подтянуть посещаемость или оценки.' })}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Link
             to="/rating"
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="btn-secondary inline-flex items-center gap-1.5"
           >
-            <Trophy className="w-4 h-4" /> {t('noAdmission.fullRating', 'Полный рейтинг')}
+            <Trophy className="w-3.5 h-3.5" /> {t('noAdmission.fullRating', 'Полный рейтинг')}
           </Link>
           <button
             onClick={exportCsv}
             disabled={!filtered.length}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" /> {t('rating.export', 'Экспорт CSV')}
+            <Download className="w-3.5 h-3.5" /> {t('rating.export', 'Экспорт CSV')}
           </button>
         </div>
       </div>
 
       {/* ─── Период ─── */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-0.5">
         {RATING_PERIODS.map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              period === p
-                ? 'bg-primary-500 text-white'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-            }`}
+            className={`h-7 px-2 text-sm rounded-md transition-colors ${period === p ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
           >
             {t(`rating.period.${p}`, RATING_PERIOD_FALLBACK[p])}
           </button>
@@ -196,14 +192,14 @@ const NoAdmissionPage: React.FC = () => {
 
       {/* ─── Филиалы (общий переключатель приложения) ─── */}
       {canSwitch && branches.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Building2 className="w-4 h-4 text-slate-400" />
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+            <h2 className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {t('rating.byBranch', 'По филиалам')}
             </h2>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-0.5">
             <BranchChip
               label={t('branch.allBranches', 'Все филиалы')}
               count={activeBranchId === null ? students.length : undefined}
@@ -224,17 +220,17 @@ const NoAdmissionPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-100 dark:border-rose-900/40 flex items-center justify-between gap-3">
+        <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-200 dark:border-rose-900/40 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={reload} className="inline-flex items-center gap-1.5 text-xs font-semibold shrink-0 hover:underline">
+          <button onClick={reload} className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0 hover:underline">
             <RefreshCw className="w-3.5 h-3.5" /> {t('rating.retry', 'Повторить')}
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[0, 1, 2, 3].map(i => <CardSkeleton key={i} />)}
           </div>
           <ListSkeleton rows={6} />
@@ -242,31 +238,31 @@ const NoAdmissionPage: React.FC = () => {
       ) : (
         <>
           {/* ─── Сводка ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <SummaryCard
               icon={ShieldAlert}
-              iconClass="text-rose-500 bg-rose-50 dark:bg-rose-900/30"
+              iconClass="text-slate-400"
               label={t('noAdmission.notAdmitted', 'Недопущено')}
               value={String(blocked.length)}
               sub={t('noAdmission.ofWithData', { count: withData.length, defaultValue: 'из {{count}} с данными' })}
             />
             <SummaryCard
               icon={ShieldCheck}
-              iconClass="text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"
+              iconClass="text-slate-400"
               label={t('noAdmission.admitted', 'Допущено')}
               value={String(admittedCount)}
               sub={scopeLabel}
             />
             <SummaryCard
               icon={Gauge}
-              iconClass="text-slate-500 bg-slate-100 dark:bg-slate-700/40"
+              iconClass="text-slate-400"
               label={t('noAdmission.threshold', 'Порог допуска')}
               value={String(NO_ADMISSION_THRESHOLD)}
               sub={t('noAdmission.thresholdSub', 'балл и выше — допуск')}
             />
             <SummaryCard
               icon={TrendingDown}
-              iconClass="text-amber-500 bg-amber-50 dark:bg-amber-900/30"
+              iconClass="text-slate-400"
               label={t('noAdmission.avgBlocked', 'Средний балл недопущенных')}
               value={blocked.length ? String(avgBlockedScore) : '—'}
               sub={blocked.length ? t('noAdmission.avgBlockedSub', { gap: NO_ADMISSION_THRESHOLD - avgBlockedScore, defaultValue: 'в среднем не хватает {{gap}}' }) : undefined}
@@ -274,27 +270,27 @@ const NoAdmissionPage: React.FC = () => {
           </div>
 
           {/* ─── Фильтры и поиск ─── */}
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex-1 relative min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <div className="relative min-w-0 md:w-72">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={t('rating.searchPlaceholder', 'Поиск по имени студента...')}
                 aria-label={t('rating.searchPlaceholder', 'Поиск по имени студента...')}
-                className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20"
+                className="input pl-8"
               />
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 shrink-0">
-                <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <BookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select
                   value={courseId}
                   onChange={e => { setCourseId(e.target.value); setGroupId('all'); }}
                   aria-label={t('rating.filterByCourse', 'Фильтр по курсу')}
-                  className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  className="input"
                 >
                   <option value="all">{t('rating.allCourses', 'Все курсы')}</option>
                   {courses.map(c => (
@@ -303,13 +299,13 @@ const NoAdmissionPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select
                   value={groupId}
                   onChange={e => setGroupId(e.target.value)}
                   aria-label={t('rating.filterByGroup', 'Фильтр по группе')}
-                  className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  className="input"
                 >
                   <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                   {visibleGroups.map(g => (
@@ -321,7 +317,7 @@ const NoAdmissionPage: React.FC = () => {
               {filtersActive && (
                 <button
                   onClick={resetFilters}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-sm text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" /> {t('rating.reset', 'Сбросить')}
                 </button>
@@ -330,7 +326,7 @@ const NoAdmissionPage: React.FC = () => {
           </div>
 
           {filtersActive && (
-            <p className="-mt-2 text-sm text-slate-500 dark:text-slate-400">
+            <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
               {t('rating.found', 'Найдено')}:{' '}
               <span className="font-semibold text-slate-700 dark:text-slate-300">{filtered.length}</span>
               {' '}{t('rating.ofTotal', 'из')} {blocked.length}
@@ -339,7 +335,7 @@ const NoAdmissionPage: React.FC = () => {
 
           {/* ─── Список недопущенных ─── */}
           {filtered.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
               {filtersActive ? (
                 <EmptyState
                   icon={Search}
@@ -364,20 +360,20 @@ const NoAdmissionPage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                       <tr>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap">{t('rating.col.student', 'Студент')}</th>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap hidden lg:table-cell">{t('rating.col.groupCourse', 'Группа и курс')}</th>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap hidden sm:table-cell">{t('rating.col.attendance', 'Посещаемость')}</th>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap hidden sm:table-cell">{t('rating.col.grade', 'Средний балл')}</th>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap">{t('rating.col.score', 'Балл')}</th>
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap">{t('noAdmission.reasonCol', 'Причина')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap">{t('rating.col.student', 'Студент')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap hidden lg:table-cell">{t('rating.col.groupCourse', 'Группа и курс')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap hidden sm:table-cell">{t('rating.col.attendance', 'Посещаемость')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap hidden sm:table-cell">{t('rating.col.grade', 'Средний балл')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap">{t('rating.col.score', 'Балл')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap">{t('noAdmission.reasonCol', 'Причина')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {lazy.visible.map(r => {
                         const m = r.metrics;
                         const gap = admissionGap(m);
@@ -387,59 +383,59 @@ const NoAdmissionPage: React.FC = () => {
                             onClick={() => setSelected(r)}
                             tabIndex={0}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r); } }}
-                            className="hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-700/30"
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800"
                           >
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <Avatar name={r.student.name} url={r.student.avatarUrl} />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <p className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{r.student.name}</p>
+                                    <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px]">{r.student.name}</p>
                                     <NotAdmittedBadge label={t('noAdmission.badge', 'Не допуск')} />
                                   </div>
                                   {r.branchNames.length > 0 && (
-                                    <p className="text-xs text-slate-400 truncate max-w-[200px]">{r.branchNames.join(', ')}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{r.branchNames.join(', ')}</p>
                                   )}
                                 </div>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5 hidden lg:table-cell">
+                            <td className="px-3 py-1.5 hidden lg:table-cell">
                               <div className="min-w-0 max-w-[220px]">
                                 <p className="text-slate-700 dark:text-slate-200 truncate">
                                   {r.groupNames.length ? r.groupNames.join(', ') : <span className="text-slate-300 dark:text-slate-600">—</span>}
                                 </p>
-                                <p className="text-xs text-slate-400 truncate">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                   {r.byCourse.map(s => courseTitle.get(s.courseId) || s.courseId).join(', ')}
                                 </p>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5 hidden sm:table-cell">
+                            <td className="px-3 py-1.5 hidden sm:table-cell">
                               {m.hasAttendance ? (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold tabular-nums ${TONE[m.attendancePct >= NO_ADMISSION_THRESHOLD ? 'good' : 'bad'].chip}`}>
+                                <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums ${TONE[m.attendancePct >= NO_ADMISSION_THRESHOLD ? 'good' : 'bad'].chip}`}>
                                   {m.attendancePct}%
                                 </span>
                               ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                             </td>
 
-                            <td className="px-4 py-3.5 hidden sm:table-cell">
+                            <td className="px-3 py-1.5 hidden sm:table-cell">
                               {m.hasGrades ? (
                                 <div className="flex items-baseline gap-1.5">
-                                  <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{gradeLabel(m)}</span>
+                                  <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{gradeLabel(m)}</span>
                                   <span className="text-xs text-slate-400 tabular-nums">{m.gradeCount}</span>
                                 </div>
                               ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold tabular-nums text-rose-600 dark:text-rose-400">{m.score}</span>
+                                <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">{m.score}</span>
                                 <span className="text-xs text-slate-400 tabular-nums" title={t('noAdmission.gapCol', 'Недобор до порога')}>−{gap}</span>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               <span className="text-xs text-slate-500 dark:text-slate-400">{reasonText(t, admissionReason(m))}</span>
                             </td>
                           </tr>
@@ -461,7 +457,7 @@ const NoAdmissionPage: React.FC = () => {
           )}
 
           {/* ─── Как это считается ─── */}
-          <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+          <div className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
             <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               <p>

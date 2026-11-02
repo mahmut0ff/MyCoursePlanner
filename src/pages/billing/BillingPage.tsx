@@ -5,6 +5,7 @@ import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetSubscription, apiGetBillingHistory, apiCancelSubscription, apiReactivateSubscription } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { intlLocale, numericDateLocale } from '../../lib/locale';
+import { planPrice } from '../../lib/subscription-plans';
 import { Check, Crown, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift, RefreshCw, Zap } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
@@ -55,7 +56,7 @@ const BillingPage: React.FC = () => {
     catch (e: any) { toast.error(e.message); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
 
   const currentPlan = subscription?.planId || 'starter';
   const isTrialing = subscription?.status === 'trial';
@@ -67,15 +68,15 @@ const BillingPage: React.FC = () => {
 
   const localPlans = [
     {
-      id: 'starter', name: t('landing.planBasic'), price: 1990, icon: BookOpen, userRange: t('billing.upTo5', 'До 5 учеников'),
+      id: 'starter', name: t('landing.planBasic'), price: planPrice('starter'), icon: BookOpen, userRange: t('billing.rangeStarter', 'До 50 студентов'),
       features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
     },
     {
-      id: 'professional', name: t('landing.planPro'), price: 4990, icon: Crown, userRange: t('billing.upTo30', '5–30 учеников'),
+      id: 'professional', name: t('landing.planPro'), price: planPrice('professional'), icon: Crown, userRange: t('billing.rangePro', 'До 300 студентов'),
       features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
     },
     {
-      id: 'enterprise', name: t('landing.planEnt'), price: 14900, icon: Shield, userRange: t('billing.unlimited', '30+ учеников'),
+      id: 'enterprise', name: t('landing.planEnt'), price: planPrice('enterprise'), icon: Shield, userRange: t('billing.rangeEnterprise', 'Без ограничений'),
       features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
     },
   ];
@@ -92,48 +93,50 @@ const BillingPage: React.FC = () => {
 
   // Status badge
   const statusBadge = () => {
-    if (isGifted) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Gift className="w-3.5 h-3.5" /> {t('billing.giftedBadge', 'Подарен')}</span>;
-    if (isActive) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Check className="w-3.5 h-3.5" /> {t('billing.active', 'Активен')}</span>;
-    if (isTrialing) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40"><Clock className="w-3.5 h-3.5" /> {t('billing.trial')}</span>;
-    if (isCancelled) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40">{t('billing.cancelled')}</span>;
-    if (isExpired) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40"><AlertTriangle className="w-3.5 h-3.5" /> {t('billing.expired', 'Истёк')}</span>;
+    if (isGifted) return <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Gift className="w-3.5 h-3.5" /> {t('billing.giftedBadge', 'Подарен')}</span>;
+    if (isActive) return <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Check className="w-3.5 h-3.5" /> {t('billing.active', 'Активен')}</span>;
+    if (isTrialing) return <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium gap-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40"><Clock className="w-3.5 h-3.5" /> {t('billing.trial')}</span>;
+    if (isCancelled) return <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium gap-1 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40">{t('billing.cancelled')}</span>;
+    if (isExpired) return <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium gap-1 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40"><AlertTriangle className="w-3.5 h-3.5" /> {t('billing.expired', 'Истёк')}</span>;
     return null;
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-4">
       {/* ╔═══════════════════════════════════════════╗ */}
       {/* ║  CURRENT PLAN SUMMARY CARD                ║ */}
       {/* ╚═══════════════════════════════════════════╝ */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+      {/* Plan card + status banners side by side; the card spans both columns when no banner shows */}
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 lg:only:col-span-2">
         {/* Top row: title + status */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">{t('billing.currentPlan', 'Текущий план')}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.currentPlan', 'Текущий план')}</h2>
           {statusBadge()}
         </div>
 
         {/* Info columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {/* Plan */}
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.plan', 'Тариф')}</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white capitalize">{currentPlanData?.name || currentPlan}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('billing.plan', 'Тариф')}</p>
+            <p className="text-lg font-semibold text-slate-900 dark:text-white capitalize">{currentPlanData?.name || currentPlan}</p>
           </div>
 
           {/* Monthly price */}
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.monthly', 'В месяц')}</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('billing.monthly', 'В месяц')}</p>
+            <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-white">
               {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString(numericDateLocale())} ${cur}`}
             </p>
           </div>
 
           {/* Paid-until / Trial end */}
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
               {isTrialing ? t('billing.trialEndsLabel', 'Конец Trial') : t('billing.paidUntil', 'Оплачено до')}
             </p>
-            <p className={`text-lg font-bold ${daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+            <p className={`text-lg font-semibold tabular-nums ${daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
               {isGifted ? '∞' :
                 isTrialing && subscription?.trialEndsAt
                   ? new Date(subscription.trialEndsAt).toLocaleDateString(numericDateLocale())
@@ -145,8 +148,8 @@ const BillingPage: React.FC = () => {
 
           {/* Last payment */}
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.lastPayment', 'Посл. оплата')}</p>
-            <p className={`text-lg font-bold ${lastPayment ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('billing.lastPayment', 'Посл. оплата')}</p>
+            <p className={`text-lg font-semibold tabular-nums ${lastPayment ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
               {lastPayment
                 ? `${new Date(lastPayment.createdAt).toLocaleDateString(numericDateLocale())}`
                 : '—'}
@@ -155,17 +158,17 @@ const BillingPage: React.FC = () => {
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
           {isCancelled ? (
-            <button onClick={handleReactivate} className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+            <button onClick={handleReactivate} className="btn-primary">
               {t('billing.reactivate')}
             </button>
           ) : !isGifted && !isExpired && (
-            <button onClick={handleCancel} className="h-9 px-4 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <button onClick={handleCancel} className="btn-secondary">
               {t('billing.cancelSubscription')}
             </button>
           )}
-          <button onClick={() => { loadSubscription(); loadHistory(); }} className="h-9 px-4 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1.5">
+          <button onClick={() => { loadSubscription(); loadHistory(); }} className="btn-ghost inline-flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" />{t('billing.refresh', 'Обновить')}
           </button>
         </div>
@@ -173,10 +176,10 @@ const BillingPage: React.FC = () => {
 
       {/* ─── Payment due countdown (manual billing) ─── */}
       {!isGifted && !isTrialing && paidUntil && daysUntilDue !== null && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-amber-500" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('billing.paymentDue', 'Срок оплаты')}</h3>
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.paymentDue', 'Срок оплаты')}</h3>
           </div>
           {daysUntilDue < 0 ? (
             <p className="text-sm font-semibold text-red-600 dark:text-red-400">
@@ -196,17 +199,17 @@ const BillingPage: React.FC = () => {
               style={{ width: `${Math.min(100, Math.max(2, (Math.max(0, daysUntilDue) / 30) * 100))}%` }}
             />
           </div>
-          <p className="text-[10px] text-slate-400 mt-2">{t('billing.manualBillingNote', 'Оплата принимается напрямую. По вопросам продления свяжитесь с менеджером.')}</p>
+          <p className="text-xs text-slate-400 mt-2">{t('billing.manualBillingNote', 'Оплата принимается напрямую. По вопросам продления свяжитесь с менеджером.')}</p>
         </div>
       )}
 
       {/* ─── Expired Alert ─── */}
       {isExpired && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-5">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
             <div>
-              <h3 className="text-sm font-bold text-red-800 dark:text-red-200">{t('billing.expiredTitle', 'Пробный период закончился')}</h3>
+              <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">{t('billing.expiredTitle', 'Пробный период закончился')}</h3>
               <p className="text-xs text-red-600 dark:text-red-400 mt-1">{t('billing.expiredDesc', 'Выберите тариф и оплатите для продолжения работы. Все ваши данные сохранены.')}</p>
             </div>
           </div>
@@ -215,13 +218,13 @@ const BillingPage: React.FC = () => {
 
       {/* ─── Trial Countdown ─── */}
       {isTrialing && trialDaysLeft !== null && trialDaysLeft > 0 && (
-        <div className={`rounded-2xl p-5 border ${
+        <div className={`rounded-lg p-4 border ${
           trialDaysLeft <= 3 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40'
           : trialDaysLeft <= 7 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40'
           : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/40'
         }`}>
           <div className="flex items-center gap-3">
-            <Clock className={`w-5 h-5 ${trialDaysLeft <= 3 ? 'text-red-500' : trialDaysLeft <= 7 ? 'text-amber-500' : 'text-blue-500'}`} />
+            <Clock className={`w-4 h-4 ${trialDaysLeft <= 3 ? 'text-red-500' : trialDaysLeft <= 7 ? 'text-amber-500' : 'text-blue-500'}`} />
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.trialCountdown', 'Пробный период')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -232,8 +235,8 @@ const BillingPage: React.FC = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className={`text-3xl font-black ${trialDaysLeft <= 3 ? 'text-red-600' : trialDaysLeft <= 7 ? 'text-amber-600' : 'text-blue-600'}`}>{trialDaysLeft}</p>
-              <p className="text-[10px] text-slate-400 uppercase">{t('billing.dayWord', { count: trialDaysLeft })}</p>
+              <p className={`tabular-nums text-2xl font-semibold ${trialDaysLeft <= 3 ? 'text-red-600' : trialDaysLeft <= 7 ? 'text-amber-600' : 'text-blue-600'}`}>{trialDaysLeft}</p>
+              <p className="text-xs text-slate-400">{t('billing.dayWord', { count: trialDaysLeft })}</p>
             </div>
           </div>
         </div>
@@ -241,9 +244,9 @@ const BillingPage: React.FC = () => {
 
       {/* ─── Gifted Plan Banner ─── */}
       {isGifted && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5">
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Gift className="w-5 h-5 text-emerald-500" />
+            <Gift className="w-4 h-4 text-emerald-500" />
             <div>
               <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">🎁 {t('billing.giftedPlan', 'Подаренный тариф')}</p>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{t('billing.giftedDesc', 'Ваш тариф предоставлен бесплатно без ограничения по времени.')}</p>
@@ -251,52 +254,53 @@ const BillingPage: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* ╔═══════════════════════════════════════════╗ */}
       {/* ║  PLAN CARDS                               ║ */}
       {/* ╚═══════════════════════════════════════════╝ */}
       <div>
-        <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">{t('billing.yourPlan', 'Выберите тариф')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('billing.yourPlan', 'Выберите тариф')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {localPlans.map((plan) => {
             const isCurrent = plan.id === currentPlan && !isExpired;
             const isUpgrade = localPlans.findIndex(p => p.id === plan.id) > localPlans.findIndex(p => p.id === currentPlan);
             return (
               <div
                 key={plan.id}
-                className={`relative rounded-2xl border-2 p-5 transition-all ${
+                className={`relative rounded-lg border p-4 transition-colors ${
                   isCurrent
-                    ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-lg'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
+                    ? 'border-primary-600 ring-1 ring-primary-600 dark:border-primary-500 dark:ring-primary-500 bg-white dark:bg-slate-800'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 {/* Current plan label */}
                 {isCurrent && (
-                  <div className="absolute -top-3 right-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                  <div className="absolute -top-2.5 right-3 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-primary-600 text-white">
                     {t('billing.currentPlan', 'Текущий план')}
                   </div>
                 )}
 
                 {/* Plan header */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
-                    <plan.icon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  <div className="w-8 h-8 rounded-md bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                    <plan.icon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</h3>
-                    <p className="text-[11px] text-slate-400">{plan.userRange}</p>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{plan.name}</h3>
+                    <p className="text-xs text-slate-400">{plan.userRange}</p>
                   </div>
                 </div>
 
                 {/* Price */}
-                <div className="mb-4">
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString(numericDateLocale())}</span>
-                  <span className="text-sm text-slate-400 ml-1">{cur}/{t('landing.perMonth', 'мес')}</span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{Math.round(plan.price / 30)} {cur}/{t('billing.perDay', 'день')}</p>
+                <div className="mb-3">
+                  <span className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{plan.price.toLocaleString(numericDateLocale())}</span>
+                  <span className="text-xs text-slate-400 ml-1">{cur}/{t('landing.perMonth', 'мес')}</span>
+                  <p className="text-xs text-slate-400 mt-0.5">{Math.round(plan.price / 30)} {cur}/{t('billing.perDay', 'день')}</p>
                 </div>
 
                 {/* Features */}
-                <ul className="space-y-2 mb-5">
+                <ul className="space-y-2 mb-4">
                   {plan.features.slice(0, 3).map((f, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
@@ -307,16 +311,16 @@ const BillingPage: React.FC = () => {
 
                 {/* Action */}
                 {isCurrent ? (
-                  <button disabled className="w-full h-9 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-default">
+                  <button disabled className="btn-secondary w-full">
                     {t('billing.currentPlan', 'Текущий план')}
                   </button>
                 ) : (
                   <button
                     onClick={() => handleChangePlan(plan.id)}
-                    className={`w-full h-9 rounded-lg text-sm font-semibold transition-opacity inline-flex items-center justify-center gap-1.5 ${
+                    className={`w-full inline-flex items-center justify-center gap-1.5 ${
                       isUpgrade
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90'
-                        : 'bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                        ? 'btn-primary'
+                        : 'btn-secondary'
                     }`}
                   >
                     <Zap className="w-3.5 h-3.5" />
@@ -332,9 +336,9 @@ const BillingPage: React.FC = () => {
       {/* ╔═══════════════════════════════════════════╗ */}
       {/* ║  BILLING HISTORY                          ║ */}
       {/* ╚═══════════════════════════════════════════╝ */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
-          <History className="w-4 h-4 text-slate-400" />
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+          <History className="w-3.5 h-3.5 text-slate-400" />
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.history', 'История биллинга')}</h2>
         </div>
 
@@ -349,24 +353,24 @@ const BillingPage: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-left">
-                      <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.date', 'Дата')}</th>
-                      <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.plan', 'Тариф')}</th>
-                      <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.amount', 'Сумма')}</th>
-                      <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.statusLabel', 'Статус')}</th>
-                      <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.orderId', 'ID заказа')}</th>
+                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-left">
+                      <th className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.date', 'Дата')}</th>
+                      <th className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.plan', 'Тариф')}</th>
+                      <th className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.amount', 'Сумма')}</th>
+                      <th className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.statusLabel', 'Статус')}</th>
+                      <th className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.orderId', 'ID заказа')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {billingHistory.payments.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString(numericDateLocale())} <span className="text-slate-400 text-[10px]">{new Date(p.createdAt).toLocaleTimeString(intlLocale())}</span></td>
-                        <td className="px-5 py-3 capitalize font-medium text-slate-800 dark:text-slate-200">{p.planId}</td>
-                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{Number(p.amount).toLocaleString(numericDateLocale())} {p.currency || 'KGS'}</td>
-                        <td className="px-5 py-3">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium capitalize ${statusColor(p.status)}`}>{p.status === 'completed' ? t('billing.paid', 'Оплачено') : p.status === 'pending' ? t('billing.pendingStatus', 'Ожидание') : t('billing.failedStatus', 'Ошибка')}</span>
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString(numericDateLocale())} <span className="text-slate-400 text-xs">{new Date(p.createdAt).toLocaleTimeString(intlLocale())}</span></td>
+                        <td className="px-3 py-2 capitalize font-medium text-slate-800 dark:text-slate-200">{p.planId}</td>
+                        <td className="px-3 py-2 font-medium tabular-nums text-slate-900 dark:text-white">{Number(p.amount).toLocaleString(numericDateLocale())} {p.currency || 'KGS'}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium capitalize ${statusColor(p.status)}`}>{p.status === 'completed' ? t('billing.paid', 'Оплачено') : p.status === 'pending' ? t('billing.pendingStatus', 'Ожидание') : t('billing.failedStatus', 'Ошибка')}</span>
                         </td>
-                        <td className="px-5 py-3 text-[10px] text-slate-400 font-mono">{p.orderId}</td>
+                        <td className="px-3 py-2 text-xs text-slate-400 font-mono">{p.orderId}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -374,7 +378,7 @@ const BillingPage: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-10">
-                <Receipt className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                <Receipt className="w-6 h-6 text-slate-400 dark:text-slate-500 mx-auto mb-2" />
                 <p className="text-sm text-slate-400">{t('billing.noHistory', 'Пока нет платежей')}</p>
               </div>
             )}
@@ -382,18 +386,18 @@ const BillingPage: React.FC = () => {
             {/* Subscription change logs */}
             {billingHistory.logs.length > 0 && (
               <div className="border-t border-slate-200 dark:border-slate-700">
-                <div className="px-5 py-3 bg-slate-50 dark:bg-slate-700/50">
-                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.changelog', 'Журнал изменений')}</p>
+                <div className="px-3 h-8 flex items-center bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.changelog', 'Журнал изменений')}</p>
                 </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     {billingHistory.logs.map((log: any) => (
-                    <div key={log.id} className="px-5 py-3 flex items-center gap-3 text-sm">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${log.action === 'plan_changed' ? 'bg-blue-500' : log.action === 'plan_gifted' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    <div key={log.id} className="min-h-[40px] px-3 py-1.5 flex items-center gap-3 text-sm">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${log.action === 'plan_changed' ? 'bg-blue-500' : log.action === 'plan_gifted' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                       <span className="text-slate-700 dark:text-slate-300">
                         {log.action === 'plan_changed' ? t('billing.planChanged', 'Смена тарифа') : log.action === 'plan_gifted' ? '🎁 ' + t('billing.planGifted', 'Тариф подарен') : t('billing.subCancelled', 'Отмена подписки')}
                         {log.metadata?.newPlan && <span className="font-medium capitalize ml-1">→ {log.metadata.newPlan}</span>}
                       </span>
-                      <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString(numericDateLocale())}</span>
+                      <span className="ml-auto text-xs text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString(numericDateLocale())}</span>
                     </div>
                   ))}
                 </div>

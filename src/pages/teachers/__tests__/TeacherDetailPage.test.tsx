@@ -35,7 +35,6 @@ vi.mock('../../../contexts/AuthContext', () => ({ useAuth: vi.fn() }));
 vi.mock('../../../contexts/PermissionsContext', () => ({ usePermissions: vi.fn() }));
 vi.mock('../../../contexts/BranchContext', () => ({ useBranch: vi.fn() }));
 vi.mock('../../../hooks/useOrgPresence', () => ({ useOrgPresence: vi.fn() }));
-vi.mock('../../../components/shared/MemberRolesEditor', () => ({ default: () => <div /> }));
 
 import TeacherDetailPage from '../TeacherDetailPage';
 import * as apiModule from '../../../lib/api';

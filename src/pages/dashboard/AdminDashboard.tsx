@@ -31,7 +31,7 @@ const appDayOfWeek = (d = new Date()) => (d.getDay() + 6) % 7;
 // ───────────────────────── small presentational helpers ─────────────────────────
 
 const Card: React.FC<{ className?: string; children: React.ReactNode }> = ({ className = '', children }) => (
-  <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl ${className}`}>
+  <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg ${className}`}>
     {children}
   </div>
 );
@@ -68,18 +68,18 @@ const PctDelta: React.FC<{ cur: number; prev: number; comparable?: boolean }> = 
 
 const KpiCard: React.FC<{
   label: string; value: string; icon: React.ElementType;
-  iconBg: string; sub?: React.ReactNode; to?: string; highlight?: boolean;
-}> = ({ label, value, icon: Icon, iconBg, sub, to, highlight }) => {
+  sub?: React.ReactNode; to?: string; highlight?: boolean;
+}> = ({ label, value, icon: Icon, sub, to, highlight }) => {
   const body = (
-    <div className={`p-4 sm:p-5 rounded-2xl border h-full transition-all ${highlight
+    <div className={`p-3 rounded-lg border h-full transition-colors ${highlight
       ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/40'
       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
       <div className="flex items-start justify-between">
         <span className={`text-xs font-medium ${highlight ? 'text-amber-700 dark:text-amber-500' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
-        <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}><Icon className="w-4 h-4" /></span>
+        <Icon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
       </div>
-      <p className="text-2xl sm:text-[27px] font-bold text-slate-900 dark:text-white leading-none tracking-tight mt-3">{value}</p>
-      <div className="mt-2 min-h-[16px] flex items-center justify-between">{sub}</div>
+      <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums mt-1">{value}</p>
+      <div className="mt-1 min-h-[16px] flex items-center justify-between">{sub}</div>
     </div>
   );
   return to ? <Link to={to} className="block group">{body}</Link> : body;
@@ -289,8 +289,8 @@ const AdminDashboard: React.FC = () => {
   const showFunnel = !!overview?.leads;
   const funnel = [
     { label: t('dashboard.funnelNew', 'Новые'), v: leads.new, bar: 'bg-indigo-300 dark:bg-indigo-500/60' },
-    { label: t('dashboard.funnelContacted', 'В работе'), v: leads.contacted, bar: 'bg-indigo-400 dark:bg-indigo-500/80' },
-    { label: t('dashboard.funnelEnrolled', 'Записаны'), v: leads.resolved, bar: 'bg-indigo-600' },
+    { label: t('leads.status.contacted', 'В работе'), v: leads.contacted, bar: 'bg-indigo-400 dark:bg-indigo-500/80' },
+    { label: t('leads.status.resolved', 'Закрыта'), v: leads.resolved, bar: 'bg-indigo-600' },
   ];
   const funnelMax = Math.max(leads.new, leads.contacted, leads.resolved, 1);
   const conversion = leads.total ? Math.round((leads.resolved / leads.total) * 100) : 0;
@@ -337,7 +337,7 @@ const AdminDashboard: React.FC = () => {
   ];
 
   const FunnelCard = !showFunnel ? null : (
-    <Card className="p-4 sm:p-5">
+    <Card className="p-4">
       <CardTitle icon={Target} iconClass="text-indigo-500"
         right={<span className="text-[11px] text-slate-400">{t('dashboard.conversion', 'конверсия {{pct}}%', { pct: conversion })}</span>}>
         {t('dashboard.leadsFunnel', 'Воронка заявок')}
@@ -392,50 +392,52 @@ const AdminDashboard: React.FC = () => {
   const onboarding = useOnboardingProgress(onboardingProps);
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
+    <div className="space-y-5">
 
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-slate-900 dark:bg-slate-800/80 p-6 sm:p-7 border border-slate-800 dark:border-slate-700">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(99,102,241,0.12),transparent_55%)]" />
-        <div className="relative z-10 flex flex-col gap-4">
+      {/* Dolboor has no hero: a plain page header, the focus line as a quiet bordered note */}
+      <div>
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 {greeting}, {profile?.displayName?.split(' ')[0]}
               </h1>
-              <p className="text-slate-400 text-xs mt-1 capitalize">{dateLabel}</p>
-              <div className="mt-3 flex items-start gap-2 bg-slate-800/70 border border-slate-700/60 rounded-xl px-3.5 py-2.5 max-w-2xl">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
-                <p className="text-[13px] text-slate-300 leading-relaxed">
-                  <span className="text-indigo-400 font-medium">{t('dashboard.focusOfDay', 'Фокус дня.')} </span>{focusLine}
+              <p className="text-slate-500 dark:text-slate-400 text-xs capitalize">{dateLabel}</p>
+              <div className="mt-3 flex items-start gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 max-w-2xl">
+                <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-slate-700 dark:text-slate-300">
+                  <span className="text-slate-900 dark:text-slate-100 font-medium">{t('dashboard.focusOfDay', 'Фокус дня.')} </span>{focusLine}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {typeof window !== 'undefined' && localStorage.getItem('planula_onboarding_admin_dismissed') && (
+              {canRead('settings') && typeof window !== 'undefined' && localStorage.getItem('planula_onboarding_admin_dismissed') && (
                 <button
                   onClick={() => { localStorage.removeItem('planula_onboarding_admin_dismissed'); window.location.reload(); }}
-                  className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all border border-slate-700"
+                  className="btn-secondary inline-flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" /> {t('dashboard.onboarding', 'Онбординг')}
                 </button>
               )}
-              <Link to="/org-settings" className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all border border-slate-700">
-                <Settings className="w-3.5 h-3.5" /> {t('dashboard.settings', 'Настройки')}
-              </Link>
+              {canRead('settings') && (
+                <Link to="/org-settings" className="btn-secondary inline-flex items-center gap-1.5">
+                  <Settings className="w-3.5 h-3.5" /> {t('dashboard.settings', 'Настройки')}
+                </Link>
+              )}
             </div>
           </div>
 
           {onboarding.visible && (
-            <div className="flex items-center gap-4 bg-slate-800/60 rounded-xl px-4 py-3 border border-slate-700/50">
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="text-xs font-medium text-slate-400">{t('onboarding.badge', 'Настройка')}</span>
+                <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('onboarding.badge', 'Настройка')}</span>
               </div>
-              <div className="flex-1 max-w-xs bg-slate-700 rounded-full h-1.5">
-                <div className="bg-indigo-500 rounded-full h-1.5 transition-all duration-500" style={{ width: `${onboarding.progress}%` }} />
+              <div className="flex-1 max-w-xs bg-slate-200 dark:bg-slate-700 rounded-full h-1">
+                <div className="bg-primary-600 rounded-full h-1 transition-all duration-500" style={{ width: `${onboarding.progress}%` }} />
               </div>
-              <span className="text-xs font-semibold text-slate-300">{onboarding.completedCount}/{onboarding.totalSteps}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{onboarding.completedCount}/{onboarding.totalSteps}</span>
             </div>
           )}
         </div>
@@ -448,16 +450,13 @@ const AdminDashboard: React.FC = () => {
         {showFinance ? (
           <>
             <KpiCard label={t('dashboard.kpiRevenue', 'Выручка за месяц')} value={formatMoney(financeCur.totalIncome)} icon={TrendingUp}
-              iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
               sub={<PctDelta cur={financeCur.totalIncome} prev={prevIncome} comparable={prevComparable} />} />
             <KpiCard label={t('finances.profit', 'Чистая прибыль')} value={formatMoney(financeCur.netProfit)} icon={Wallet}
-              iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
               sub={<>
                 <PctDelta cur={financeCur.netProfit} prev={prevProfit} comparable={prevComparable} />
                 {financeCur.totalIncome > 0 && <span className="text-[11px] text-slate-400">{t('dashboard.margin', 'маржа {{pct}}%', { pct: Math.round((financeCur.netProfit / financeCur.totalIncome) * 100) })}</span>}
               </>} />
             <KpiCard label={t('dashboard.kpiNewStudents', 'Новые ученики')} value={fmt(studentsNew)} icon={UserPlus}
-              iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30"
               sub={studentsDelta !== 0
                 ? <span className={`text-[11px] font-medium inline-flex items-center gap-0.5 ${studentsDelta > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                     {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {t('dashboard.vsPrevDelta', '{{delta}} к прошлому', { delta: `${studentsDelta > 0 ? '+' : ''}${studentsDelta}` })}
@@ -469,7 +468,6 @@ const AdminDashboard: React.FC = () => {
                 открывает ровно то множество, которое здесь просуммировано.
                 Просрочка — отдельная подпись и отдельная ссылка. */}
             <KpiCard label={t('finances.debts', 'Долги')} value={formatMoney(financeCur.outstandingDebt)} icon={AlertTriangle} highlight to="/finances?tab=debts&unpaid=1"
-              iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/40"
               sub={<>
                 <span className="text-[11px] text-amber-700 dark:text-amber-500 font-medium">
                   {(financeCur.overdueCount || 0) > 0
@@ -487,20 +485,16 @@ const AdminDashboard: React.FC = () => {
                 (и теряла учеников с ролью в roles[]). overview считает тот же
                 ростер и тем же memberHoldsRole, что и список /students. */}
             <KpiCard label={t('dashboard.totalStudents', 'Студенты')} value={fmt(overview?.students?.active ?? dashStats?.totalStudents)} icon={GraduationCap}
-              iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30"
               sub={<span className="text-[11px] text-slate-400">{activeBranchId ? t('dashboard.activeInBranch', 'активных в филиале') : t('dashboard.active', 'активных')}</span>} to="/students" />
             <KpiCard label={t('dashboard.kpiNewStudents', 'Новые ученики')} value={fmt(studentsNew)} icon={UserPlus}
-              iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
               sub={studentsDelta !== 0
                 ? <span className={`text-[11px] font-medium inline-flex items-center gap-0.5 ${studentsDelta > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                     {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {t('dashboard.vsPrevDelta', '{{delta}} к прошлому', { delta: `${studentsDelta > 0 ? '+' : ''}${studentsDelta}` })}
                   </span>
                 : <span className="text-[11px] text-slate-400">{t('dashboard.thisMonth', 'в этом месяце')}</span>} />
             <KpiCard label={t('studentDashboard.avgScore', 'Средний балл')} value={score.value} icon={BarChart3}
-              iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
               sub={<span className="text-[11px] text-slate-400">{score.sub}</span>} />
             <KpiCard label={t('rating.col.attendance', 'Посещаемость')} value={attend.value} icon={UsersRound}
-              iconBg="bg-amber-50 text-amber-600 dark:bg-amber-900/30"
               sub={<span className="text-[11px] text-slate-400">{attend.sub}</span>} />
           </>
         )}
@@ -531,7 +525,7 @@ const AdminDashboard: React.FC = () => {
         {(showFinance || showFunnel) && (
         <div className="flex-[2] min-w-0">
           {showFinance ? (
-            <Card className="p-4 sm:p-5 h-full">
+            <Card className="p-4 h-full">
               <CardTitle icon={TrendingUp} iconClass="text-emerald-500"
                 right={
                   <div className="flex bg-slate-100 dark:bg-slate-700/50 p-0.5 rounded-lg">
@@ -583,7 +577,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Attention center */}
         <div className="flex-1 min-w-0">
-          <Card className="p-4 sm:p-5 h-full">
+          <Card className="p-4 h-full">
             <CardTitle icon={Bell} iconClass="text-amber-500">{t('dashboard.needsAttention', 'Требует внимания')}</CardTitle>
             {attention.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-8 gap-2">
@@ -612,11 +606,11 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── Bottom row: funnel (if finance) / today / learning ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${showFinance ? 'xl:grid-cols-3' : ''}`}>
         {showFinance && FunnelCard}
 
         {/* Today */}
-        <Card className="p-4 sm:p-5">
+        <Card className="p-4">
           <CardTitle icon={CalendarClock} iconClass="text-indigo-500"
             right={<Link to="/schedule" className="text-[11px] text-indigo-500 hover:text-indigo-600 font-medium">{t('dashboard.viewAll', 'Все')} →</Link>}>
             {t('schedule.today', 'Сегодня')}
@@ -641,7 +635,7 @@ const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Learning metrics */}
-        <Card className="p-4 sm:p-5">
+        <Card className="p-4">
           <CardTitle icon={GraduationCap} iconClass="text-slate-400"
             right={<span className="text-[11px] text-slate-400">{ringsAreMonthly ? t('dashboard.forThisMonth', 'за этот месяц') : t('dashboard.allTime', 'за всё время')}</span>}>
             {t('dashboard.learningMetrics', 'Показатели обучения')}

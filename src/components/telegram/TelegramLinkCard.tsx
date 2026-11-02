@@ -80,24 +80,24 @@ const TelegramLinkCard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 animate-pulse">
-        <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-40" />
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 animate-pulse">
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-40" />
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-      <div className="p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <MessageCircle className="w-5 h-5 text-blue-600" />
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md bg-[#229ED9] text-white">
+            <MessageCircle className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
               {t('telegram.title', 'Telegram-уведомления')}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('telegram.subtitle', 'Оценки, ДЗ и оплата — прямо в Telegram')}
             </p>
           </div>
@@ -106,15 +106,15 @@ const TelegramLinkCard: React.FC = () => {
         {/* LINKED STATE */}
         {status?.linked && (
           <div className="mt-3">
-            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md px-3 py-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <p className="text-sm text-emerald-700 dark:text-emerald-400">
                 {t('telegram.linked', 'Telegram привязан. Уведомления включены.')}
               </p>
             </div>
             <button
               onClick={handleUnlink}
-              className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors"
+              className="btn-ghost mt-2 -ml-3 inline-flex items-center gap-1.5 hover:text-red-600 dark:hover:text-red-400"
             >
               <Unlink className="w-3.5 h-3.5" />
               {t('telegram.unlink', 'Отвязать Telegram')}
@@ -127,12 +127,12 @@ const TelegramLinkCard: React.FC = () => {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="mt-3 w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all"
+            className="btn-primary mt-3 w-full inline-flex items-center justify-center gap-1.5"
           >
             {generating ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> {t('common.loading', 'Загрузка...')}</>
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('common.loading', 'Загрузка...')}</>
             ) : (
-              <><Link2 className="w-4 h-4" /> {t('telegram.connect', 'Привязать Telegram')}</>
+              <><Link2 className="w-3.5 h-3.5" /> {t('telegram.connect', 'Привязать Telegram')}</>
             )}
           </button>
         )}
@@ -140,8 +140,8 @@ const TelegramLinkCard: React.FC = () => {
         {/* LINKING IN PROGRESS — show deep link */}
         {!status?.linked && linkData && (
           <div className="mt-3 space-y-3">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-              <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-md p-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
                 {t('telegram.instructions', 'Нажмите на ссылку ниже и отправьте /start боту:')}
               </p>
               {linkData.deepLink ? (
@@ -149,23 +149,23 @@ const TelegramLinkCard: React.FC = () => {
                   href={linkData.deepLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  className="btn-primary inline-flex items-center gap-1.5"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-3.5 h-3.5" />
                   {t('telegram.openBot', 'Открыть бот')} @{linkData.botUsername}
                 </a>
               ) : (
                 <div className="text-sm text-slate-600 dark:text-slate-400">
                   <p>{t('telegram.manualCode', 'Отправьте этот код боту:')}</p>
-                  <code className="mt-2 block bg-slate-100 dark:bg-slate-900 px-3 py-2 rounded-lg font-mono text-lg tracking-wider">
+                  <code className="mt-2 block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-md font-mono text-sm">
                     /start {linkData.code}
                   </code>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-              <p className="text-xs text-slate-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('telegram.waiting', 'Ожидание привязки... Код действует 15 минут.')}
               </p>
             </div>

@@ -241,11 +241,11 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
   );
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 space-y-3">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 tabular-nums space-y-3">
       <div className="flex items-start gap-2">
-        <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+        <Sparkles className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('payroll.defaultRateTitle', 'Ставка по умолчанию')}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5 leading-snug">
@@ -271,7 +271,7 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
           {/* Умолчание словами. «Не задана» — не нейтральное состояние, а
               предупреждение: следующий заведённый человек начислится нулём. */}
           {hasDefault ? (
-            <p className="text-sm font-bold text-slate-900 dark:text-white">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {describeComponents(rate ?? [], tr)}
             </p>
           ) : (
@@ -284,15 +284,15 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
           )}
 
           {canWrite && editing && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
               {formError && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/10 rounded-xl">{formError}</div>
+                <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-lg">{formError}</div>
               )}
 
               {/* Тот же выбор, что в ставке человека: вид оплаты и одно
                   число. Умолчание не может быть ни богаче, ни беднее того, что оно выдаёт. */}
               <div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <p className="label">
                   {t('payroll.rateKindLabel', 'Как платим')}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -307,13 +307,13 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                         type="button"
                         onClick={() => setKind(option)}
                         aria-pressed={active}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-colors text-left ${
+                        className={`flex items-center gap-2 min-h-[32px] px-2.5 py-1.5 rounded-md border text-sm font-medium transition-colors text-left ${
                           active
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            ? 'bg-primary-100 dark:bg-primary-950 border-primary-300 dark:border-primary-800 text-slate-900 dark:text-slate-100'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                         }`}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
                         {componentKindLabel(option, tr)}
                       </button>
                     );
@@ -323,7 +323,7 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
 
               {kind === 'percent_revenue' ? (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="label">
                     {t('payroll.percentField', 'Процент')}
                   </label>
                   <div className="flex items-center gap-2">
@@ -334,14 +334,14 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                       value={percent}
                       onChange={e => setPercent(e.target.value)}
                       placeholder="20"
-                      className="w-32 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                      className="w-32 input"
                     />
                     <span className="text-sm text-slate-500">%</span>
                   </div>
                 </div>
               ) : kind === 'per_paying_student' ? (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="label">
                     {t('payroll.perStudentField', 'Сумма за одного ученика')}
                   </label>
                   <div className="flex items-center gap-2">
@@ -352,14 +352,14 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                       value={perStudent}
                       onChange={e => setPerStudent(e.target.value)}
                       placeholder="250"
-                      className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                      className="w-40 input"
                     />
                     <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="label">
                     {t('payroll.amountField', 'Сумма за месяц')}
                   </label>
                   <div className="flex items-center gap-2">
@@ -370,7 +370,7 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                       value={amount}
                       onChange={e => setAmount(e.target.value)}
                       placeholder="30000"
-                      className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                      className="w-40 input"
                     />
                     <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
                   </div>
@@ -381,14 +381,14 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+                  className="btn-primary disabled:opacity-50"
                 >
                   {saving ? t('payroll.saving', 'Сохранение...') : t('payroll.save', 'Сохранить')}
                 </button>
                 <button
                   onClick={() => setEditing(false)}
                   disabled={saving}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 disabled:opacity-50"
+                  className="btn-ghost disabled:opacity-50"
                 >
                   {t('payroll.cancel', 'Отмена')}
                 </button>
@@ -401,7 +401,7 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
               <button
                 onClick={startEdit}
                 disabled={busy}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                className="btn-primary disabled:opacity-50"
               >
                 {hasDefault
                   ? t('payroll.defaultRateChange', 'Изменить')
@@ -416,12 +416,12 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                 // равно нулю, и клик ответил бы «все преподаватели уже со
                 // ставкой» — сообщение, которое звучит как проверенный факт.
                 disabled={busy || loading}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors"
+                className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-50"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="w-3.5 h-3.5" />
                 {t('payroll.applyDefault', 'Назначить всем без ставки')}
                 {teachersWithoutRate > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <span className="ml-0.5 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                     {teachersWithoutRate}
                   </span>
                 )}
@@ -431,9 +431,9 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                 <button
                   onClick={() => setConfirmClear(true)}
                   disabled={busy}
-                  className="text-sm font-medium text-slate-500 hover:text-rose-600 disabled:opacity-50 flex items-center gap-1.5 px-2 py-2"
+                  className="btn-ghost inline-flex items-center gap-1.5 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   {t('payroll.defaultRateClear', 'Убрать умолчание')}
                 </button>
               )}
@@ -448,9 +448,9 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
               type="button"
               onClick={() => setConfirmLegacy(true)}
               disabled={busy}
-              className="w-full flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 text-left text-xs text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/20 disabled:opacity-50 transition-colors"
+              className="w-full flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 text-left text-xs text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/20 disabled:opacity-50 transition-colors"
             >
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>{legacyMessage}</span>
             </button>
           )}

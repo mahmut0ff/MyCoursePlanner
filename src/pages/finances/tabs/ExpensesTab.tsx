@@ -318,7 +318,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
           активном фильтре по категории/поиску это подытог по срезу, и тайл
           обязан это проговорить, иначе его прочтут как итог за весь период. */}
       {loading ? (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-center justify-between">
           <div>
             <Skeleton className="h-3 w-44 mb-2" />
             <Skeleton className="h-7 w-28" />
@@ -326,9 +326,9 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
           <Skeleton className="h-3 w-16" />
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {isFiltered
                 ? t('finances.expensesFilteredFor', 'Расходы по фильтру')
                 : t('finances.expensesTotalFor', 'Расходы за период')}
@@ -339,11 +339,11 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
             </p>
             {/* Расход не «положителен со знаком»: настоящий ноль рисуем как «0 с.»
                 без плюса, ненулевой — со знаком минус, как в строках таблицы. */}
-            <p className="text-2xl font-bold text-rose-500">
+            <p className="text-2xl font-semibold tabular-nums text-rose-600 dark:text-rose-400">
               {total === 0 ? formatMoney(0) : formatMoneySigned(-total)}
             </p>
           </div>
-          <div className="text-right text-xs text-slate-400">
+          <div className="text-right text-xs text-slate-500 dark:text-slate-400 tabular-nums">
             {isFiltered
               ? <>{filtered.length} {t('common.of', 'из')} {transactions.length} {t('finances.recordsShort', 'записей')}</>
               : <>{filtered.length} {t('finances.recordsShort', 'записей')}</>}
@@ -353,22 +353,22 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-none sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
               value={filters.search}
               onChange={e => onFiltersChange({ ...filters, search: e.target.value })}
               placeholder={t('finances.searchExpense', 'Поиск по описанию...')}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm dark:text-white"
+              className="input pl-8"
             />
           </div>
           <select
             value={filters.categoryId}
             onChange={e => onFiltersChange({ ...filters, categoryId: e.target.value })}
             aria-label={t('finances.colCategory', 'Категория')}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
+            className="input w-auto"
           >
             <option value="">{t('finances.allCategories', 'Все категории')}</option>
             {EXPENSE_CATEGORIES.filter(c => c.id !== 'course_fee').map(c => (
@@ -380,7 +380,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
           {filtered.length > 0 && (
             <button
               onClick={handleExportCsv}
-              className="text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0"
+              className="btn-secondary inline-flex items-center gap-1.5 shrink-0"
             >
               <Download className="w-3.5 h-3.5" />CSV
             </button>
@@ -388,9 +388,9 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
           {canAddExpense && (
             <button
               onClick={openCreate}
-              className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0"
+              className="btn-primary inline-flex items-center gap-1.5 shrink-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               {t('finances.addExpense', 'Добавить расход')}
             </button>
           )}
@@ -401,7 +401,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
       {loading ? (
         <ListSkeleton rows={6} />
       ) : error ? (
-        <div className="p-4 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>
+        <div className="px-3 py-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg">{error}</div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Receipt}
@@ -416,18 +416,18 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colDate', 'Дата')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colCategory', 'Категория')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colAmount', 'Сумма')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colMethod', 'Способ')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colCourse', 'Курс')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500 w-full">{t('finances.colDescription', 'Описание')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('finances.colActions', 'Действия')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colDate', 'Дата')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colCategory', 'Категория')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colAmount', 'Сумма')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colMethod', 'Способ')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colCourse', 'Курс')}</th>
+                    <th className="h-8 px-3 font-medium w-full">{t('finances.colDescription', 'Описание')}</th>
+                    <th className="h-8 px-3 font-medium text-right">{t('finances.colActions', 'Действия')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -435,16 +435,16 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                     const color = getCategoryColor(tx.categoryId);
                     const refund = isRefund(tx);
                     return (
-                      <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="px-5 py-3.5 text-slate-500">
-                          <div className="flex items-center gap-2">
+                      <tr key={tx.id} className="h-10 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 tabular-nums">
+                          <div className="flex items-center gap-1.5">
                             <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
                             {formatDayKey(tx.date)}
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-3 py-1.5">
                           <span
-                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded text-xs font-medium"
                             style={{ background: color + '18', color }}
                           >
                             <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
@@ -452,24 +452,24 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                           </span>
                           {/* Возврат пришёл из истории оплат — руками его не заводили. */}
                           {refund && (
-                            <p className="text-[11px] text-slate-400 mt-1">
+                            <p className="text-xs text-slate-400 mt-0.5">
                               {t('finances.fromRefund', 'Из возврата оплаты')}
                               {tx.studentName ? ` · ${tx.studentName}` : ''}
                             </p>
                           )}
                           {/* Строка ведомости: объясняем, почему у неё нет действий. */}
                           {isPayrollManaged(tx) && (
-                            <p className="text-[11px] text-slate-400 mt-1">
+                            <p className="text-xs text-slate-400 mt-0.5">
                               {t('finances.fromPayroll', 'Выплата зарплаты — правится в разделе «Зарплата»')}
                             </p>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 font-bold text-rose-500">{formatMoneySigned(-(tx.amount || 0))}</td>
-                        <td className="px-5 py-3.5 text-xs text-slate-500">{getMethodLabel(tx.paymentMethod, t)}</td>
+                        <td className="px-3 py-1.5 font-semibold text-rose-600 dark:text-rose-400 tabular-nums">{formatMoneySigned(-(tx.amount || 0))}</td>
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400">{getMethodLabel(tx.paymentMethod, t)}</td>
                         {/* Зарплата по курсам не распределяется (см. «Прибыльность курсов»), поэтому и здесь курс не показываем. */}
-                        <td className="px-5 py-3.5 text-slate-500">{(!isPayrollManaged(tx) && courseName(tx)) || '—'}</td>
-                        <td className="px-5 py-3.5 text-slate-500 max-w-[200px] truncate">{tx.description || '—'}</td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400">{(!isPayrollManaged(tx) && courseName(tx)) || '—'}</td>
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 max-w-[200px] truncate">{tx.description || '—'}</td>
+                        <td className="px-3 py-1.5">
                           <div className="flex justify-end">
                             <RowMenu items={buildRowMenu(tx)} label={t('finances.colActions', 'Действия')} />
                           </div>
@@ -494,31 +494,31 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
 
       {/* ── СОЗДАНИЕ / ПРАВКА РАСХОДА ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) setShowModal(false); }}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) setShowModal(false); }}>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {editing ? t('finances.editExpenseTitle', 'Правка расхода') : t('finances.newExpense', 'Новый расход')}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-600" aria-label={t('common.close', 'Закрыть')}>
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowModal(false)} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t('common.close', 'Закрыть')}>
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="px-4 py-2 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('finances.amountField', 'Сумма')}
                 </label>
                 <input
                   type="number" autoFocus min="0"
                   value={form.amount}
                   onChange={e => setForm({ ...form, amount: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
+                  className="input font-semibold tabular-nums"
                   placeholder="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('finances.colCategory', 'Категория')}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -527,27 +527,27 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                       key={c.id}
                       type="button"
                       onClick={() => setForm({ ...form, categoryId: c.id })}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-[11px] font-medium transition-all dark:text-slate-200 ${
-                        form.categoryId === c.id ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                      className={`flex flex-col items-center gap-1 p-2 rounded-md border text-xs font-medium transition-colors text-slate-700 dark:text-slate-200 ${
+                        form.categoryId === c.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/40'
                       }`}
                     >
-                      <div className="w-3 h-3 rounded-full" style={{ background: c.color }} />
+                      <div className="w-2 h-2 rounded-full" style={{ background: c.color }} />
                       {t(c.labelKey, c.fallback)}
                     </button>
                   ))}
                 </div>
                 {/* Зарплаты в списке нет намеренно — говорим об этом здесь, а не
                     оставляем менеджера искать пропавшую категорию. */}
-                <p className="text-[11px] text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {t('finances.salaryGoesToPayroll', 'Зарплату проводите в разделе «Зарплата» — только там выплата попадает в зарплатный баланс и не задваивается.')}{' '}
-                  <Link to="/payroll" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <Link to="/payroll" className="text-primary-600 dark:text-primary-400 hover:underline">
                     {t('finances.openPayroll', 'Открыть «Зарплату»')}
                   </Link>
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="label">
                     {t('finances.colDate', 'Дата')}
                   </label>
                   <input
@@ -555,20 +555,20 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                     value={form.date}
                     onChange={e => { setForm({ ...form, date: e.target.value }); if (dateError) setDateError(''); }}
                     aria-invalid={!!dateError}
-                    className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2.5 text-sm dark:text-white ${
-                      dateError ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                    className={`input ${
+                      dateError ? 'border-rose-400 dark:border-rose-500' : ''
                     }`}
                   />
                   {dateError && <p className="text-xs text-rose-500 mt-1">{dateError}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="label">
                     {t('finances.colMethod', 'Способ оплаты')}
                   </label>
                   <select
                     value={form.paymentMethod}
                     onChange={e => setForm({ ...form, paymentMethod: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
+                    className="input"
                   >
                     {PAYMENT_METHODS.map(m => (
                       <option key={m.id} value={m.id}>{m.icon} {t(m.labelKey, m.fallback)}</option>
@@ -577,44 +577,44 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('finances.courseField', 'Курс')}
                   <span className="ml-1 text-xs font-normal text-slate-400">{t('common.optional', 'необязательно')}</span>
                 </label>
                 <select
                   value={form.courseId}
                   onChange={e => setForm({ ...form, courseId: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
+                  className="input"
                 >
                   <option value="">{t('finances.courseNone', 'Без привязки к курсу')}</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.title || c.name || c.id}</option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {t('finances.courseHint', 'Если указать курс, расход попадёт в прибыльность курса на вкладке «Обзор».')}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {t('finances.colDescription', 'Описание')}
                 </label>
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm min-h-[70px] dark:text-white"
+                  className="input min-h-[70px]"
                   placeholder={t('finances.expensePlaceholder', 'Например: Закупка бумаги...')}
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-              <button onClick={() => setShowModal(false)} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 disabled:opacity-50">
+            <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
+              <button onClick={() => setShowModal(false)} disabled={saving} className="btn-ghost disabled:opacity-50">
                 {t('common.cancel', 'Отмена')}
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !form.amount}
-                className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                className="btn-primary disabled:opacity-50"
               >
                 {saving
                   ? t('common.saving', 'Сохранение...')

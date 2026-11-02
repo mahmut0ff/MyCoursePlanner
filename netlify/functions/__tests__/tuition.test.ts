@@ -92,6 +92,8 @@ function wire(opts: {
   };
 
   (adminDb.collection as any).mockImplementation((name: string) => {
+    // Записи финансового модуля гейтятся тарифом (requirePlanFeature): организация платит за Professional.
+    if (name === 'organizations') return { doc: () => ({ get: async () => ({ exists: true, data: () => ({ planId: 'professional' }) }) }) };
     if (name === 'studentTuitions') return { ...queryOver(rates), doc: (id: string) => ({ __id: id }) };
     if (name === 'studentPaymentPlans') return { ...queryOver(plans), doc: (id: string) => ({ __id: id }) };
     if (name === 'groups') return queryOver(groups);

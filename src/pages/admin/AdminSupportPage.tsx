@@ -108,22 +108,20 @@ export default function AdminSupportPage() {
     <div className="h-[calc(100vh-7rem)] min-h-[30rem] flex flex-col">
       <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <LifeBuoy className="w-6 h-6 text-primary-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <LifeBuoy className="w-4 h-4 text-slate-400" />
             {t('support.inboxTitle', 'Поддержка')}
             {totalUnread > 0 && (
               <span className="badge-red">{totalUnread}</span>
             )}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t('support.inboxSubtitle', 'Обращения пользователей платформы')}
           </p>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[20rem_1fr] xl:grid-cols-[20rem_1fr_19rem]
-        rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm
-        bg-white dark:bg-slate-900">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[20rem_1fr] xl:grid-cols-[20rem_1fr_19rem] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
 
         {/* ─────────── LEFT: thread list ─────────── */}
         <aside
@@ -133,13 +131,13 @@ export default function AdminSupportPage() {
         >
           <div className="p-3 border-b border-slate-200 dark:border-slate-700 space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('support.searchPlaceholder', 'Имя, email, УЦ, uid…')}
-                className="input pl-9"
+                className="input pl-8"
               />
             </div>
             <div className="flex gap-1">
@@ -148,10 +146,10 @@ export default function AdminSupportPage() {
                   key={f}
                   type="button"
                   onClick={() => setFilter(f)}
-                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`flex-1 h-7 px-2 rounded-md text-sm transition-colors ${
                     filter === f
-                      ? 'bg-primary-600 text-white'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                      ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 >
                   {f === 'all'
                     ? t('support.filterAll', 'Все')
@@ -165,7 +163,7 @@ export default function AdminSupportPage() {
             {loading ? (
               <div className="p-3 space-y-2">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div key={i} className="h-14 rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse" />
                 ))}
               </div>
             ) : filtered.length === 0 ? (
@@ -192,10 +190,9 @@ export default function AdminSupportPage() {
           className={`min-h-0 flex flex-col ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}
         >
           {!selected ? (
-            <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6
-              bg-slate-50 dark:bg-slate-900/50">
-              <div className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-800">
-                <LifeBuoy className="w-8 h-8 text-slate-400" />
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6 bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <LifeBuoy className="w-6 h-6 text-slate-400" />
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
                 {t('support.selectThread', 'Выберите обращение слева, чтобы открыть переписку.')}
@@ -211,16 +208,14 @@ export default function AdminSupportPage() {
               enableQuickReplies
               composerPlaceholder={t('support.placeholderAdmin', 'Ответьте пользователю… «/» — быстрые ответы')}
               header={
-                <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-200
-                  dark:border-slate-700 bg-white dark:bg-slate-900">
+                <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
                   <button
                     type="button"
                     onClick={() => setMobileView('list')}
-                    className="lg:hidden p-1.5 -ml-1 rounded-lg text-slate-500
-                      hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="lg:hidden w-7 h-7 flex items-center justify-center -ml-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title={t('common.back', 'Назад')}
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-3.5 h-3.5" />
                   </button>
 
                   <Avatar name={selected.userName} url={selected.userAvatarUrl} />
@@ -245,31 +240,28 @@ export default function AdminSupportPage() {
                       type="button"
                       onClick={() => changeStatus('open')}
                       title={t('support.reopen', 'Открыть заново')}
-                      className="p-2 rounded-lg text-slate-500 hover:text-primary-600
-                        hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => changeStatus('closed')}
                       title={t('support.close', 'Закрыть обращение')}
-                      className="p-2 rounded-lg text-slate-500 hover:text-emerald-600
-                        hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={() => setInfoOpen(true)}
-                    className="xl:hidden p-2 rounded-lg text-slate-500
-                      hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="xl:hidden w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title={t('support.userInfo', 'О пользователе')}
                   >
-                    <Info className="w-4 h-4" />
+                    <Info className="w-3.5 h-3.5" />
                   </button>
                 </div>
               }
@@ -295,22 +287,21 @@ export default function AdminSupportPage() {
       {/* Below xl the info panel becomes a sheet rather than disappearing. */}
       {infoOpen && (
         <div
-          className="fixed inset-0 z-50 xl:hidden flex justify-end bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 xl:hidden flex justify-end bg-black/30"
           onClick={() => setInfoOpen(false)}
         >
           <div
-            className="w-full max-w-sm h-full bg-white dark:bg-slate-900 shadow-xl flex flex-col"
+            className="w-full max-w-sm h-full bg-white dark:bg-slate-900 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b
-              border-slate-200 dark:border-slate-700">
-              <span className="font-semibold text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">
                 {t('support.userInfo', 'О пользователе')}
               </span>
               <button
                 type="button"
                 onClick={() => setInfoOpen(false)}
-                className="btn-ghost px-2 py-1 text-sm"
+                className="btn-ghost px-2 py-1"
               >
                 {t('common.close', 'Закрыть')}
               </button>
@@ -326,13 +317,12 @@ export default function AdminSupportPage() {
 /* ──────────────────────────── pieces ──────────────────────────── */
 
 function Avatar({ name, url, size = 'sm' }: { name: string; url?: string; size?: 'sm' | 'lg' }) {
-  const box = size === 'lg' ? 'w-14 h-14 text-lg' : 'w-9 h-9 text-xs';
+  const box = size === 'lg' ? 'w-12 h-12 text-base' : 'w-7 h-7 text-xs';
   if (url) {
     return <img src={url} alt={name} className={`${box} rounded-full object-cover shrink-0`} />;
   }
   return (
-    <div className={`${box} rounded-full shrink-0 flex items-center justify-center font-semibold
-      bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300`}>
+    <div className={`${box} rounded-full shrink-0 flex items-center justify-center font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200`}>
       {initials(name || '?')}
     </div>
   );
@@ -349,11 +339,10 @@ function ThreadRow({ thread, active, onSelect, t }: {
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full text-left px-3 py-2.5 flex gap-2.5 items-start
-        border-b border-slate-100 dark:border-slate-800 transition-colors ${
+      className={`w-full text-left px-3 py-2.5 flex gap-2.5 items-start border-b border-slate-200 dark:border-slate-800 transition-colors ${
         active
-          ? 'bg-primary-50 dark:bg-primary-900/25'
-          : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
+          ? 'bg-primary-100/60 dark:bg-primary-950'
+          : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
     >
       <Avatar name={thread.userName} url={thread.userAvatarUrl} />
       <div className="min-w-0 flex-1">
@@ -363,11 +352,11 @@ function ThreadRow({ thread, active, onSelect, t }: {
             : 'font-medium text-slate-700 dark:text-slate-200'}`}>
             {thread.userName}
           </span>
-          <span className="text-[10px] text-slate-400 shrink-0">
+          <span className="text-xs text-slate-400 shrink-0">
             {relativeTime(thread.lastMessageAt, t)}
           </span>
         </div>
-        <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+        <div className="text-xs text-slate-400 dark:text-slate-500 truncate">
           {thread.organizationName || t('support.noOrg', 'Без организации')}
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
@@ -380,8 +369,7 @@ function ThreadRow({ thread, active, onSelect, t }: {
             {thread.lastMessagePreview}
           </span>
           {unread > 0 && (
-            <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600
-              text-white text-[10px] font-semibold flex items-center justify-center">
+            <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-semibold flex items-center justify-center">
               {unread > 99 ? '99+' : unread}
             </span>
           )}
@@ -407,10 +395,9 @@ function InfoRow({ icon: Icon, label, value, onCopy, href }: {
     <div className="flex items-start gap-2.5 group">
       <Icon className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+        <div className="text-xs text-slate-400">{label}</div>
         {href ? (
-          <Link to={href} className="text-xs text-primary-600 dark:text-primary-400 hover:underline
-            break-words inline-flex items-center gap-1">
+          <Link to={href} className="text-xs text-primary-600 dark:text-primary-400 hover:underline break-words inline-flex items-center gap-1">
             {value}
             <ExternalLink className="w-3 h-3" />
           </Link>
@@ -422,8 +409,7 @@ function InfoRow({ icon: Icon, label, value, onCopy, href }: {
         <button
           type="button"
           onClick={onCopy}
-          className="p-1 rounded text-slate-300 hover:text-primary-600 opacity-0
-            group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+          className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
           title={t('common.copy', 'Копировать')}
         >
           <Copy className="w-3 h-3" />
@@ -460,11 +446,10 @@ function UserInfoPanel({ thread, info, loading, onCopy, t }: {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-      <div className="flex flex-col items-center text-center gap-2 pb-4
-        border-b border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col items-center text-center gap-2 pb-4 border-b border-slate-200 dark:border-slate-700">
         <Avatar name={thread.userName} url={info?.avatarUrl || thread.userAvatarUrl} size="lg" />
         <div>
-          <div className="font-semibold text-slate-900 dark:text-white">{thread.userName}</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">{thread.userName}</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {t(`roles.${info?.role || thread.userRole}`,
               ROLE_LABELS_RU[info?.role || thread.userRole] || info?.role || thread.userRole)}
@@ -540,9 +525,9 @@ function UserInfoPanel({ thread, info, loading, onCopy, t }: {
 
           <Link
             to={`/admin/users/${thread.userId}`}
-            className="btn-secondary w-full justify-center flex items-center gap-2 text-sm"
+            className="btn-secondary w-full justify-center inline-flex items-center gap-1.5"
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-3.5 h-3.5" />
             {t('support.openProfile', 'Открыть профиль')}
           </Link>
         </>
@@ -554,7 +539,7 @@ function UserInfoPanel({ thread, info, loading, onCopy, t }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2.5">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
+      <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</h3>
       {children}
     </div>
   );

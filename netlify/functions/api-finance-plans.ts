@@ -1,3 +1,4 @@
+import { requirePlanFeature } from './utils/plan-limits';
 /**
  * API: Finance Payment Plans — Tracks student obligations.
  * Enriches results with student/course names from users/courses collections.
@@ -18,6 +19,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
+  if (event.httpMethod !== 'GET') { const gate = await requirePlanFeature(user, 'finances'); if (gate) return gate; }
 
   const params = event.queryStringParameters || {};
 

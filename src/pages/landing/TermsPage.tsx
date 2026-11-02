@@ -82,7 +82,6 @@ const TermsPage: React.FC = () => {
 
   return (
     <LegalLayout
-      eyebrow={t('landing.legalEyebrow', 'Правовая информация')}
       title={t('landing.footerTerms')}
       updated={t('landing.legalUpdated', 'Последнее обновление: 15 июня 2026')}
       intro={t('landing.termsIntro', 'Пожалуйста, внимательно ознакомьтесь с условиями использования SabakHub перед началом работы с платформой.')}

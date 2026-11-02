@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, GraduationCap, Heart } from 'lucide-react';
 import { LandingNav, LandingFooter, LandingCTA, PageHero } from '../../components/landing/LandingChrome';
+import { Reveal } from '../../components/landing/LandingKit';
 
 const AboutPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,22 +14,22 @@ const AboutPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 antialiased">
+    <div className="min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
       <LandingNav />
 
       <main>
-        <PageHero eyebrow={t('landing.navAbout')} title={t('landing.aboutPageTitle')} subtitle={t('landing.aboutPageSubtitle')} />
+        <PageHero title={t('landing.aboutPageTitle')} subtitle={t('landing.aboutPageSubtitle')} />
 
-        <section className="px-6 pb-4">
-          <div className="max-w-5xl mx-auto grid gap-5 md:grid-cols-3">
+        <section className="bg-slate-50 py-14 sm:py-20 dark:bg-slate-800/40">
+          <div className="mx-auto grid max-w-[1200px] gap-x-10 gap-y-10 px-4 sm:px-8 md:grid-cols-3">
             {values.map((v, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-7 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
-                  <v.icon className="w-5 h-5" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold text-slate-900">{v.title}</h3>
-                <p className="mt-2 text-[0.95rem] leading-relaxed text-slate-600">{v.text}</p>
-              </div>
+              <Reveal key={i} delay={i * 80}>
+                <article className="max-w-[40ch]">
+                  <v.icon aria-hidden className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                  <h2 className="mt-4 text-[17px] font-semibold">{v.title}</h2>
+                  <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-400">{v.text}</p>
+                </article>
+              </Reveal>
             ))}
           </div>
         </section>

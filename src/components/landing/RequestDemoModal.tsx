@@ -62,27 +62,27 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <div onClick={close} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('landing.demo.title', 'Заказать демо')} className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('landing.demo.title', 'Заказать демо')} className="bg-white rounded-2xl shadow-float w-full max-w-md dark:bg-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto relative">
         <button
           onClick={close}
           aria-label={t('common.close', 'Закрыть')}
-          className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {success ? (
           <div className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            <div className="w-16 h-16 mx-auto rounded-full bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-8 h-8 text-primary-600 dark:text-primary-400" />
             </div>
-            <h2 className="text-2xl font-extrabold text-slate-900 mb-2">{t('landing.demo.sentTitle', 'Заявка отправлена')}</h2>
-            <p className="text-slate-500 leading-relaxed mb-6">
+            <h2 className="text-2xl font-semibold text-slate-900 mb-2">{t('landing.demo.sentTitle', 'Заявка отправлена')}</h2>
+            <p className="text-slate-500 leading-relaxed mb-6 dark:text-slate-400">
               {t('landing.demo.sentText', 'Спасибо! Мы свяжемся с вами в Telegram в ближайшее время, чтобы провести демо и рассказать про возможности платформы.')}
             </p>
             <button
               onClick={close}
-              className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-lg transition-colors"
             >
               {t('onboarding.done', 'Готово')}
             </button>
@@ -90,18 +90,15 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
         ) : (
           <>
             <div className="p-7 pb-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-50 text-primary-700 text-xs font-bold uppercase tracking-wider mb-3">
-                {t('landing.demo.badge', 'Для учебных центров')}
-              </div>
-              <h2 className="text-2xl font-extrabold text-slate-900 mb-1.5">{t('landing.demo.title', 'Заказать демо')}</h2>
-              <p className="text-slate-500 text-sm leading-relaxed">
+              <h2 className="text-2xl font-semibold text-slate-900 mb-1.5">{t('landing.demo.title', 'Заказать демо')}</h2>
+              <p className="text-slate-500 text-sm leading-relaxed dark:text-slate-400">
                 {t('landing.demo.subtitle', 'Расскажем про платформу, поможем подобрать тариф и заведём аккаунт под вас.')}
               </p>
             </div>
 
             <form onSubmit={submit} className="p-7 pt-3 space-y-4">
               <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-1.5">{t('landing.demo.orgName', 'Учебный центр')}</label>
+                <label className="text-[13px] font-medium text-slate-700 block mb-1.5 dark:text-slate-300">{t('landing.demo.orgName', 'Учебный центр')}</label>
                 <div className="relative">
                   <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -109,14 +106,14 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     placeholder={t('landing.demo.orgNamePlaceholder', 'Например, Билим Академия')}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 h-11 rounded-lg border border-transparent bg-slate-100 text-[14px] placeholder:text-slate-500 transition-colors hover:bg-slate-200/70 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/25 dark:bg-slate-800 dark:placeholder:text-slate-400 dark:hover:bg-slate-700/70 dark:focus:bg-slate-900"
                     autoFocus
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-1.5">{t('landing.demo.ownerName', 'Имя владельца')}</label>
+                <label className="text-[13px] font-medium text-slate-700 block mb-1.5 dark:text-slate-300">{t('landing.demo.ownerName', 'Имя владельца')}</label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -124,13 +121,13 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
                     placeholder={t('landing.demo.ownerNamePlaceholder', 'Айбек Турсунов')}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 h-11 rounded-lg border border-transparent bg-slate-100 text-[14px] placeholder:text-slate-500 transition-colors hover:bg-slate-200/70 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/25 dark:bg-slate-800 dark:placeholder:text-slate-400 dark:hover:bg-slate-700/70 dark:focus:bg-slate-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-1.5">{t('landing.demo.telegram', 'Telegram для связи')}</label>
+                <label className="text-[13px] font-medium text-slate-700 block mb-1.5 dark:text-slate-300">{t('landing.demo.telegram', 'Telegram для связи')}</label>
                 <div className="relative">
                   <AtSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -138,32 +135,32 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     value={telegram}
                     onChange={(e) => setTelegram(e.target.value)}
                     placeholder={t('landing.demo.telegramPlaceholder', '@aibek_t или https://t.me/aibek_t')}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 h-11 rounded-lg border border-transparent bg-slate-100 text-[14px] placeholder:text-slate-500 transition-colors hover:bg-slate-200/70 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/25 dark:bg-slate-800 dark:placeholder:text-slate-400 dark:hover:bg-slate-700/70 dark:focus:bg-slate-900"
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-1.5">{t('landing.demo.telegramHint', 'Напишем туда, чтобы договориться о времени демо.')}</p>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-1.5">{t('landing.demo.note', 'Комментарий (необязательно)')}</label>
+                <label className="text-[13px] font-medium text-slate-700 block mb-1.5 dark:text-slate-300">{t('landing.demo.note', 'Комментарий (необязательно)')}</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={t('landing.demo.notePlaceholder', 'Сколько студентов, что хотите автоматизировать…')}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all resize-none"
+                  className="w-full px-4 py-2.5 h-11 rounded-lg border border-transparent bg-slate-100 text-[14px] placeholder:text-slate-500 transition-colors hover:bg-slate-200/70 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/25 dark:bg-slate-800 dark:placeholder:text-slate-400 dark:hover:bg-slate-700/70 dark:focus:bg-slate-900 resize-none"
                   maxLength={1000}
                 />
               </div>
 
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">{error}</div>
+                <div className="text-[13px] text-red-700 bg-red-50 px-3 py-2 rounded-lg dark:bg-red-950/40 dark:text-red-300">{error}</div>
               )}
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-semibold py-3 rounded-xl shadow-lg shadow-primary-500/20 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('landing.demo.sending', 'Отправляем…')}</> : <><Send className="w-4 h-4" /> {t('landing.demo.submit', 'Отправить заявку')}</>}
               </button>

@@ -328,12 +328,12 @@ const AdminCopilotWidget: React.FC = () => {
         <button
           ref={fabRef}
           onClick={() => setOpen(true)}
-          className="fixed right-5 z-[60] w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg shadow-primary-600/30 hover:shadow-xl hover:shadow-primary-600/40 flex items-center justify-center transition-all active:scale-95"
+          className="fixed right-5 z-[60] w-12 h-12 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-float flex items-center justify-center transition-colors"
           style={{ bottom: 'calc(1.25rem + var(--safe-area-bottom, 0px))' }}
           aria-label={t('assistant.open', 'Открыть AI-ассистента')}
           title={t('assistant.title', 'AI-ассистент')}
         >
-          <Sparkles className="w-6 h-6" />
+          <Sparkles className="w-5 h-5" />
         </button>
       )}
 
@@ -341,16 +341,16 @@ const AdminCopilotWidget: React.FC = () => {
       {open && (
         <div
           ref={panelRef}
-          className="fixed z-[60] inset-x-0 bottom-0 sm:inset-x-auto sm:right-5 sm:bottom-5 w-full sm:w-[420px] h-[85dvh] sm:h-[640px] sm:max-h-[82dvh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="fixed z-[60] inset-x-0 bottom-0 sm:inset-x-auto sm:right-5 sm:bottom-5 w-full sm:w-[420px] h-[85dvh] sm:h-[640px] sm:max-h-[82dvh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-t-xl sm:rounded-xl shadow-pop flex flex-col overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label={t('assistant.title', 'AI-ассистент')}
         >
           {/* Header */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-primary-600/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-md bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 leading-tight">
@@ -365,26 +365,26 @@ const AdminCopilotWidget: React.FC = () => {
               {messages.length > 0 && (
                 <button
                   onClick={() => { setMessages([]); setImages([]); }}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   title={t('assistant.clear', 'Очистить диалог')}
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-3.5 h-3.5" />
                 </button>
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label={t('assistant.close', 'Закрыть')}
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
           {/* Plan lock */}
           {planLocked ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center bg-slate-50 dark:bg-slate-900/50">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6 text-center">
+              <div className="flex items-center justify-center text-slate-400 dark:text-slate-500">
                 <Lock className="w-6 h-6" />
               </div>
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -393,17 +393,17 @@ const AdminCopilotWidget: React.FC = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[260px]">
                 {t('assistant.planText', 'Управляйте студентами, группами и финансами простыми командами в чате.')}
               </p>
-              <Link to="/billing" className="btn-primary text-sm mt-2" onClick={() => setOpen(false)}>
+              <Link to="/billing" className="btn-primary mt-2" onClick={() => setOpen(false)}>
                 {t('assistant.planCta', 'Перейти к тарифам')}
               </Link>
             </div>
           ) : (
             <>
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center text-center gap-2 pt-10 px-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary-600/10 text-primary-600 dark:text-primary-400 flex items-center justify-center">
+                    <div className="flex items-center justify-center text-slate-400 dark:text-slate-500">
                       <Wand2 className="w-6 h-6" />
                     </div>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -440,10 +440,10 @@ const AdminCopilotWidget: React.FC = () => {
                         </div>
                       )}
                       {msg.content && (
-                        <div className={`rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words ${
+                        <div className={`rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
                           msg.role === 'user'
-                            ? 'bg-primary-600 text-white rounded-br-md'
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-md shadow-sm'
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                         }`}>
                           <MarkdownLite text={msg.content} />
                         </div>
@@ -455,19 +455,19 @@ const AdminCopilotWidget: React.FC = () => {
                         return (
                           <div
                             key={idx}
-                            className={`rounded-xl border p-3 bg-white dark:bg-slate-800 shadow-sm ${
+                            className={`rounded-lg border p-3 bg-white dark:bg-slate-800 ${
                               a.danger
                                 ? 'border-red-200 dark:border-red-800/50'
                                 : 'border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             <div className="flex items-start gap-2.5">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                              <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
                                 a.danger
                                   ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                                  : 'bg-primary-600/10 text-primary-600 dark:text-primary-400'
+                                  : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
                               }`}>
-                                {a.danger ? <ShieldAlert className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                                {a.danger ? <ShieldAlert className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100 break-words">{a.summary}</p>
@@ -476,8 +476,8 @@ const AdminCopilotWidget: React.FC = () => {
                                   <div className="flex items-center gap-2 mt-2.5">
                                     <button
                                       onClick={() => execute(msg.id, idx, a)}
-                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all active:scale-[0.98] ${
-                                        a.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700'
+                                      className={`${
+                                        a.danger ? 'btn-danger' : 'btn-primary'
                                       }`}
                                     >
                                       {a.danger
@@ -486,7 +486,7 @@ const AdminCopilotWidget: React.FC = () => {
                                     </button>
                                     <button
                                       onClick={() => setAction(msg.id, idx, { status: 'cancelled' })}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                      className="btn-ghost"
                                     >
                                       {t('assistant.cancel', 'Отмена')}
                                     </button>
@@ -528,7 +528,7 @@ const AdminCopilotWidget: React.FC = () => {
 
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-md px-3.5 py-3 shadow-sm flex gap-1">
+                    <div className="bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-2.5 flex gap-1">
                       <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
                       <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
                       <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
@@ -546,7 +546,7 @@ const AdminCopilotWidget: React.FC = () => {
                       <button
                         key={i}
                         onClick={() => send(q)}
-                        className="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-900/20 text-slate-600 dark:text-slate-300 hover:text-primary-700 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 px-3 py-1.5 rounded-full transition-colors"
+                        className="h-7 px-2 rounded-md text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition-colors"
                       >
                         {q}
                       </button>
@@ -561,7 +561,7 @@ const AdminCopilotWidget: React.FC = () => {
                         <img src={img.dataUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                         <button
                           onClick={() => setImages(prev => prev.filter(x => x.id !== img.id))}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-900 text-white flex items-center justify-center shadow"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-900 text-white flex items-center justify-center"
                           aria-label={t('assistant.import.remove', 'Убрать')}
                         >
                           <X className="w-3 h-3" />
@@ -591,11 +591,11 @@ const AdminCopilotWidget: React.FC = () => {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={loading || images.length >= MAX_IMPORT_IMAGES}
-                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       aria-label={t('assistant.import.attach', 'Прикрепить скриншот')}
                       title={t('assistant.import.attachHint', 'Импорт студентов со скриншота списка')}
                     >
-                      <Paperclip className="w-5 h-5" />
+                      <Paperclip className="w-3.5 h-3.5" />
                     </button>
                   )}
                   <div className="relative flex-1">
@@ -608,16 +608,16 @@ const AdminCopilotWidget: React.FC = () => {
                       placeholder={images.length > 0
                         ? t('assistant.import.hintPh', 'Комментарий к импорту (необязательно)…')
                         : t('assistant.placeholder', 'Например: добавь студента Иванов Иван…')}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="input w-full pr-10"
                       disabled={loading}
                     />
                     <button
                       onClick={() => send(input)}
                       disabled={(!input.trim() && images.length === 0) || loading}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full transition-colors"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-md transition-colors"
                       aria-label={t('assistant.send', 'Отправить')}
                     >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>

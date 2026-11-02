@@ -101,42 +101,42 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Tag className="w-5 h-5 text-emerald-600" />
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Tag className="w-3.5 h-3.5 text-slate-400" />
             {t('finances.editAmountTitle', 'Сумма к оплате')}
           </h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
+        <div className="px-4 py-2 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
             {plan.studentName && <p className="font-medium text-slate-900 dark:text-white">{plan.studentName}</p>}
             <p className="text-sm text-slate-500 mt-0.5">{plan.courseName || plan.courseId || t('finances.plan', 'Счёт')}</p>
             <div className="flex justify-between mt-3 text-sm">
               <span className="text-slate-500">{t('finances.coursePrice', 'Цена курса')}:</span>
-              <span className="font-medium text-slate-700 dark:text-slate-300">{formatMoney(reference)}</span>
+              <span className="font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatMoney(reference)}</span>
             </div>
             {paid > 0 && (
               <div className="flex justify-between mt-1 text-sm">
                 <span className="text-slate-500">{t('finances.colPaid', 'Оплачено')}:</span>
-                <span className="font-medium text-emerald-600">{formatMoney(paid)}</span>
+                <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(paid)}</span>
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {t('finances.amountDue', 'К оплате')} ({CURRENCY_SUFFIX})
             </label>
             <input
               type="number" autoFocus min={paid} step="1"
               value={amount} onChange={e => setAmount(e.target.value)}
               aria-invalid={belowPaid}
-              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-lg font-bold dark:text-white ${
-                belowPaid ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              className={`input font-medium tabular-nums ${
+                belowPaid ? 'border-rose-400 dark:border-rose-500' : ''
               }`}
               placeholder="0"
             />
@@ -168,7 +168,7 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
                 type="checkbox"
                 checked={remember}
                 onChange={e => setRemember(e.target.checked)}
-                className="w-4 h-4 mt-0.5 accent-emerald-500 shrink-0"
+                className="w-3.5 h-3.5 mt-0.5 accent-primary-600 shrink-0"
               />
               <span className="text-sm text-slate-700 dark:text-slate-300">
                 {t('finances.rememberAsTuition', 'Запомнить как постоянную сумму')}
@@ -180,10 +180,10 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost">{t('finances.cancel', 'Отмена')}</button>
           <button onClick={handleSave} disabled={saving || !valid}
-            className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all">
+            className="btn-primary">
             {saving ? t('finances.saving', 'Сохранение...') : t('finances.save', 'Сохранить')}
           </button>
         </div>

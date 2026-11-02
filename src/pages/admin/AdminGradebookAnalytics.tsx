@@ -218,19 +218,19 @@ export default function AdminGradebookAnalytics() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.analytics.title', 'Аналитика успеваемости')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('admin.analytics.subtitle', 'Контроль качества обучения, посещаемости и активности')}</p>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('admin.analytics.title', 'Аналитика успеваемости')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.subtitle', 'Контроль качества обучения, посещаемости и активности')}</p>
         </div>
         <button
           onClick={handleExport}
           disabled={!metrics}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-3.5 h-3.5" />
           {t('admin.analytics.export', 'Экспорт отчета')}
         </button>
       </div>
@@ -246,10 +246,10 @@ export default function AdminGradebookAnalytics() {
             <button
               key={p.id}
               onClick={() => setPeriod(p.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`h-7 px-2 rounded-md text-sm transition-colors ${
                 period === p.id
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                  ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                  : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
               }`}
             >
               {t(`admin.analytics.period.${p.id}`, p.label)}
@@ -259,91 +259,91 @@ export default function AdminGradebookAnalytics() {
       </div>
 
       {!metrics ? (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center">
-          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="w-8 h-8 text-slate-400" />
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
+          <div className="flex items-center justify-center mx-auto mb-2">
+            <BarChart3 className="w-6 h-6 text-slate-400" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{t('admin.analytics.noData', 'Нет данных для аналитики')}</h3>
-          <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{t('admin.analytics.noDataDesc', 'Оценки и данные о посещаемости пока отсутствуют.')}</p>
+          <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">{t('admin.analytics.noData', 'Нет данных для аналитики')}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{t('admin.analytics.noDataDesc', 'Оценки и данные о посещаемости пока отсутствуют.')}</p>
         </div>
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.students', 'Студентов')}</p>
-                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                  <GraduationCap className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.students', 'Студентов')}</p>
+                <div>
+                  <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.studentsCount}</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{metrics.studentsCount}</h3>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.teachers', 'Преподавателей')}</p>
-                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                  <BookOpen className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.teachers', 'Преподавателей')}</p>
+                <div>
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{teachers.length}</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{teachers.length}</h3>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.avgScore', 'Средний балл')}</p>
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
-                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.avgScore', 'Средний балл')}</p>
+                <div>
+                  <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.avgScore)}%</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{Math.round(metrics.avgScore)}%</h3>
               <p className="text-xs text-slate-400 mt-1">{t('admin.analytics.grades', { count: metrics.gradesCount })}</p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.attendance', 'Посещаемость')}</p>
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                  <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.attendance', 'Посещаемость')}</p>
+                <div>
+                  <ClipboardList className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.attendanceRate)}%</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{Math.round(metrics.attendanceRate)}%</h3>
               <p className="text-xs text-slate-400 mt-1">{t('admin.analytics.records', { count: metrics.journalsCount })}</p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.gradesTotal', 'Оценок')}</p>
-                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                  <BarChart3 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('admin.analytics.gradesTotal', 'Оценок')}</p>
+                <div>
+                  <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.gradesCount}</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{metrics.gradesCount}</h3>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t('admin.analytics.atRisk', 'В зоне риска')}</p>
-                <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-amber-600 dark:text-amber-500">{t('admin.analytics.atRisk', 'В зоне риска')}</p>
+                <div>
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.atRiskCount || 0}</h3>
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">{metrics.atRiskCount || 0}</h3>
               <p className="text-xs text-amber-500/70 mt-1">{metrics.atRiskCount > 0 ? t('admin.analytics.needAttention', 'Требуют внимания') : t('admin.analytics.allGood', 'Все в норме')}</p>
             </div>
           </div>
 
           {/* Bottom 2-col */}
-          <div className={`grid grid-cols-1 gap-6 ${showTeacherActivity ? 'lg:grid-cols-2' : ''}`}>
+          <div className={`grid grid-cols-1 gap-3 ${showTeacherActivity ? 'lg:grid-cols-2' : ''}`}>
             {/* Risk Zone */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                  <AlertTriangle className="w-4.5 h-4.5 text-amber-600 dark:text-amber-500" />
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center justify-center">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.riskZone', 'Зона риска')}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.riskZone', 'Зона риска')}</h3>
                   <p className="text-xs text-slate-500">{t('admin.analytics.riskSubtitle', 'Студенты, требующие внимания')}</p>
                 </div>
               </div>
@@ -357,19 +357,19 @@ export default function AdminGradebookAnalytics() {
                     if (stats.attPercent < 70) reasons.push(t('admin.analytics.reasonAttendance', 'Посещаемость: {{value}}%', { value: Math.round(stats.attPercent) }));
 
                     return (
-                      <div key={student.uid} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl">
+                      <div key={student.uid} className="flex items-center gap-3 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md">
                         {student.avatarUrl ? (
-                          <img src={student.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                          <img src={student.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
                             {student.displayName?.[0] || '?'}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{student.displayName}</p>
+                          <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{student.displayName}</p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {reasons.map(r => (
-                              <span key={r} className="text-[10px] font-medium px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-md flex items-center gap-1">
+                              <span key={r} className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                                 <TrendingDown className="w-2.5 h-2.5" />{r}
                               </span>
                             ))}
@@ -381,8 +381,8 @@ export default function AdminGradebookAnalytics() {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-slate-500/70">
-                  <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-3">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                  <div className="flex items-center justify-center mb-2">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                   </div>
                   <p className="font-medium text-sm text-slate-700 dark:text-slate-300">{t('admin.analytics.excellent', 'Всё отлично!')}</p>
                   <p className="text-xs text-slate-400">{t('admin.analytics.noAtRisk', 'Нет студентов в зоне риска')}</p>
@@ -391,13 +391,13 @@ export default function AdminGradebookAnalytics() {
             </div>
             
             {/* Teacher Activity */}
-            {showTeacherActivity && <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                  <ClipboardList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-400" />
+            {showTeacherActivity && <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center justify-center">
+                  <ClipboardList className="w-3.5 h-3.5 text-slate-400" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.teacherActivity', 'Активность учителей')}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.teacherActivity', 'Активность учителей')}</h3>
                   <p className="text-xs text-slate-500">{t('admin.analytics.teacherActivityDesc', 'Оценки и журналы')}</p>
                 </div>
               </div>
@@ -422,19 +422,19 @@ export default function AdminGradebookAnalytics() {
                           {teacher.avatarUrl ? (
                             <img src={teacher.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-500 shrink-0">
                               {teacher.displayName?.[0] || '?'}
                             </div>
                           )}
                           <span className="font-medium text-slate-800 dark:text-slate-200">{teacher.displayName}</span>
                         </div>
-                        <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
+                        <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-700">
                           {t('admin.analytics.actions', { count: totalActions })}
                         </span>
                       </div>
-                      <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-slate-900 dark:bg-white/80 rounded-full transition-all duration-500 ease-out" 
+                          className="h-full bg-primary-600 dark:bg-primary-500 rounded-full transition-all duration-500 ease-out" 
                           style={{ width: `${displayWidth}%` }}
                         />
                       </div>

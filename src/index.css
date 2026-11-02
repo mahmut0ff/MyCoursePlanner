@@ -2,8 +2,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400..700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -19,34 +17,13 @@
   }
 }
 
-/* Marketing surface (landing, /features, /login) — warm paper/ink.
-   Dark theme flips paper and ink; night/cream bands stay dark in both. */
-:root {
-  --mkt-paper: 247 245 240;
-  --mkt-paper-deep: 239 236 228;
-  --mkt-ink: 22 20 31;
-  --mkt-card: 255 255 255;
-  --mkt-night: 22 20 31;
-  --mkt-cream: 247 245 240;
-}
-.dark {
-  --mkt-paper: 18 16 25;
-  --mkt-paper-deep: 30 27 40;
-  --mkt-ink: 241 238 231;
-  --mkt-card: 29 26 39;
-  --mkt-night: 34 31 47;
-  --mkt-cream: 247 245 240;
-}
+/* native checkboxes, selects and scrollbars follow the theme, as in Dolboor */
+.dark { color-scheme: dark; }
 
 /* Scroll reveal for marketing sections (see Reveal in LandingKit). Content
    is visible without JS; the class only appears once the observer runs. */
 .mkt-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
 .mkt-reveal[data-shown] { opacity: 1; transform: none; }
-
-@keyframes mkt-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
 
 /* Landing hero — staggered first-load reveal (pure CSS so it never ships blank;
    the reduced-motion rule above collapses it to an instant appearance). */
@@ -56,11 +33,18 @@
 }
 .hero-rise { animation: heroRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-/* Landing marquee — the duplicated track scrolls by exactly half its width,
-   so the loop is seamless. Reduced-motion collapses it via the rule above. */
-@keyframes mkt-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+/* Home page scenes (components/landing/HomeScenes): chat bubbles, typing dots,
+   the masked word rise of the headline, rolling labels, floating chips and the
+   call button's pulse. The reduced-motion rule above lands them on their end state. */
+@keyframes chat-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes typing-dot { 0%, 60%, 100% { opacity: 0.35; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+@keyframes word-rise { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes roll-in { from { opacity: 0; transform: translateY(75%); } to { opacity: 1; transform: none; } }
+@keyframes mkt-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes day-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(var(--color-primary-500, 139 92 246) / 0.45); }
+  100% { box-shadow: 0 0 0 10px rgb(var(--color-primary-500, 139 92 246) / 0); }
 }
 
 /* ============================================================
@@ -589,7 +573,7 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased
+    @apply bg-white text-slate-900 font-sans antialiased
       dark:bg-slate-900 dark:text-slate-100;
     /* Prevent iOS rubber-banding / overscroll */
     overscroll-behavior: none;
@@ -600,59 +584,57 @@
 }
 
 @layer components {
+  /* Dolboor controls: 32px tall (6 + 20 + 6), 6px corners, flat — hover changes the fill only */
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium
-      hover:bg-primary-700 active:bg-primary-800 transition-all
+    @apply bg-primary-600 text-white px-3 py-1.5 rounded-md text-[13px] leading-5 font-medium
+      hover:bg-primary-700 active:bg-primary-800 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-      dark:focus:ring-offset-slate-900
-      hover:shadow-md hover:shadow-primary-500/20 active:scale-[0.98];
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-1
+      dark:focus-visible:ring-offset-slate-900;
   }
   .btn-secondary {
-    @apply bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium border border-slate-300
-      hover:bg-slate-50 active:bg-slate-100 transition-all
+    @apply bg-white text-slate-900 px-3 py-1.5 rounded-md text-[13px] leading-5 font-medium border border-slate-300
+      hover:bg-slate-100 active:bg-slate-200 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-      dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
-      dark:hover:bg-slate-700 dark:active:bg-slate-600
-      dark:focus:ring-offset-slate-900
-      hover:shadow-sm active:scale-[0.98];
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-1
+      dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700
+      dark:hover:bg-slate-800 dark:active:bg-slate-700
+      dark:focus-visible:ring-offset-slate-900;
   }
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium
-      hover:bg-red-700 active:bg-red-800 transition-all
+    @apply bg-red-700 text-white px-3 py-1.5 rounded-md text-[13px] leading-5 font-medium
+      hover:bg-red-800 active:bg-red-900 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-      dark:focus:ring-offset-slate-900
-      hover:shadow-md hover:shadow-red-500/20 active:scale-[0.98];
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-1
+      dark:bg-red-600 dark:hover:bg-red-700 dark:focus-visible:ring-offset-slate-900;
   }
   .btn-ghost {
-    @apply text-slate-600 px-4 py-2.5 rounded-lg font-medium
-      hover:bg-slate-100 active:bg-slate-200 transition-all
+    @apply text-slate-700 px-3 py-1.5 rounded-md text-[13px] leading-5 font-medium
+      hover:bg-slate-100 active:bg-slate-200 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700
-      active:scale-[0.98];
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40
+      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700;
   }
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm
-      dark:bg-slate-800 dark:border-slate-700
-      transition-shadow hover:shadow-md;
+    @apply bg-white rounded-lg border border-slate-200
+      dark:bg-slate-800 dark:border-slate-700;
   }
   .input {
-    @apply w-full px-3 py-2 rounded-lg border border-slate-300 bg-white
-      text-sm text-slate-900 placeholder:text-slate-400
-      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-      disabled:bg-slate-100 disabled:cursor-not-allowed
-      transition-all
-      dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100
-      dark:placeholder:text-slate-500 dark:disabled:bg-slate-700;
+    @apply w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-white
+      text-[13px] leading-5 text-slate-900 placeholder:text-slate-400
+      hover:border-slate-400
+      focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+      disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed
+      transition-colors
+      dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600
+      dark:placeholder:text-slate-500 dark:disabled:bg-slate-800;
   }
   .label {
-    @apply block text-sm font-medium text-slate-700 mb-1.5
-      dark:text-slate-300;
+    @apply block text-xs font-medium text-slate-500 mb-1
+      dark:text-slate-400;
   }
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center h-5 px-1.5 rounded text-xs font-medium whitespace-nowrap;
   }
   .badge-primary {
     @apply badge bg-primary-100 text-primary-700
@@ -675,6 +657,93 @@
       dark:bg-slate-700 dark:text-slate-300;
   }
 }
+
+/* ═══ Dolboor density for the signed-in app ═══
+   AppLayout puts .app-ui on <html> (portals are covered too); marketing pages never get it.
+   Pages were written against Tailwind's default type scale, so the scale itself is mapped
+   onto Dolboor's here: body 13, secondary 12, headings ≤ 22, weight ≤ 600. */
+.app-ui .text-sm { font-size: 13px; line-height: 20px; }
+.app-ui .text-base { font-size: 14px; line-height: 20px; }
+.app-ui .text-lg { font-size: 16px; line-height: 24px; }
+.app-ui .text-xl { font-size: 18px; line-height: 26px; }
+.app-ui .text-2xl { font-size: 20px; line-height: 28px; }
+.app-ui .text-3xl { font-size: 22px; line-height: 28px; }
+.app-ui .text-4xl { font-size: 28px; line-height: 32px; }
+@media (min-width: 640px) {
+  .app-ui .sm\:text-sm { font-size: 13px; line-height: 20px; }
+  .app-ui .sm\:text-base { font-size: 14px; line-height: 20px; }
+  .app-ui .sm\:text-lg { font-size: 16px; line-height: 24px; }
+  .app-ui .sm\:text-xl { font-size: 18px; line-height: 26px; }
+  .app-ui .sm\:text-2xl { font-size: 20px; line-height: 28px; }
+  .app-ui .sm\:text-3xl { font-size: 22px; line-height: 28px; }
+  .app-ui .sm\:text-4xl { font-size: 28px; line-height: 32px; }
+}
+@media (min-width: 768px) {
+  .app-ui .md\:text-sm { font-size: 13px; line-height: 20px; }
+  .app-ui .md\:text-base { font-size: 14px; line-height: 20px; }
+  .app-ui .md\:text-lg { font-size: 16px; line-height: 24px; }
+  .app-ui .md\:text-xl { font-size: 18px; line-height: 26px; }
+  .app-ui .md\:text-2xl { font-size: 20px; line-height: 28px; }
+  .app-ui .md\:text-3xl { font-size: 22px; line-height: 28px; }
+  .app-ui .md\:text-4xl { font-size: 28px; line-height: 32px; }
+}
+@media (min-width: 1024px) {
+  .app-ui .lg\:text-sm { font-size: 13px; line-height: 20px; }
+  .app-ui .lg\:text-base { font-size: 14px; line-height: 20px; }
+  .app-ui .lg\:text-lg { font-size: 16px; line-height: 24px; }
+  .app-ui .lg\:text-xl { font-size: 18px; line-height: 26px; }
+  .app-ui .lg\:text-2xl { font-size: 20px; line-height: 28px; }
+  .app-ui .lg\:text-3xl { font-size: 22px; line-height: 28px; }
+  .app-ui .lg\:text-4xl { font-size: 28px; line-height: 32px; }
+}
+@media (min-width: 1280px) {
+  .app-ui .xl\:text-sm { font-size: 13px; line-height: 20px; }
+  .app-ui .xl\:text-base { font-size: 14px; line-height: 20px; }
+  .app-ui .xl\:text-lg { font-size: 16px; line-height: 24px; }
+  .app-ui .xl\:text-xl { font-size: 18px; line-height: 26px; }
+  .app-ui .xl\:text-2xl { font-size: 20px; line-height: 28px; }
+  .app-ui .xl\:text-3xl { font-size: 22px; line-height: 28px; }
+  .app-ui .xl\:text-4xl { font-size: 28px; line-height: 32px; }
+}
+.app-ui :is(.font-bold, .font-extrabold, .font-black) { font-weight: 600; }
+
+/* Flat cards: Dolboor keeps shadows for floating layers only (shadow-lg and up) */
+.app-ui :is(.shadow-sm, .shadow, .hover\:shadow-md:hover, .hover\:shadow-lg:hover) {
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+}
+
+/* Bordered form fields written inline on pages get the .input look: white, 6px corners,
+   32px tall, accent focus ring. Only fields with an explicit border — bare inputs inside
+   composite controls keep their own look. */
+.app-ui :is(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file]), select, textarea).border {
+  border-color: theme('colors.slate.300');
+  background-color: #fff;
+  border-radius: 6px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.dark.app-ui :is(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file]), select, textarea).border {
+  border-color: theme('colors.slate.700');
+  background-color: theme('colors.slate.900');
+}
+.app-ui :is(input, select, textarea).border:focus {
+  border-color: theme('colors.primary.500');
+  --tw-ring-color: theme('colors.primary.500 / 30%');
+}
+
+/* Inline action buttons (text-sm + semibold + py-2.5/3) land on Dolboor's 32px control height */
+.app-ui :is(button, a):is(.py-2\.5, .py-3).text-sm:is(.font-semibold, .font-bold, .font-medium) {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* Modals and drawers render inline inside page wrappers; space-x/y-* would give the
+   fixed overlay a margin and leave an uncovered strip at the viewport edge. */
+[class*="space-y-"] > .fixed { margin-top: 0 !important; margin-bottom: 0 !important; }
+[class*="space-x-"] > .fixed { margin-left: 0 !important; margin-right: 0 !important; }
 
 /* Page enter animation */
 @keyframes fadeInUp {
@@ -737,7 +806,7 @@ select:-webkit-autofill {
 .dark input:-webkit-autofill:active,
 .dark textarea:-webkit-autofill,
 .dark select:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px #334155 inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #18191b inset !important;
   -webkit-text-fill-color: #f1f5f9 !important;
   caret-color: #f1f5f9 !important;
 }
@@ -897,44 +966,6 @@ select:-webkit-autofill {
    We deliberately do NOT target goober's runtime-generated `.go<hash>` class names here:
    those hashes are unstable and previously bled onto react-hot-toast's full-width positioning
    wrapper, rendering a stray dark rectangle next to every toast. */
-
-/* ═══ Telegram Notification Button Glow + Shine Sweep ═══ */
-.telegram-glow-btn {
-  position: relative;
-  overflow: hidden;
-  animation: tg-glow 3s ease-in-out infinite;
-}
-
-@keyframes tg-glow {
-  0%, 100% { box-shadow: 0 0 12px rgba(34, 158, 217, 0.35); }
-  50% { box-shadow: 0 0 22px rgba(34, 158, 217, 0.55); }
-}
-
-/* Fleeting light band that sweeps left → right to draw the eye, then rests
-   off-screen for the remainder of the cycle. */
-.telegram-glow-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 55%;
-  height: 100%;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.55) 50%,
-    transparent 100%
-  );
-  transform: translateX(-130%) skewX(-18deg);
-  animation: tg-shine 3.8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes tg-shine {
-  0%   { transform: translateX(-130%) skewX(-18deg); }
-  22%  { transform: translateX(300%) skewX(-18deg); }
-  100% { transform: translateX(300%) skewX(-18deg); }
-}
 
 /* ═══ Sidebar Tips Transition ═══ */
 .duration-400 {

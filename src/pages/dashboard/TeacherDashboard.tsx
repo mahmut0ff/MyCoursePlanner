@@ -20,8 +20,8 @@ import TeacherWheelOfFortune from '../../components/dashboard/TeacherWheelOfFort
 
 /* Shared card-header for the list blocks: one visual vocabulary, defined once. */
 const ListHeader: React.FC<{ title: React.ReactNode; to: string; linkLabel: string }> = ({ title, to, linkLabel }) => (
-  <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3">
-    <h2 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">{title}</h2>
+  <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2 min-w-0">{title}</h2>
     <Link to={to} className="text-[13px] text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1 shrink-0">
       {linkLabel}<ArrowRight className="w-3.5 h-3.5" />
     </Link>
@@ -58,8 +58,8 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
   const dateLine = new Date().toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="max-w-[1400px] mx-auto">
-      <div className="flex flex-col lg:flex-row gap-6">
+    <div>
+      <div className="flex flex-col lg:flex-row gap-4">
 
         {/* ═══ LEFT: Main Content ═══ */}
         <div className="flex-1 min-w-0 space-y-4">
@@ -68,17 +68,17 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
           <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-1">
             <div className="min-w-0">
               <p className="text-[13px] text-slate-500 dark:text-slate-400 first-letter:uppercase">{dateLine}</p>
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
                 {greeting}{firstName ? `, ${firstName}` : ''}
               </h1>
             </div>
             {organizationId && (
               <div className="flex items-center gap-2">
-                <Link to="/exams/new" className="btn-secondary hidden sm:inline-flex items-center gap-1.5 text-sm">
-                  <Plus className="w-4 h-4" />{t('teacherDashboard.newExam')}
+                <Link to="/exams/new" className="btn-secondary hidden sm:inline-flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" />{t('teacherDashboard.newExam')}
                 </Link>
-                <Link to="/lessons/new" className="btn-primary inline-flex items-center gap-1.5 text-sm">
-                  <Plus className="w-4 h-4" />{t('teacherDashboard.newLesson')}
+                <Link to="/lessons/new" className="btn-primary inline-flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" />{t('teacherDashboard.newLesson')}
                 </Link>
               </div>
             )}
@@ -86,16 +86,16 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
 
           {/* ── No-org quick start ── */}
           {!organizationId && (
-            <div className="card p-5 sm:p-6">
-              <h2 className="font-semibold text-slate-900 dark:text-white mb-1.5">{t('teacherDashboard.getStarted')}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('teacherDashboard.getStartedDesc')}</p>
+            <div className="card p-4">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('teacherDashboard.getStarted')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('teacherDashboard.getStartedDesc')}</p>
               {/* Кнопка «Заполнить профиль» вела в удалённое резюме. Без неё при нуле
                   приглашений остался бы заголовок с текстом и пустой строкой кнопок,
                   поэтому пустой случай теперь говорит, чего именно ждать. */}
               {inviteCount > 0 ? (
-                <Link to="/invites" className="btn-primary text-sm inline-flex items-center gap-2">
-                  <MailOpen className="w-4 h-4" />{t('teacherDashboard.viewInvites')}
-                  <span className="bg-white/20 text-white text-xs font-semibold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 tabular-nums">{inviteCount}</span>
+                <Link to="/invites" className="btn-primary inline-flex items-center gap-1.5">
+                  <MailOpen className="w-3.5 h-3.5" />{t('teacherDashboard.viewInvites')}
+                  <span className="bg-white/20 text-white text-xs font-medium min-w-[20px] h-5 flex items-center justify-center rounded px-1.5 tabular-nums">{inviteCount}</span>
                 </Link>
               ) : (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -121,17 +121,17 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                   </>
                 }
               />
-              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
                 {rooms.slice(0, 4).map((r) => (
-                  <Link key={r.id} to={`/rooms/${r.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
+                  <Link key={r.id} to={`/rooms/${r.id}`} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{r.examTitle}</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">{r.examTitle}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                         <Users className="w-3 h-3" />{t('counts.participants', { count: r.participants.length })}
                       </p>
                     </div>
-                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">{r.code}</span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" />
+                    <span className="font-mono text-xs h-5 inline-flex items-center px-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">{r.code}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" />
                   </Link>
                 ))}
               </div>
@@ -143,29 +143,29 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
 
           {/* ── Pending invites ── */}
           {inviteCount > 0 && organizationId && (
-            <Link to="/invites" className="flex items-center gap-3 card px-4 py-3 hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
-              <MailOpen className="w-4 h-4 text-amber-500 shrink-0" />
+            <Link to="/invites" className="flex items-center gap-3 card px-3 py-2 hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+              <MailOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('teacherDashboard.pendingInvites', { count: inviteCount })}</span>
-              <ArrowRight className="w-4 h-4 text-slate-400 ml-auto shrink-0" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 ml-auto shrink-0" />
             </Link>
           )}
 
           {/* ── Recent lessons / exams ── */}
           {organizationId && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <section className="card overflow-hidden">
                 <ListHeader title={t('teacherDashboard.recentLessons')} to="/lessons" linkLabel={t('teacherDashboard.viewAll')} />
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
                   {lessons.slice(0, 5).map((l) => (
-                    <Link key={l.id} to={`/lessons/${l.id}`} className="block px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{l.title}</p>
+                    <Link key={l.id} to={`/lessons/${l.id}`} className="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                      <p className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">{l.title}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{l.subject} · {formatDate(l.createdAt)}</p>
                     </Link>
                   ))}
                   {lessons.length === 0 && (
-                    <div className="px-5 py-9 text-center">
-                      <BookOpen className="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{t('lessons.noLessons')}</p>
+                    <div className="px-4 py-8 text-center">
+                      <BookOpen className="w-6 h-6 mx-auto text-slate-400 dark:text-slate-500 mb-2" />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t('lessons.noLessons')}</p>
                       <Link to="/lessons/new" className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
                         {t('teacherDashboard.createFirstLesson', 'Создать первый урок')}
                       </Link>
@@ -176,20 +176,20 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
 
               <section className="card overflow-hidden">
                 <ListHeader title={t('teacherDashboard.recentExams')} to="/exams" linkLabel={t('teacherDashboard.viewAll')} />
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
                   {exams.slice(0, 5).map((e) => (
-                    <Link key={e.id} to={`/exams/${e.id}`} className="block px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <Link key={e.id} to={`/exams/${e.id}`} className="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{e.title}</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">{e.title}</p>
                         <span className={`${e.status === 'published' ? 'badge-green' : 'badge-yellow'} shrink-0`}>{e.status === 'archived' ? t('common.archived', 'Архив') : t(`exams.${e.status}`)}</span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{e.subject} · {t('quiz.nQuestions', { count: e.questionCount || 0 })}</p>
                     </Link>
                   ))}
                   {exams.length === 0 && (
-                    <div className="px-5 py-9 text-center">
-                      <ClipboardList className="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{t('exams.noExams')}</p>
+                    <div className="px-4 py-8 text-center">
+                      <ClipboardList className="w-6 h-6 mx-auto text-slate-400 dark:text-slate-500 mb-2" />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t('exams.noExams')}</p>
                       <Link to="/exams/new" className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
                         {t('teacherDashboard.createFirstExam', 'Создать первый тест')}
                       </Link>
@@ -204,15 +204,15 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
           {organizationId && attentionAttempts.length > 0 && (
             <section className="card overflow-hidden">
               <ListHeader title={t('teacherDashboard.attention', 'Требуют внимания')} to="/results" linkLabel={t('teacherDashboard.viewAll')} />
-              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
                 {attentionAttempts.map((a) => (
-                  <div key={a.id} className="px-5 py-2.5 flex items-center justify-between gap-3">
+                  <div key={a.id} className="px-4 py-2 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{a.studentName}</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-100 text-sm truncate">{a.studentName}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{a.examTitle}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-semibold text-slate-900 dark:text-white text-sm tabular-nums">{a.percentage}%</p>
+                      <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm tabular-nums">{a.percentage}%</p>
                       <p className={`text-xs ${a.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                         {a.passed ? t('teacherDashboard.pass') : t('teacherDashboard.fail')}
                       </p>
@@ -232,8 +232,8 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
           <aside className="lg:w-[260px] xl:w-[280px] shrink-0">
             <div className="lg:sticky lg:top-4">
               <div className="card overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {t('teacherDashboard.quickLinks')}
                   </h3>
                 </div>
@@ -250,10 +250,10 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     <Link
                       key={link.to}
                       to={link.to}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                      className="flex items-center justify-between h-8 px-2.5 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors group"
                     >
                       <div className="flex items-center gap-2.5">
-                        <link.icon className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                        <link.icon className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
                         <span>{link.label}</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-500 transition-colors" />
@@ -297,7 +297,7 @@ const TeacherDashboard: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
 
   return (
     <TeacherDashboardView

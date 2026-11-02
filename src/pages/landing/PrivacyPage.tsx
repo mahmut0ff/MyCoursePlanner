@@ -73,7 +73,6 @@ const PrivacyPage: React.FC = () => {
 
   return (
     <LegalLayout
-      eyebrow={t('landing.legalEyebrow', 'Правовая информация')}
       title={t('landing.footerPrivacy')}
       updated={t('landing.legalUpdated', 'Последнее обновление: 15 июня 2026')}
       intro={t('landing.privacyIntro', 'Мы уважаем вашу приватность. Здесь описано, какие данные SabakHub собирает, как мы их используем и какие у вас есть права.')}

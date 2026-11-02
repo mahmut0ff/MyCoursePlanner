@@ -18,11 +18,11 @@ interface GradeCellProps {
 }
 
 const statusColors: Record<GradeStatus, string> = {
-  normal: 'text-slate-900 dark:text-white',
+  normal: 'text-slate-900 dark:text-slate-100',
   absent: 'bg-red-500/10 text-red-600 dark:text-red-400',
   late: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   excused: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
-  missing: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  missing: 'bg-primary-500/10 text-primary-600 dark:text-primary-400',
 };
 
 const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex, isSyncing, readOnly = false }) => {
@@ -277,7 +277,7 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
         ref={inputRef}
         type="text"
         placeholder={placeholder}
-        className="w-full h-full min-h-[48px] text-center bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none ring-2 ring-inset ring-primary-500 shadow-[0_0_15px_rgba(99,102,241,0.2)] z-20 relative placeholder:font-normal placeholder:text-xs placeholder:text-slate-300"
+        className="w-full h-full min-h-[40px] text-center bg-white dark:bg-slate-800 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 outline-none ring-2 ring-inset ring-primary-500 z-20 relative placeholder:font-normal placeholder:text-xs placeholder:text-slate-400"
         value={tempVal}
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={() => handleCommitAndMove('none')}
@@ -293,7 +293,7 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
       tabIndex={tabIndex}
       aria-haspopup={choices.length > 0 ? 'listbox' : undefined}
       aria-expanded={choices.length > 0 ? pickerOpen : undefined}
-      className={`w-full h-full min-h-[48px] flex flex-col items-center justify-center outline-none ${readOnly ? 'cursor-default' : 'cursor-cell'} transition-all ring-inset focus:ring-2 focus:ring-primary-400 ${pickerOpen ? 'ring-2 ring-primary-500 bg-primary-50/50 dark:bg-primary-900/20' : ''} hover:bg-slate-50/80 dark:hover:bg-slate-700/50 group relative ${statusColors[status]}`}
+      className={`w-full h-full min-h-[40px] flex flex-col items-center justify-center outline-none ${readOnly ? 'cursor-default' : 'cursor-cell'} transition-colors ring-inset focus:ring-2 focus:ring-primary-500 ${pickerOpen ? 'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/20' : ''} hover:bg-slate-50 dark:hover:bg-slate-800 group relative ${statusColors[status]}`}
       onClick={() => {
          // Single click to edit for ease.
          if (readOnly) return;
@@ -306,12 +306,12 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
       data-item-id={itemId}
       data-grade-cell="true"
     >
-      <span className="text-sm font-bold tracking-tight">
-        {displayVal || (status !== 'normal' ? status.substring(0, 3).toUpperCase() : <span className="text-slate-200 dark:text-slate-700 font-normal">—</span>)}
+      <span className="text-sm font-semibold tabular-nums">
+        {displayVal || (status !== 'normal' ? status.substring(0, 3).toUpperCase() : <span className="text-slate-300 dark:text-slate-600 font-normal">—</span>)}
       </span>
       
       {value?.comment && (
-        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={value.comment} />
+        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500" title={value.comment} />
       )}
 
       {isSyncing && (
@@ -330,7 +330,7 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
           role="listbox"
           onKeyDown={handleMenuKeyDown}
           style={{ top: pickerPos.top, left: pickerPos.left, width: pickerPos.width }}
-          className="fixed z-[61] max-h-[280px] overflow-y-auto p-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl outline-none"
+          className="fixed z-[61] max-h-[280px] overflow-y-auto p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-pop outline-none"
         >
           {choices.map((c, i) => {
             const selected = c === displayVal;
@@ -342,10 +342,10 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
                 aria-selected={selected}
                 onMouseEnter={() => setPickerIdx(i)}
                 onClick={() => pickChoice(c)}
-                className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left transition-colors ${i === pickerIdx ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                className={`w-full flex items-center justify-between gap-2 h-8 px-2 rounded-md text-left transition-colors ${i === pickerIdx ? 'bg-slate-100 dark:bg-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
               >
                 <span className="flex items-baseline gap-2 min-w-0">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{c}</span>
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{c}</span>
                   {labels[c] && <span className="text-[11px] text-slate-500 truncate">{labels[c]}</span>}
                 </span>
                 {selected && <Check className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 shrink-0" />}
@@ -356,7 +356,7 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
             <button
               type="button"
               onClick={() => pickChoice(null, false)}
-              className="w-full flex items-center gap-2 px-2.5 py-2 mt-1 border-t border-slate-100 dark:border-slate-700 text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="w-full flex items-center gap-2 h-8 px-2 mt-1 border-t border-slate-200 dark:border-slate-700 text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               <Eraser className="w-3.5 h-3.5 shrink-0" />
               <span className="text-xs font-medium">{t('common.clear', 'Очистить')}</span>

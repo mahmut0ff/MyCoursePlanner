@@ -194,30 +194,30 @@ const ExamEditPage: React.FC = () => {
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-32"><div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
 
-  const labelClass = "block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2";
-  const inputClass = "w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white dark:focus:border-white outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400";
+  const labelClass = "label";
+  const inputClass = "input";
 
   return (
-    <div className="max-w-5xl mx-auto pb-16 font-sans animate-fade-in relative">
+    <div className="pb-16 font-sans animate-fade-in relative">
       
       {/* Sticky Top Bar for Actions */}
-      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-8">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => navigate(-1)} 
-              className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:hover:text-white dark:hover:bg-slate-800 transition-all shadow-sm"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-3.5 h-3.5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 {isEdit ? t('exams.editExam', 'Edit Assessment') : t('exams.newExam', 'Create Assessment')}
               </h1>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {status === 'published' ? <span className="text-emerald-500">{t('exams.livePublished', 'Live & Published')}</span> : t('exams.draftMode', 'Draft Mode')}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {status === 'published' ? <span className="text-emerald-600 dark:text-emerald-400">{t('exams.livePublished', 'Live & Published')}</span> : t('exams.draftMode', 'Draft Mode')}
               </p>
             </div>
           </div>
@@ -225,28 +225,28 @@ const ExamEditPage: React.FC = () => {
           <button 
             onClick={handleSave} 
             disabled={saving}
-            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            className="btn-primary inline-flex items-center gap-1.5"
           >
-            <Save className="w-4 h-4" />{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save Assessment')}
+            <Save className="w-3.5 h-3.5" />{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save Assessment')}
           </button>
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         
         {/* Module 1: Core Configuration */}
-        <section className="exam-slide-up bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Settings className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+        <section className="exam-slide-up bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div>
+              <Settings className="w-3.5 h-3.5 text-slate-400" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('exams.coreSettings', 'Core Configuration')}</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('exams.coreSettings', 'Core Configuration')}</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.titleLabel', 'Assessment Title')} *</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} !text-lg !font-semibold`} placeholder={t('exams.titlePlaceholder', 'e.g. Midterm Examination: Advanced Algorithms')} />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} !font-medium`} placeholder={t('exams.titlePlaceholder', 'e.g. Midterm Examination: Advanced Algorithms')} />
             </div>
             
             <div className="md:col-span-2">
@@ -262,16 +262,16 @@ const ExamEditPage: React.FC = () => {
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.gradingCategories', 'AI Evaluation Skills (Optional)')}</label>
               <input value={gradingCategoriesText} onChange={(e) => setGradingCategoriesText(e.target.value)} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">{t('exams.gradingCategoriesHint', 'Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('exams.gradingCategoriesHint', 'Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.')}</p>
             </div>
 
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.placementLevels', 'Шкала уровней (Placement)')}</label>
               <input value={placementLevelsText} onChange={(e) => setPlacementLevelsText(e.target.value)} className={inputClass} placeholder={t('exams.placementLevelsPlaceholder', 'напр. A1, A2, B1, B2, C1, C2')} />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">{t('exams.placementLevelsHint', 'Для тестов на определение уровня (языковые курсы). ИИ определит уровень студента строго по этой шкале. Оставьте пустым для обычного экзамена.')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('exams.placementLevelsHint', 'Для тестов на определение уровня (языковые курсы). ИИ определит уровень студента строго по этой шкале. Оставьте пустым для обычного экзамена.')}</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>{t('exams.durationLabel', 'Duration (Min)')}</label>
                 <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(+e.target.value)} className={inputClass} min={1} />
@@ -290,25 +290,25 @@ const ExamEditPage: React.FC = () => {
               </select>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 pt-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative flex items-center justify-center w-5 h-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center justify-center w-4 h-4">
                   <input type="checkbox" checked={randomize} onChange={(e) => setRandomize(e.target.checked)} className="peer sr-only" />
-                  <div className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-slate-900 peer-checked:border-slate-900 dark:peer-checked:bg-white dark:peer-checked:border-white transition-all flex items-center justify-center">
-                    <svg className={`w-3 h-3 text-white dark:text-slate-900 ${randomize ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <div className="w-4 h-4 rounded border border-slate-300 dark:border-slate-600 peer-checked:bg-primary-600 peer-checked:border-primary-600 dark:peer-checked:bg-primary-500 dark:peer-checked:border-primary-500 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/30 transition-colors flex items-center justify-center">
+                    <svg className={`w-3 h-3 text-white ${randomize ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </div>
                 </div>
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t('exams.randomize', 'Shuffle Questions')}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">{t('exams.randomize', 'Shuffle Questions')}</span>
               </label>
               
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative flex items-center justify-center w-5 h-5">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center justify-center w-4 h-4">
                   <input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} className="peer sr-only" />
-                  <div className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-slate-900 peer-checked:border-slate-900 dark:peer-checked:bg-white dark:peer-checked:border-white transition-all flex items-center justify-center">
-                    <svg className={`w-3 h-3 text-white dark:text-slate-900 ${showResults ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <div className="w-4 h-4 rounded border border-slate-300 dark:border-slate-600 peer-checked:bg-primary-600 peer-checked:border-primary-600 dark:peer-checked:bg-primary-500 dark:peer-checked:border-primary-500 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/30 transition-colors flex items-center justify-center">
+                    <svg className={`w-3 h-3 text-white ${showResults ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </div>
                 </div>
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t('exams.showResults', 'Show Results Immediately')}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">{t('exams.showResults', 'Show Results Immediately')}</span>
               </label>
             </div>
           </div>
@@ -316,52 +316,52 @@ const ExamEditPage: React.FC = () => {
 
         {/* Module 2: Question Builder */}
         <section className="exam-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                <HelpCircle className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <div>
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('exams.questions', 'Questions Array')} ({questions.length})</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('exams.questions', 'Questions Array')} ({questions.length})</h2>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {canAccess('ai') && (
                 <button 
                   onClick={() => setShowAIGen(true)} 
-                  className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-black hover:to-black dark:from-white dark:to-slate-200 dark:text-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95"
+                  className="btn-secondary inline-flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300 dark:text-amber-500" />
+                  <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
                   {t('ai.generateButton', 'AI Generation')}
                 </button>
               )}
               <button 
                 onClick={addQuestion} 
-                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95"
+                className="btn-primary inline-flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4" />{t('exams.addQuestion', 'Add Manual')}
+                <Plus className="w-3.5 h-3.5" />{t('exams.addQuestion', 'Add Manual')}
               </button>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {questions.map((q, qIdx) => (
-              <div key={q.id} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm relative group overflow-hidden transition-all focus-within:ring-2 focus-within:ring-slate-400 dark:focus-within:ring-slate-600 focus-within:border-transparent">
+              <div key={q.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 relative group overflow-hidden transition-colors focus-within:border-primary-500 dark:focus-within:border-primary-500">
                 
                 {/* Visual Number Indicator */}
-                <div className="absolute top-0 left-0 w-2 h-full bg-slate-100 dark:bg-slate-800 group-focus-within:bg-slate-900 dark:group-focus-within:bg-white transition-colors" />
+                <div className="absolute top-0 left-0 w-0.5 h-full bg-transparent group-focus-within:bg-primary-600 transition-colors" />
 
-                <div className="pl-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <GripVertical className="w-4 h-4 text-slate-400 cursor-move hidden sm:block" />
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Q{qIdx + 1}</span>
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 h-8 px-2 rounded-md border border-slate-200 dark:border-slate-700">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-400 cursor-move hidden sm:block" />
+                        <span className="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-300">Q{qIdx + 1}</span>
                       </div>
                       
                       <select 
                         value={q.type} 
                         onChange={(e) => updateQuestion(qIdx, { type: e.target.value as QuestionType })} 
-                        className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none"
+                        className="input w-auto"
                       >
                         <option value="multiple_choice">{t('exams.singleChoice', 'Один ответ')}</option>
                         <option value="multi_select">{t('exams.multipleChoice', 'Несколько ответов')}</option>
@@ -370,13 +370,13 @@ const ExamEditPage: React.FC = () => {
                         <option value="speaking">{t('exams.speaking', 'Устный ответ')}</option>
                       </select>
                       
-                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
-                        <span className="text-xs font-bold text-slate-500">{t('exams.pts', 'PTS')}</span>
+                      <div className="flex items-center gap-2 h-8 border border-slate-300 dark:border-slate-700 rounded-md px-2.5 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-primary-500/30 focus-within:border-primary-500">
+                        <span className="text-xs font-medium text-slate-500">{t('exams.pts', 'PTS')}</span>
                         <input 
                           type="number" 
                           value={q.points} 
                           onChange={(e) => updateQuestion(qIdx, { points: +e.target.value })} 
-                          className="w-12 bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none" 
+                          className="w-12 bg-transparent text-sm font-medium tabular-nums text-slate-900 dark:text-slate-100 outline-none" 
                           min={1} 
                         />
                       </div>
@@ -384,59 +384,59 @@ const ExamEditPage: React.FC = () => {
                     
                     <button 
                       onClick={() => removeQuestion(qIdx)} 
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all self-end sm:self-auto"
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors self-end sm:self-auto"
                       title={t('exams.removeQuestion', 'Remove Question')}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-3">
                     <textarea 
                       value={q.text} 
                       onChange={(e) => updateQuestion(qIdx, { text: e.target.value })} 
-                      className={`${inputClass} !text-base !font-medium min-h-[80px] resize-y`} 
+                      className={`${inputClass} min-h-[80px] resize-y`} 
                       placeholder={t('exams.questionPlaceholder', 'Enter question text here...')} 
                     />
                   </div>
 
                   {/* MEDIA & AUDIO CONTROLS */}
-                  <div className="mb-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
-                    <div className="flex flex-col xl:flex-row gap-6">
-                      <div className="flex-1 space-y-4">
-                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('quiz.mediaAttachment', 'Media Attachment')}</label>
+                  <div className="mb-3 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-col xl:flex-row gap-4">
+                      <div className="flex-1 space-y-2">
+                        <label className="label">{t('quiz.mediaAttachment', 'Media Attachment')}</label>
                         {q.mediaUrl ? (
-                          <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/5 flex items-center justify-center min-h-[120px]">
+                          <div className="relative rounded-md overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center min-h-[120px]">
                             {q.mediaType === 'image' && <img src={q.mediaUrl} alt={t('exams.questionMediaAlt', 'Медиа к вопросу')} className="max-h-48 object-contain" />}
                             {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-48" />}
                             {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full mx-4" />}
-                            <button onClick={() => updateQuestion(qIdx, { mediaUrl: undefined, mediaType: undefined })} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-md transition-colors">
-                              <Trash2 className="w-4 h-4" />
+                            <button onClick={() => updateQuestion(qIdx, { mediaUrl: undefined, mediaType: undefined })} className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ) : (
                           <div className="grid grid-cols-3 gap-2">
-                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
-                              <ImageIcon className="w-6 h-6 text-slate-400" />
-                              <span className="text-xs font-semibold text-slate-500">{t('quiz.image', 'Image')}</span>
+                            <label className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-md border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                              <ImageIcon className="w-4 h-4 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('quiz.image', 'Image')}</span>
                               <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                                 const file = e.target.files?.[0]; if (!file) return;
                                 const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
                                 updateQuestion(qIdx, { mediaUrl: url, mediaType: 'image' });
                               }} />
                             </label>
-                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
-                              <Video className="w-6 h-6 text-slate-400" />
-                              <span className="text-xs font-semibold text-slate-500">{t('quiz.video', 'Video')}</span>
+                            <label className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-md border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                              <Video className="w-4 h-4 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('quiz.video', 'Video')}</span>
                               <input type="file" accept="video/*" className="hidden" onChange={async (e) => {
                                 const file = e.target.files?.[0]; if (!file) return;
                                 const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
                                 updateQuestion(qIdx, { mediaUrl: url, mediaType: 'video' });
                               }} />
                             </label>
-                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
-                              <Volume2 className="w-6 h-6 text-slate-400" />
-                              <span className="text-xs font-semibold text-slate-500">{t('quiz.audio', 'Audio')}</span>
+                            <label className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-md border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                              <Volume2 className="w-4 h-4 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('quiz.audio', 'Audio')}</span>
                               <input type="file" accept="audio/*" className="hidden" onChange={async (e) => {
                                 const file = e.target.files?.[0]; if (!file) return;
                                 const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
@@ -447,13 +447,13 @@ const ExamEditPage: React.FC = () => {
                         )}
                       </div>
                       
-                      <div className="flex-1 space-y-4">
-                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('quiz.ttsAudio', 'Text to Synthesize')}</label>
+                      <div className="flex-1 space-y-2">
+                        <label className="label">{t('quiz.ttsAudio', 'Text to Synthesize')}</label>
                         <div className="flex items-start gap-2">
                           <textarea
                             value={q.ttsText || ''}
                             onChange={(e) => updateQuestion(qIdx, { ttsText: e.target.value })}
-                            className={`${inputClass} min-h-[120px] text-sm`}
+                            className={`${inputClass} min-h-[120px]`}
                             placeholder={t('quiz.ttsPlaceholder', 'Type text that will be synthesized into speech for the student...')}
                           />
                         </div>
@@ -465,9 +465,9 @@ const ExamEditPage: React.FC = () => {
                                 const u = new SpeechSynthesisUtterance(q.ttsText);
                                 window.speechSynthesis.speak(u);
                               }}
-                              className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                              className="btn-secondary inline-flex items-center gap-1.5"
                             >
-                              <PlayCircle className="w-4 h-4" /> {t('quiz.listen', 'Listen')}
+                              <PlayCircle className="w-3.5 h-3.5" /> {t('quiz.listen', 'Listen')}
                             </button>
                           </div>
                         )}
@@ -477,9 +477,9 @@ const ExamEditPage: React.FC = () => {
 
                   {/* ─── Multiple Choice / Multi Select Options ─── */}
                   {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
-                    <div className="space-y-3 pl-2 sm:pl-6 border-l-2 border-slate-100 dark:border-slate-800">
+                    <div className="space-y-2 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
                       {q.options.map((opt, oIdx) => (
-                        <div key={oIdx} className="flex items-center gap-3">
+                        <div key={oIdx} className="flex items-center gap-2">
                           {q.type === 'multiple_choice' ? (
                             <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
                                <input type="radio" name={`q-${q.id}`} checked={q.correctAnswer === opt && opt !== ''} onChange={() => updateQuestion(qIdx, { correctAnswer: opt })} className="peer sr-only" />
@@ -501,30 +501,30 @@ const ExamEditPage: React.FC = () => {
                           <input 
                             value={opt} 
                             onChange={(e) => updateOption(qIdx, oIdx, e.target.value)} 
-                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none transition-all" 
+                            className="input" 
                             placeholder={`${t('exams.option', 'Option')} ${oIdx + 1}`} 
                           />
-                          <button onClick={() => removeOption(qIdx, oIdx)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shrink-0"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => removeOption(qIdx, oIdx)} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       ))}
-                      <button onClick={() => addOption(qIdx)} className="mt-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
-                        <Plus className="w-4 h-4" /> {t('exams.addOption', 'Add Option')}
+                      <button onClick={() => addOption(qIdx)} className="btn-ghost mt-1 inline-flex items-center gap-1.5">
+                        <Plus className="w-3.5 h-3.5" /> {t('exams.addOption', 'Add Option')}
                       </button>
                     </div>
                   )}
 
                   {/* ─── True / False ─── */}
                   {q.type === 'true_false' && (
-                    <div className="space-y-3 pl-2 sm:pl-6 border-l-2 border-emerald-200 dark:border-emerald-800">
+                    <div className="space-y-2 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
                       {['True', 'False'].map((opt) => (
-                        <div key={opt} className="flex items-center gap-3">
+                        <div key={opt} className="flex items-center gap-2">
                           <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
                             <input type="radio" name={`q-${q.id}-tf`} checked={q.correctAnswer === opt} onChange={() => updateQuestion(qIdx, { correctAnswer: opt, options: ['True', 'False'] })} className="peer sr-only" />
                             <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 peer-checked:border-emerald-500 flex items-center justify-center transition-all cursor-pointer">
                               {q.correctAnswer === opt && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                             </div>
                           </div>
-                          <span className={`text-sm font-semibold ${q.correctAnswer === opt ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                          <span className={`text-sm font-medium ${q.correctAnswer === opt ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                             {opt === 'True' ? `✅ ${t('exams.trueOption', 'Верно')}` : `❌ ${t('exams.falseOption', 'Неверно')}`}
                           </span>
                         </div>
@@ -534,15 +534,15 @@ const ExamEditPage: React.FC = () => {
 
                   {/* ─── Speaking (oral) ─── */}
                   {q.type === 'speaking' && (
-                    <div className="pl-6 border-l-2 border-violet-200 dark:border-violet-800 pt-2">
-                      <p className="text-sm text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 p-3 rounded-lg border border-violet-200 dark:border-violet-800/30 font-medium">
+                    <div className="pt-1">
+                      <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700">
                         🎤 {t('exams.speakingHint', 'Студент запишет аудио-ответ при прохождении экзамена. Оценка происходит вручную.')}
                       </p>
                     </div>
                   )}
 
                   {q.type === 'short_answer' && (
-                    <div className="pl-6 border-l-2 border-slate-100 dark:border-slate-800 pt-2">
+                    <div className="pt-1">
                       <label className={labelClass}>{t('exams.keywords', 'Grading Keywords')}</label>
                       <input 
                         value={q.keywords.join(', ')} 
@@ -550,7 +550,7 @@ const ExamEditPage: React.FC = () => {
                         className={inputClass} 
                         placeholder={t('exams.keywordsPlaceholder', 'e.g. constant, O(1), algorithm')} 
                       />
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 p-3 rounded-lg border border-amber-200 dark:border-amber-800/30">
+                      <p className="text-xs mt-2 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 px-3 py-2 rounded-md border border-amber-200 dark:border-amber-800/30">
                         {t('exams.keywordsHint', 'Words separated by commas. Used by the automatic grader to evaluate short text answers.')}
                       </p>
                     </div>

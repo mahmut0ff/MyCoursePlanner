@@ -47,8 +47,8 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
 
   const stat = (icon: React.ReactNode, label: string, value: React.ReactNode, sub?: React.ReactNode) => (
     <div className={`${cardCls} p-4`}>
-      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{icon}{label}</div>
-      <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{value}</div>
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">{icon}{label}</div>
+      <div className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100 mt-1">{value}</div>
       {sub && <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
@@ -56,19 +56,19 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
   const arrived = participants.filter((p) => p.status === 'arrived').length;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <section className={`${cardCls} p-5 lg:col-span-2`}>
-        <h2 className="font-bold text-slate-900 dark:text-white mb-4">{t('contests.passport', 'Паспорт конкурса')}</h2>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section className={`${cardCls} p-4 lg:col-span-2`}>
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('contests.passport', 'Паспорт конкурса')}</h2>
         <ContestMetaFields form={form} setForm={setForm} disabled={!canEdit || readOnly} />
         {canEdit && !readOnly && (
-          <div className="flex justify-end mt-5">
+          <div className="flex justify-end mt-4">
             <button onClick={save} disabled={!dirty || saving || !form.title.trim()} className={primaryBtn}>{saving ? '…' : t('common.save', 'Сохранить')}</button>
           </div>
         )}
       </section>
 
-      <aside className="space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+      <aside className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
           {stat(<Users className="w-3.5 h-3.5" />, t('contests.tabs.participants', 'Участники'), participants.filter((p) => p.status !== 'withdrawn').length, t('contests.arrivedN', 'пришли: {{n}}', { n: arrived }))}
           {stat(<Gavel className="w-3.5 h-3.5" />, t('contests.tabs.jury', 'Жюри'), jury.length)}
           {stat(<Wallet className="w-3.5 h-3.5" />, t('contests.cashPrizes', 'Денежные призы'), formatMoney(prizes),
@@ -79,7 +79,7 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
               : t('contests.noFund', 'призовой фонд не указан'))}
         </div>
         <div className={`${cardCls} p-4`}>
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3"><Layers className="w-3.5 h-3.5" />{t('contests.jury.categories', 'Категории')}</div>
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-3"><Layers className="w-3.5 h-3.5" />{t('contests.jury.categories', 'Категории')}</div>
           {contest.categories.length ? (
             <ul className="space-y-1">
               {contest.categories.map((c) => (
@@ -96,7 +96,7 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
         </div>
         {canDelete && !readOnly && (
           <button onClick={() => setConfirmDelete(true)} className={`${secondaryBtn} w-full text-rose-600 dark:text-rose-400`}>
-            <Trash2 className="w-4 h-4" />{t('contests.delete', 'Удалить конкурс')}
+            <Trash2 className="w-3.5 h-3.5" />{t('contests.delete', 'Удалить конкурс')}
           </button>
         )}
       </aside>

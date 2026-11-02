@@ -53,10 +53,10 @@ const ActiveOrgCard: React.FC<{ className?: string }> = ({ className }) => {
   };
 
   return (
-    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 ${className || ''}`}>
+    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 ${className || ''}`}>
       <div className="flex items-center gap-2 mb-1">
-        <Building2 className="w-4 h-4 text-teal-500" />
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+        <Building2 className="w-3.5 h-3.5 text-slate-400" />
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {t('org.activeOrg', 'Активный учебный центр')}
         </h2>
       </div>
@@ -73,10 +73,10 @@ const ActiveOrgCard: React.FC<{ className?: string }> = ({ className }) => {
               type="button"
               onClick={() => handleSwitch(m.organizationId)}
               disabled={!!switching}
-              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center gap-1.5 max-w-full ${
+              className={`h-7 px-2.5 rounded-md text-sm transition-colors inline-flex items-center gap-1.5 border max-w-full ${
                 isActive
-                  ? 'bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 ring-1 ring-teal-400/40'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  ? 'bg-primary-100 dark:bg-primary-950 border-primary-200 dark:border-primary-900 text-slate-900 dark:text-slate-100 font-medium'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
               } disabled:opacity-60`}
             >
               {isLoading ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" /> : <Building2 className="w-3.5 h-3.5 shrink-0" />}

@@ -4,8 +4,8 @@
  * GET  /api-subscriptions              → get subscription + calculated balance
  * GET  /api-subscriptions?orgId=<id>   → get subscription for specific org (super_admin)
  * GET  /api-subscriptions?history=true → include payment history
- * POST /api-subscriptions              → change plan (proration — no payment needed for downgrade)
- * PUT  /api-subscriptions              → cancel / reactivate subscription
+ * POST /api-subscriptions              → change plan with proration (super_admin only — manual billing)
+ * PUT  /api-subscriptions              → cancel / reactivate subscription (org admin or super_admin)
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
@@ -142,15 +142,19 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // POST — change plan with proration
   if (event.httpMethod === 'POST') {
+    // Тариф меняет только команда SabakHub (AdminBillingPage → api-admin) после
+    // оплаты: биллинг ручной, /billing эту смену даже не вызывает. Пока POST был
+    // открыт админу организации, он поднимал тариф БЕСПЛАТНО: в ручной модели
+    // (paidUntil) баланс не участвует, статус оставался 'active', и
+    // {planId:'enterprise'} давал Enterprise до конца оплаченного периода;
+    // для gifted-подписки — навсегда.
+    if (!isSuperAdmin(user)) return forbidden('Plans are changed by the SabakHub team after payment');
+
     const body = JSON.parse(event.body || '{}');
     const orgId = body.organizationId || user.organizationId;
     if (!orgId) return badRequest('organizationId required');
     if (!body.planId) return badRequest('planId required');
     if (!isKnownPlanId(body.planId)) return badRequest('Invalid planId');
-
-    // Only admin of the org or super_admin can change plan
-    if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
-    if (!canManageSubscription(user)) return forbidden('Only the organization admin can change the plan');
 
     const now = new Date().toISOString();
     const newDailyRate = planDailyRate(body.planId);

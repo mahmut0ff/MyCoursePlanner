@@ -60,35 +60,35 @@ const TeacherInvitesPage: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('invites.title')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('invites.subtitle')}</p>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('invites.title')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('invites.subtitle')}</p>
         </div>
-        <button onClick={load} title={t('common.refresh') || 'Refresh'} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-          <RefreshCw className="w-4 h-4" />
+        <button onClick={load} title={t('common.refresh') || 'Refresh'} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {error && <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
-      {success && <div className="mb-4 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><CheckCircle className="w-4 h-4" />{success}</div>}
+      {error && <div className="mb-4 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
+      {success && <div className="mb-4 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><CheckCircle className="w-4 h-4" />{success}</div>}
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
         </div>
       ) : invites.length === 0 ? (
         <div className="text-center py-20">
-          <Inbox className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <Inbox className="w-6 h-6 text-slate-400 dark:text-slate-500 mx-auto mb-2" />
           <p className="text-sm text-slate-400">{t('invites.empty')}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {invites.map((invite) => (
-            <div key={invite.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary-200/50 dark:shadow-primary-900/30">
-                  <Building2 className="w-5 h-5 text-white" />
+            <div key={invite.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-md flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-slate-500 dark:text-slate-300" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{invite.organizationName || t('invites.unknownOrg')}</h3>
@@ -96,15 +96,15 @@ const TeacherInvitesPage: React.FC = () => {
                     {t('invites.invitedBy')}: {invite.invitedByName || invite.invitedBy}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full font-medium capitalize">{invite.role}</span>
-                    <span className="text-[10px] text-slate-400">{new Date(invite.createdAt).toLocaleDateString(numericDateLocale())}</span>
+                    <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 capitalize">{invite.role}</span>
+                    <span className="text-xs text-slate-400">{new Date(invite.createdAt).toLocaleDateString(numericDateLocale())}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleAccept(invite.id)}
                     disabled={processingId === invite.id}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="btn-primary inline-flex items-center gap-1.5"
                   >
                     {processingId === invite.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                     {t('invites.accept')}
@@ -112,7 +112,7 @@ const TeacherInvitesPage: React.FC = () => {
                   <button
                     onClick={() => handleDecline(invite.id)}
                     disabled={processingId === invite.id}
-                    className="bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/20 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="btn-secondary inline-flex items-center gap-1.5 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     {t('invites.decline')}

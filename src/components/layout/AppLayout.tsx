@@ -33,14 +33,14 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
     <>
       {/* ─── Trial countdown banner ─── */}
       {subscriptionStatus === 'trial' && trialDaysLeft !== null && trialDaysLeft > 0 && (
-        <div className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium border-b ${
+        <div className={`flex items-center gap-2 px-3 md:px-5 py-1.5 text-[13px] border-b ${
           trialDaysLeft <= 3
             ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800/30'
             : trialDaysLeft <= 7
             ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800/30'
             : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800/30'
         }`}>
-          {trialDaysLeft <= 3 ? <AlertTriangle className="w-4 h-4 shrink-0" /> : <Clock className="w-4 h-4 shrink-0" />}
+          {trialDaysLeft <= 3 ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <Clock className="w-3.5 h-3.5 shrink-0" />}
           <span>
             {t('billing.trialBanner', 'Пробный период')}: <strong>{t('billing.trialDays', { count: trialDaysLeft })}</strong> {t('billing.remaining', 'осталось')}
           </span>
@@ -52,8 +52,8 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
 
       {/* ─── Expired banner on billing page ─── */}
       {isExpired && isOnBillingPage && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-b border-red-100 dark:border-red-800/30 text-sm font-medium">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 px-3 md:px-5 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-b border-red-100 dark:border-red-800/30 text-[13px]">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           <span>{t('billing.expired', 'Ваш пробный период закончился. Выберите тариф для продолжения работы.')}</span>
         </div>
       )}
@@ -127,6 +127,13 @@ const AppLayout: React.FC = () => {
     return () => { setStudentTermMode(null); };
   }, [institutionType, i18n]);
 
+  // Dolboor type scale and form look apply to the app only (see .app-ui in index.css);
+  // on <html> so modals portalled to <body> get it too.
+  useEffect(() => {
+    document.documentElement.classList.add('app-ui');
+    return () => { document.documentElement.classList.remove('app-ui'); };
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('planula_sidebar_collapsed') === 'true';
@@ -152,9 +159,9 @@ const AppLayout: React.FC = () => {
         {t('nav.skipToContent', 'Перейти к основному содержимому')}
       </a>
 
-      <div className="h-full bg-slate-50 dark:bg-slate-900 flex" style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
-        {/* Sidebar wrapper */}
-        <div className={`hidden lg:block shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-60'}`} role="none" />
+      <div className="h-full bg-white dark:bg-slate-900 flex" style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
+        {/* Sidebar wrapper — widths mirror the fixed Sidebar */}
+        <div className={`hidden lg:block shrink-0 transition-all duration-200 ${isSidebarCollapsed ? 'w-14' : 'w-[220px]'}`} role="none" />
         <Sidebar 
           open={sidebarOpen} 
           onClose={() => setSidebarOpen(false)} 
@@ -168,8 +175,8 @@ const AppLayout: React.FC = () => {
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
           <SubscriptionGuard>
             <main id="main-content" role="main" aria-label={t('nav.pageContent', 'Содержимое страницы')} className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
-                <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
+              <div className="flex-1 p-4 md:p-5 lg:p-6 overflow-y-auto overflow-x-hidden relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
+                <div className="w-full min-h-full page-content">
                   <Suspense fallback={
                     <div className="flex items-center justify-center py-20" role="status" aria-label={t('common.loading', 'Загрузка...')}>
                       <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />

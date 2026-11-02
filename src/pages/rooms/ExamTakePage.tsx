@@ -284,28 +284,28 @@ const ExamTakePage: React.FC = () => {
     }
   };
 
-  if (loading) return <div role="status" className="exam-bg flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
-  if (errorStr) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" /><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t(errorStr, 'An error occurred')}</h3></div></div>;
-  if (!exam || !questions.length) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t('rooms.examNotAvailable', 'Exam not available')}</h3></div></div>;
+  if (loading) return <div role="status" className="bg-slate-50 dark:bg-slate-950 flex items-center justify-center min-h-screen"><div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
+  if (errorStr) return <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 text-center"><AlertTriangle className="w-6 h-6 text-red-500 mx-auto mb-2" /><h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t(errorStr, 'An error occurred')}</h3></div></div>;
+  if (!exam || !questions.length) return <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 text-center"><h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('rooms.examNotAvailable', 'Exam not available')}</h3></div></div>;
 
   if (room?.status === 'waiting') {
     return (
-      <div className="exam-bg min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl p-10 rounded-3xl shadow-2xl text-center max-w-md w-full border border-white/40 dark:border-slate-800/50 exam-slide-up">
-          <div className="w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Clock className="w-10 h-10 text-primary-600 dark:text-primary-400 animate-pulse" />
+      <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl text-center max-w-md w-full border border-slate-200 dark:border-slate-700 exam-slide-up">
+          <div className="w-10 h-10 bg-primary-50 dark:bg-primary-950 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-5 h-5 text-primary-600 dark:text-primary-400 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('rooms.waitingTitle', 'Ожидание преподавателя')}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('rooms.waitingDesc', 'Пожалуйста, не закрывайте эту вкладку. Экзамен начнется автоматически, как только преподаватель нажмет кнопку старта.')}</p>
-          <div className="flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center justify-center gap-2 text-sm text-primary-600 dark:text-primary-400 font-semibold bg-primary-50 dark:bg-primary-900/20 py-3 px-6 rounded-xl w-full">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('rooms.waitingTitle', 'Ожидание преподавателя')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('rooms.waitingDesc', 'Пожалуйста, не закрывайте эту вкладку. Экзамен начнется автоматически, как только преподаватель нажмет кнопку старта.')}</p>
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 text-sm text-primary-700 dark:text-primary-300 font-medium bg-primary-50 dark:bg-primary-950 py-2 px-4 rounded-md w-full">
+              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
               {t('rooms.waitingSync', 'Синхронизация...')}
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800 py-2 px-4 rounded-lg
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-1 py-1.5 px-3
 ">
-              <Users className="w-4 h-4" />
+              <Users className="w-3.5 h-3.5" />
               <span>{t('rooms.inWaitingRoom', 'В зале ожидания: {{count}}', { count: (room.participants?.length || 0) + 1 })}</span>
             </div>
           </div>
@@ -323,44 +323,44 @@ const ExamTakePage: React.FC = () => {
   const progressPercent = (answeredCount / questions.length) * 100;
 
   return (
-    <div className="exam-bg min-h-screen flex flex-col font-sans">
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex flex-col font-sans">
       
       {/* Recovery Banner */}
       {recovered && (
-        <div className="bg-emerald-500 text-white text-center py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top duration-500">
-          <ShieldCheck className="w-4 h-4" />
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top duration-500">
+          <ShieldCheck className="w-3.5 h-3.5" />
           {t('rooms.recoveredAnswers', 'Ваши ответы были восстановлены из автосохранения')}
-          <button onClick={() => setRecovered(false)} className="ml-3 text-emerald-100 hover:text-white underline text-xs">OK</button>
+          <button onClick={() => setRecovered(false)} className="ml-3 text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 underline text-xs">OK</button>
         </div>
       )}
 
       {/* Sleek Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
+      <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
         {/* Progress Bar Top Edge */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-800">
-          <div className="h-full bg-slate-800 dark:bg-slate-300 transition-all duration-300 ease-out" style={{ width: `${progressPercent}%` }} />
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-100 dark:bg-slate-800">
+          <div className="h-full bg-primary-600 dark:bg-primary-500 transition-all duration-300 ease-out" style={{ width: `${progressPercent}%` }} />
         </div>
         
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="max-w-[50%]">
-            <h1 className="font-bold text-slate-900 dark:text-white truncate">{exam.title}</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{exam.title}</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {answeredCount} / {questions.length} {t('rooms.answered', 'Answered')}
             </p>
           </div>
           
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isLow ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'} transition-colors`}>
-              <Clock className={`w-4 h-4 ${isLow ? 'animate-pulse' : ''}`} />
-              <span className="text-lg font-mono font-bold tracking-tight">{formatTime(timeLeft)}</span>
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-1.5 h-8 px-2.5 rounded-md border ${isLow ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-900/40 dark:text-red-400' : 'border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300'} transition-colors`}>
+              <Clock className={`w-3.5 h-3.5 ${isLow ? 'animate-pulse' : ''}`} />
+              <span className="text-sm font-mono font-semibold tabular-nums">{formatTime(timeLeft)}</span>
             </div>
             
             <button
               onClick={() => { if (confirm(t('rooms.submitConfirm', 'Are you sure you want to submit?'))) handleSubmit(); }}
               disabled={submitting}
-              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-2 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+              className="btn-primary inline-flex items-center gap-1.5"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{submitting ? t('rooms.submitting', 'Submitting...') : t('rooms.submit', 'Submit Exam')}</span>
             </button>
           </div>
@@ -368,19 +368,19 @@ const ExamTakePage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-6">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4">
         
         {/* Top Side: Question Navigator */}
         <div className="w-full order-1">
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('rooms.questionsOverview', 'Навигация по вопросам')}</h3>
-              <div className="text-xs text-slate-500 font-medium">
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('rooms.questionsOverview', 'Навигация по вопросам')}</h3>
+              <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                 <span>{t('rooms.remainingCount', 'Осталось: {{count}}', { count: questions.length - answeredCount })}</span>
               </div>
             </div>
             
-            <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <div className="flex flex-nowrap overflow-x-auto gap-1.5 pb-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
               {questions.map((_, i) => {
                 const qId = questions[i].id;
                 const answered = answers[qId] && (Array.isArray(answers[qId]) ? (answers[qId] as string[]).length > 0 : String(answers[qId]).trim() !== '');
@@ -390,12 +390,12 @@ const ExamTakePage: React.FC = () => {
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
-                    className={`shrink-0 w-12 h-10 rounded-xl text-sm font-semibold flex items-center justify-center transition-all ${
+                    className={`shrink-0 w-9 h-8 rounded-md text-sm font-medium tabular-nums flex items-center justify-center transition-colors ${
                       isActive
-                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md transform scale-105 z-10'
+                        ? 'bg-primary-600 text-white border border-primary-600'
                         : answered
-                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 exam-card-hover'
-                        : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 exam-card-hover hover:border-slate-300 dark:hover:border-slate-600'
+                        ? 'bg-primary-50 dark:bg-primary-950 text-slate-900 dark:text-slate-100 border border-primary-200 dark:border-primary-900'
+                        : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-800'
                     }`}
                   >
                     {i + 1}
@@ -409,49 +409,49 @@ const ExamTakePage: React.FC = () => {
         {/* Bottom Side: Active Question */}
         <div className="flex-1 order-2 w-full">
           {/* Use key to remount and trigger animation on question change */}
-          <div key={q.id} className="exam-slide-up bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-200/50 dark:border-slate-800/50 shadow-lg p-6 sm:p-10">
+          <div key={q.id} className="exam-slide-up bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 sm:p-8">
             
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold tracking-wide">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium tabular-nums">
                 {t('rooms.question', 'Question')} {currentQ + 1} / {questions.length}
               </span>
-              <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                 {t('rooms.pointsCount', { count: q.points, defaultValue: '{{count}} баллов' })}
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white leading-snug mb-8">{q.text}</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-snug mb-6">{q.text}</h2>
 
             {/* Media Block */}
             {q.mediaUrl && (
-              <div className="mb-8 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-4 min-h-[200px]">
-                {q.mediaType === 'image' && <img src={q.mediaUrl} alt={t('rooms.questionMediaAlt', 'Иллюстрация к вопросу')} className="max-h-[400px] object-contain rounded-xl shadow-sm" />}
-                {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-[400px] w-full max-w-2xl rounded-xl shadow-sm" />}
+              <div className="mb-6 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-4 min-h-[200px]">
+                {q.mediaType === 'image' && <img src={q.mediaUrl} alt={t('rooms.questionMediaAlt', 'Иллюстрация к вопросу')} className="max-h-[400px] object-contain rounded-md" />}
+                {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-[400px] w-full max-w-2xl rounded-md" />}
                 {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full max-w-md mx-auto" />}
               </div>
             )}
 
             {/* AI Synthesized Text (TTS) Block */}
             {q.ttsText && (
-              <div className="mb-8 flex justify-end">
+              <div className="mb-6 flex justify-end">
                 <button
                   onClick={() => {
                     const u = new SpeechSynthesisUtterance(q.ttsText!);
                     window.speechSynthesis.cancel();
                     window.speechSynthesis.speak(u);
                   }}
-                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm exam-card-hover"
+                  className="btn-secondary inline-flex items-center gap-1.5"
                 >
-                  <Volume2 className="w-5 h-5 text-indigo-500" />
+                  <Volume2 className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
                   {t('rooms.listenQuestion', 'Прослушать вопрос')}
                 </button>
               </div>
             )}
 
             {/* Answer Options */}
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {q.type === 'speaking' && (
-                <div className="mb-8">
+                <div className="mb-6">
                   <StudentAudioRecorder 
                     onRecordingComplete={async (blob) => {
                        toast.loading(t('rooms.uploadingRecording', 'Загрузка записи...'), { id: 'upload-audio' });
@@ -466,8 +466,8 @@ const ExamTakePage: React.FC = () => {
                     }} 
                   />
                   {answers[q.id] && (
-                    <div className="mt-4 flex items-center justify-center text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 py-3 rounded-xl">
-                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                    <div className="mt-3 flex items-center justify-center text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/40 py-2 rounded-md">
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
                       {t('rooms.audioSaved', 'Аудиоответ сохранён!')}
                     </div>
                   )}
@@ -482,16 +482,16 @@ const ExamTakePage: React.FC = () => {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnswer(q.id, opt); } }}
-                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border cursor-pointer transition-colors select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 ${
                       selected
-                        ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                        ? 'border-primary-600 bg-primary-50 dark:border-primary-500 dark:bg-primary-950'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-slate-900 dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
-                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
+                    <div className={`shrink-0 w-[18px] h-[18px] rounded-full border flex items-center justify-center transition-colors ${selected ? 'border-primary-600 dark:border-primary-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <div className="w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400" />}
                     </div>
-                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
+                    <span className={`text-base ${selected ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
                   </div>
                 );
               })}
@@ -505,16 +505,16 @@ const ExamTakePage: React.FC = () => {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnswer(q.id, opt); } }}
-                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border cursor-pointer transition-colors select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 ${
                       selected
-                        ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                        ? 'border-primary-600 bg-primary-50 dark:border-primary-500 dark:bg-primary-950'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-slate-900 dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
-                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
+                    <div className={`shrink-0 w-[18px] h-[18px] rounded-full border flex items-center justify-center transition-colors ${selected ? 'border-primary-600 dark:border-primary-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <div className="w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400" />}
                     </div>
-                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                    <span className={`text-base ${selected ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>
                       {opt === 'True' ? `✅ ${t('exams.trueOption', 'Верно')}` : `❌ ${t('exams.falseOption', 'Неверно')}`}
                     </span>
                   </div>
@@ -544,14 +544,14 @@ const ExamTakePage: React.FC = () => {
                         setAnswer(q.id, updated);
                       }
                     }}
-                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
-                      selected ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border cursor-pointer transition-colors select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 ${
+                      selected ? 'border-primary-600 bg-primary-50 dark:border-primary-500 dark:bg-primary-950' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <div className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${selected ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
-                      {selected && <CheckCircle2 className="w-4 h-4 text-white dark:text-slate-900" />}
+                    <div className={`shrink-0 w-[18px] h-[18px] rounded border flex items-center justify-center transition-colors ${selected ? 'bg-primary-600 border-primary-600 dark:bg-primary-500 dark:border-primary-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
                     </div>
-                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
+                    <span className={`text-base ${selected ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
                   </div>
                 );
               })}
@@ -560,36 +560,36 @@ const ExamTakePage: React.FC = () => {
                 <textarea
                   value={(answers[q.id] as string) || ''}
                   onChange={(e) => setAnswer(q.id, e.target.value)}
-                  className="w-full min-h-[160px] p-6 text-lg rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-slate-900 dark:focus:border-white focus:ring-0 outline-none transition-all resize-y"
+                  className="w-full min-h-[160px] p-4 text-base rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 hover:border-slate-400 dark:hover:border-slate-600 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 outline-none transition-colors resize-y"
                   placeholder={t('rooms.typeAnswerHere', 'Type your answer here...')}
                 />
               )}
             </div>
 
             {/* In-Card Navigation */}
-            <div className="flex items-center justify-between mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
                 disabled={currentQ === 0}
-                className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="btn-secondary inline-flex items-center gap-1.5"
               >
-                <ChevronLeft className="w-5 h-5" />{t('rooms.previous', 'Previous')}
+                <ChevronLeft className="w-3.5 h-3.5" />{t('rooms.previous', 'Previous')}
               </button>
               
               {currentQ === questions.length - 1 ? (
                 <button
                   onClick={() => { if (confirm(t('rooms.submitConfirm', 'Are you sure you want to submit?'))) handleSubmit(); }}
                   disabled={submitting}
-                  className="bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md"
+                  className="btn-primary inline-flex items-center gap-1.5"
                 >
-                  {submitting ? t('rooms.submitting', 'Submitting...') : t('rooms.submit', 'Submit Exam')} <Send className="w-5 h-5" />
+                  {submitting ? t('rooms.submitting', 'Submitting...') : t('rooms.submit', 'Submit Exam')} <Send className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <button
                   onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))}
-                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-colors"
+                  className="btn-primary inline-flex items-center gap-1.5"
                 >
-                  {t('rooms.next', 'Next')} <ChevronRight className="w-5 h-5" />
+                  {t('rooms.next', 'Next')} <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>

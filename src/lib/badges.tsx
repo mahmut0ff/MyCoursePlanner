@@ -17,7 +17,7 @@ export const BADGE_DEFS: Record<string, { icon: string; title: string; descripti
   // --- Quizzes ---
   first_quiz: { icon: '🎮', title: 'Новый игрок', description: 'Сыграли в свою первую викторину' },
   quiz_winner: { icon: '🏅', title: 'Чемпион', description: 'Успешно прошли викторину на высокий балл' },
-  five_quizzes: { icon: '🎲', title: 'Азартный ученик', description: 'Завершили 5 викторин' },
+  five_quizzes: { icon: '🎲', title: 'Азартный студент', description: 'Завершили 5 викторин' },
   // --- Organizations & Community ---
   joined_org: { icon: '🤝', title: 'Часть команды', description: 'Вступили в свой первый учебный центр' },
   three_orgs: { icon: '🌍', title: 'Сетевик', description: 'Состоите в 3 учебных центрах' },

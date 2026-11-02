@@ -94,6 +94,9 @@ describe('Firestore Security Rules: Tenant Isolation', () => {
         await db.doc('users/bob_uid/memberships/org-B').set({ role: 'admin', userEmail: 'bob@b.org' });
         await db.doc('orgMembers/org-A/members/alice_uid').set({ userName: 'Alice', role: 'student' });
         await db.doc('orgMembers/org-B/members/bob_uid').set({ userName: 'Bob', role: 'admin' });
+        // Уволен из org-A, но activeOrgId и документ членства остались.
+        await db.doc('users/carol_uid').set({ role: 'teacher', organizationId: 'org-A', activeOrgId: 'org-A' });
+        await db.doc('users/carol_uid/memberships/org-A').set({ role: 'teacher', status: 'removed' });
       });
     });
 
@@ -109,6 +112,11 @@ describe('Firestore Security Rules: Tenant Isolation', () => {
       await assertSucceeds(aliceDb.doc('orgMembers/org-A/members/alice_uid').get());
       await assertFails(aliceDb.doc('orgMembers/org-B/members/bob_uid').get());
       await assertFails(aliceDb.collection('orgMembers/org-B/members').get());
+    });
+
+    it('R-SEC-07b: removed member no longer reads the roster', async () => {
+      const carolDb = testEnv.authenticatedContext('carol_uid').firestore();
+      await assertFails(carolDb.collection('orgMembers/org-A/members').get());
     });
 
     it('R-SEC-08: super admin reads any org roster', async () => {

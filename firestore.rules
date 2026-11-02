@@ -111,9 +111,17 @@ service cloud.firestore {
     
     // Состав организации видят только её участники (useChat берёт отсюда имя
     // собеседника в своей орг.). Раньше любой вошедший мог по orgId выгрузить
-    // сотрудников и учеников чужой организации.
+    // сотрудников и учеников чужой организации. Уволенный/отчисленный сохраняет
+    // документ членства (status removed/expelled) и activeOrgId — ему отказ.
+    function isCurrentOrgMember(orgId) {
+      let m = /databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(orgId);
+      return hasOrgAccess(orgId) && (
+        !exists(m) || !(get(m).data.get('status', 'active') in ['removed', 'expelled'])
+      );
+    }
+
     match /orgMembers/{orgId}/members/{userId} {
-      allow read: if isSuperAdmin() || hasOrgAccess(orgId);
+      allow read: if isSuperAdmin() || isCurrentOrgMember(orgId);
       allow write: if isSuperAdmin();
     }
 

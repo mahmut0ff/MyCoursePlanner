@@ -11,6 +11,7 @@ import { recordTeacherActivity } from './utils/teacher-activity';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AI_MODEL } from './utils/ai';
+import { fetchStorageFile } from './utils/storage-fetch';
 
 const COLLECTION = 'homework_submissions';
 
@@ -278,13 +279,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     let totalBytes = 0;
     for (const att of readable) {
       try {
-        const resp = await fetch(att.url);
-        if (!resp.ok) continue;
-        const buf = Buffer.from(await resp.arrayBuffer());
-        if (buf.length > MAX_FILE_BYTES) continue;
+        // att.url пишет клиент — качаем только из нашего Storage (SSRF); больше лимита — бросит и пропустим.
+        const { buffer: buf, contentType } = await fetchStorageFile(att.url, MAX_FILE_BYTES);
         if (totalBytes + buf.length > MAX_TOTAL_BYTES) break;
         totalBytes += buf.length;
-        const mimeType = resp.headers.get('content-type') || (isPdf(att) ? 'application/pdf' : 'image/jpeg');
+        const mimeType = contentType || (isPdf(att) ? 'application/pdf' : 'image/jpeg');
         mediaParts.push({ inlineData: { data: buf.toString('base64'), mimeType } });
       } catch { /* skip unreadable attachment */ }
     }

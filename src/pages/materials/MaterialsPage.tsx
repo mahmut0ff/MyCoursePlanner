@@ -535,7 +535,8 @@ const MaterialsPage: React.FC = () => {
                 {t('common.cancel', 'Отмена')}
               </button>
 
-              {!form.file && form.url.trim() && canAccess('ai') && (
+              {/* Сервер читает только файлы нашего Storage (защита от SSRF) — внешнюю ссылку ИИ не откроет. */}
+              {!form.file && form.url.startsWith('https://firebasestorage.googleapis.com/') && canAccess('ai') && (
                  <button 
                     onClick={() => processWithAI(form.url)} 
                     disabled={isProcessingAI || isUploading}

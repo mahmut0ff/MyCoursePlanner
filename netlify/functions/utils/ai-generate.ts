@@ -10,35 +10,9 @@
  *    лекции — 17.7 с, то есть синхронная функция гарантированно ловит 504.
  */
 import { generateWithFallback, parseJsonLoose } from './ai';
+import { fetchStorageFile } from './storage-fetch';
 
 /** Ошибка генерации с разделением «виноват ввод» / «виновал сервер». */
-// SSRF: fileUrl приходит от клиента, поэтому функция скачивает только https-ссылки
-// Firebase Storage — иначе ею можно достучаться до метаданных облака и localhost.
-const ALLOWED_FILE_HOSTS = new Set(['firebasestorage.googleapis.com', 'storage.googleapis.com']);
-
-export function isAllowedFileUrl(raw: unknown): boolean {
-  if (typeof raw !== 'string') return false;
-  let url: URL;
-  try { url = new URL(raw); } catch { return false; }
-  if (url.protocol !== 'https:' || url.username || url.password) return false;
-  const host = url.hostname.toLowerCase();
-  return ALLOWED_FILE_HOSTS.has(host) || host.endsWith('.firebasestorage.app');
-}
-
-/** Редиректы — вручную: разрешённый хост не должен перекинуть запрос на внутренний адрес. */
-async function fetchAllowedFile(raw: string): Promise<Response> {
-  let target = raw;
-  for (let hop = 0; hop < 4; hop++) {
-    if (!isAllowedFileUrl(target)) throw new Error('ссылка ведёт не в Firebase Storage');
-    const response = await fetch(target, { redirect: 'manual' });
-    if (response.status < 300 || response.status >= 400) return response;
-    const location = response.headers.get('location');
-    if (!location) return response;
-    target = new URL(location, target).toString();
-  }
-  throw new Error('слишком много перенаправлений');
-}
-
 export class AIGenerateError extends Error {
   constructor(
     message: string,
@@ -189,12 +163,9 @@ Do not include any extra text, only the JSON array.`;
   // Process file if provided (e.g., PDF or Image from Firebase Storage)
   if (fileUrl) {
     try {
-      const response = await fetchAllowedFile(fileUrl);
-      if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`);
-      
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const mimeType = response.headers.get('content-type') || 'application/pdf';
+      // fileUrl приходит от клиента — только файлы нашего Storage (SSRF), с лимитом размера.
+      const { buffer, contentType } = await fetchStorageFile(fileUrl);
+      const mimeType = contentType || 'application/pdf';
 
       parts.push({
         inlineData: {

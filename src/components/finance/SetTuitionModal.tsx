@@ -134,32 +134,32 @@ const SetTuitionModal: React.FC<Props> = ({
     }
   };
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white';
+  const inputCls = 'input';
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => { if (!busy) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center p-4" onClick={() => { if (!busy) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BadgePercent className="w-5 h-5 text-emerald-600" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <BadgePercent className="w-3.5 h-3.5 text-slate-400" />
               {t('finances.tuitionTitle', 'Сумма оплаты')}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {studentLabel || t('finances.tuitionSelected', 'Выбрано студентов: {{n}}', { n: studentIds.length })}
             </p>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="px-4 py-2 space-y-3 overflow-y-auto">
           <p className="text-xs text-slate-500">
             {t('finances.tuitionHint', 'Столько студент платит за этот курс. Сумма сохраняется и применяется ко всем следующим начислениям — цена курса на него больше не влияет.')}
           </p>
 
           {!fixedCourseId && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('finances.course', 'Курс')} *
               </label>
               <select value={courseId} onChange={e => setCourseId(e.target.value)} className={inputCls} disabled={busy !== null}>
@@ -177,23 +177,23 @@ const SetTuitionModal: React.FC<Props> = ({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {t('finances.tuitionAmount', 'Платит за период')} ({CURRENCY_SUFFIX}) *
             </label>
             <input
               type="number" min="0" step="1" autoFocus
               value={amount} onChange={e => setAmount(e.target.value)}
               disabled={busy !== null}
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
+              className="input font-medium tabular-nums"
               placeholder="0"
             />
             {coursePrice !== null && discount > 0 ? (
-              <p className="text-xs text-emerald-600 font-medium mt-1">
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium tabular-nums mt-1">
                 {t('finances.discount', 'Скидка')}: {formatMoney(discount)}
                 <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(coursePrice)}</span>
               </p>
             ) : coursePrice !== null && surcharge > 0 ? (
-              <p className="text-xs text-amber-600 font-medium mt-1">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium tabular-nums mt-1">
                 {t('finances.surcharge', 'Выше прайса')}: {formatMoney(surcharge)}
                 <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(coursePrice)}</span>
               </p>
@@ -212,7 +212,7 @@ const SetTuitionModal: React.FC<Props> = ({
                 checked={applyToUnpaid}
                 onChange={e => setApplyToUnpaid(e.target.checked)}
                 disabled={busy !== null}
-                className="w-4 h-4 mt-0.5 accent-emerald-500 shrink-0"
+                className="w-3.5 h-3.5 mt-0.5 accent-primary-600 shrink-0"
               />
               <span className="text-sm text-slate-700 dark:text-slate-300">
                 {t('finances.tuitionApply', 'Применить к неоплаченным начислениям')}
@@ -233,7 +233,7 @@ const SetTuitionModal: React.FC<Props> = ({
                     checked={applyScope === 'all'}
                     onChange={() => setApplyScope('all')}
                     disabled={busy !== null}
-                    className="w-3.5 h-3.5 mt-0.5 accent-emerald-500 shrink-0"
+                    className="w-3.5 h-3.5 mt-0.5 accent-primary-600 shrink-0"
                   />
                   <span className="text-[13px] text-slate-700 dark:text-slate-300">
                     {t('finances.tuitionScopeAll', 'За все месяцы')}
@@ -248,7 +248,7 @@ const SetTuitionModal: React.FC<Props> = ({
                     checked={applyScope === 'period'}
                     onChange={() => setApplyScope('period')}
                     disabled={busy !== null}
-                    className="w-3.5 h-3.5 mt-0.5 accent-emerald-500 shrink-0"
+                    className="w-3.5 h-3.5 mt-0.5 accent-primary-600 shrink-0"
                   />
                   <span className="text-[13px] text-slate-700 dark:text-slate-300">
                     {t('finances.tuitionScopePeriod', 'Только за {{month}}', { month: periodLabel })}
@@ -262,28 +262,28 @@ const SetTuitionModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
           {/* Сброс — это не «удалить», а «вернуть на цену курса»: обратимо и
               называется тем, что делает. */}
           <button
             onClick={() => submit(true)}
             disabled={!canClear}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-40 transition-colors"
+            className="btn-ghost inline-flex items-center gap-1.5"
             title={t('finances.tuitionClearHint', 'Убрать договорную цену и вернуть студента на цену курса')}
           >
             {busy === 'clear' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
             {t('finances.tuitionClear', 'По цене курса')}
           </button>
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={busy !== null} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <button onClick={onClose} disabled={busy !== null} className="btn-ghost">
               {t('finances.cancel', 'Отмена')}
             </button>
             <button
               onClick={() => submit(false)}
               disabled={!canSubmit}
-              className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all inline-flex items-center gap-2"
+              className="btn-primary inline-flex items-center gap-1.5"
             >
-              {busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />}
+              {busy === 'save' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {t('finances.save', 'Сохранить')}
             </button>
           </div>

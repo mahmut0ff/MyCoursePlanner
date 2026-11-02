@@ -67,25 +67,25 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
   const isPdf = type === 'application/pdf';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col" onClick={onClose}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/40 shrink-0" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 text-white min-w-0">
+      <div className="flex items-center justify-between h-12 px-4 bg-black/40 border-b border-white/10 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 text-white min-w-0 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-white/60">
           {getFileIcon(type)}
           <span className="text-sm font-medium truncate">{name}</span>
         </div>
         <div className="flex items-center gap-1">
           <a href={url} download={name} target="_blank" rel="noreferrer"
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.download', 'Скачать')}>
-            <Download className="w-4 h-4" />
+            className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors" title={t('fileViewer.download', 'Скачать')}>
+            <Download className="w-3.5 h-3.5" />
           </a>
           <button onClick={(e) => { e.stopPropagation(); setIsFullscreen((p) => !p); }}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.fullscreen', 'Во весь экран (F)')}>
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors" title={t('fileViewer.fullscreen', 'Во весь экран (F)')}>
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
           <button onClick={onClose}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.close', 'Закрыть (Esc)')}>
-            <X className="w-4 h-4" />
+            className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors" title={t('fileViewer.close', 'Закрыть (Esc)')}>
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -93,31 +93,31 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
       {/* Content */}
       <div className={`flex-1 flex items-center justify-center overflow-auto p-4 ${isFullscreen ? '' : 'sm:p-8'}`} onClick={(e) => e.stopPropagation()}>
         {isImage && (
-          <img src={url} alt={name} className={`max-w-full max-h-full object-contain rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full object-contain' : ''}`} />
+          <img src={url} alt={name} className={`max-w-full max-h-full object-contain rounded-lg ${isFullscreen ? 'w-full h-full object-contain' : ''}`} />
         )}
 
         {isVideo && (
-          <video src={url} controls autoPlay className={`max-w-full max-h-full rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full' : 'max-h-[80vh]'}`}>
+          <video src={url} controls autoPlay className={`max-w-full max-h-full rounded-lg ${isFullscreen ? 'w-full h-full' : 'max-h-[80vh]'}`}>
             {t('fileViewer.noVideo', 'Ваш браузер не поддерживает воспроизведение видео.')}
           </video>
         )}
 
         {isPdf && (
-          <iframe src={url} title={name} className={`bg-white rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full' : 'w-full max-w-4xl h-[80vh]'}`} />
+          <iframe src={url} title={name} className={`bg-white rounded-lg ${isFullscreen ? 'w-full h-full' : 'w-full max-w-4xl h-[80vh]'}`} />
         )}
 
         {viewerUrl && (
-          <iframe src={viewerUrl} title={name} className={`bg-white rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full' : 'w-full max-w-5xl h-[80vh]'}`} />
+          <iframe src={viewerUrl} title={name} className={`bg-white rounded-lg ${isFullscreen ? 'w-full h-full' : 'w-full max-w-5xl h-[80vh]'}`} />
         )}
 
         {!isImage && !isVideo && !isPdf && !viewerUrl && (
           <div className="text-center text-white">
-            <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">{name}</p>
-            <p className="text-white/60 text-sm mb-6">{t('fileViewer.noPreview', 'Предпросмотр недоступен для этого типа файла')}</p>
+            <FileText className="w-6 h-6 mx-auto mb-3 opacity-50" />
+            <p className="text-sm font-medium mb-1">{name}</p>
+            <p className="text-white/60 text-xs mb-4">{t('fileViewer.noPreview', 'Предпросмотр недоступен для этого типа файла')}</p>
             <a href={url} download={name} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl transition-colors">
-              <Download className="w-4 h-4" /> {t('fileViewer.downloadFile', 'Скачать файл')}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium bg-white/10 hover:bg-white/20 border border-white/15 text-white rounded-md transition-colors">
+              <Download className="w-3.5 h-3.5" /> {t('fileViewer.downloadFile', 'Скачать файл')}
             </a>
           </div>
         )}

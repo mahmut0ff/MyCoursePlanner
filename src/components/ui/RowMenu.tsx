@@ -23,13 +23,13 @@ interface Props {
 
 // Ширина рассчитана на самый длинный пункт — «Принять оплату · 12 500 с.»
 const MENU_WIDTH = 264;
-const ESTIMATED_ITEM_HEIGHT = 40;
+const ESTIMATED_ITEM_HEIGHT = 32;
 
 /**
  * Меню действий строки. Рисуется через портал: контейнер таблицы обрезан
  * `overflow-hidden`, внутри него выпадающий список был бы срезан.
  */
-const RowMenu: React.FC<Props> = ({ items, label: labelProp, className = '', buttonClassName = 'p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors' }) => {
+const RowMenu: React.FC<Props> = ({ items, label: labelProp, className = '', buttonClassName = 'w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors' }) => {
   const { t } = useTranslation();
   const label = labelProp ?? t('common.actions', 'Действия');
   const [open, setOpen] = useState(false);
@@ -94,24 +94,24 @@ const RowMenu: React.FC<Props> = ({ items, label: labelProp, className = '', but
           ref={menuRef}
           role="menu"
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: MENU_WIDTH }}
-          className="z-[80] py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl"
+          className="z-[80] p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-pop"
         >
           {items.map((item, i) => {
             const Icon = item.icon;
             return (
               <React.Fragment key={i}>
-                {item.separated && <div className="my-1 border-t border-slate-100 dark:border-slate-700" />}
+                {item.separated && <div className="my-1 border-t border-slate-200 dark:border-slate-700" />}
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => { setOpen(false); item.onSelect(); }}
-                  className={`w-full px-3.5 py-2 text-left text-sm font-medium flex items-center gap-2.5 transition-colors ${
+                  className={`w-full h-8 px-2 rounded text-left text-[13px] flex items-center gap-2 transition-colors ${
                     item.danger
-                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                      ? 'text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                   }`}
                 >
-                  {Icon && <Icon className="w-4 h-4 shrink-0" />}
+                  {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
                   <span className="truncate">{item.label}</span>
                 </button>
               </React.Fragment>

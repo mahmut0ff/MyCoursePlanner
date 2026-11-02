@@ -43,19 +43,19 @@ const ContestsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-primary-500" />{t('nav.contests', 'Конкурсы')}
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-slate-400 dark:text-slate-500" />{t('nav.contests', 'Конкурсы')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t('contests.subtitle', 'Олимпиады, конкурсы проектов и соревнования с электронным оцениванием жюри')}
           </p>
         </div>
         {canEdit && (
           <button onClick={() => { setForm(emptyForm); setFormError(''); setOpen(true); }} className={primaryBtn}>
-            <Plus className="w-4 h-4" />{t('contests.create', 'Новый конкурс')}
+            <Plus className="w-3.5 h-3.5" />{t('contests.create', 'Новый конкурс')}
           </button>
         )}
       </header>
@@ -63,8 +63,8 @@ const ContestsPage: React.FC = () => {
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
         </div>
       ) : !list.length ? (
         <EmptyState
@@ -75,21 +75,21 @@ const ContestsPage: React.FC = () => {
           onAction={canEdit ? () => setOpen(true) : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {list.map((c) => (
-            <Link key={c.id} to={`/contests/${c.id}`} className={`${cardCls} p-5 hover:border-slate-300 dark:hover:border-slate-600 transition-colors block`}>
+            <Link key={c.id} to={`/contests/${c.id}`} className={`${cardCls} p-4 hover:border-slate-300 dark:hover:border-slate-600 transition-colors block`}>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{kindLabel(c.kind)}{c.season ? ` · ${c.season}` : ''}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{kindLabel(c.kind)}{c.season ? ` · ${c.season}` : ''}</span>
                 <StatusBadge status={c.status} />
               </div>
-              <h2 className="font-bold text-slate-900 dark:text-white leading-snug">{c.title}</h2>
-              {c.theme && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{c.theme}</p>}
-              <div className="mt-4 space-y-1.5 text-[13px] text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug">{c.title}</h2>
+              {c.theme && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{c.theme}</p>}
+              <div className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
                 {c.eventDate && <div className="flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5" />{formatDate(c.eventDate)}</div>}
                 {c.venue && <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /><span className="truncate">{c.venue}</span></div>}
                 <div className="flex items-center gap-2"><Layers className="w-3.5 h-3.5" />
                   {c.categories.length ? c.categories.map((x) => x.code).join(' · ') : t('contests.noCategories', 'Категории не заданы')}
-                  {c.prizeFund > 0 && <span className="ml-auto font-semibold text-slate-700 dark:text-slate-200">{formatMoney(c.prizeFund)}</span>}
+                  {c.prizeFund > 0 && <span className="ml-auto font-medium tabular-nums text-slate-700 dark:text-slate-200">{formatMoney(c.prizeFund)}</span>}
                 </div>
               </div>
             </Link>

@@ -128,29 +128,29 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex items-end justify-end p-0 animate-fade-in pointer-events-none">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-[420px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 pointer-events-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-[420px] shadow-float overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 pointer-events-auto">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Mic className="w-5 h-5 text-indigo-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Mic className="w-3.5 h-3.5 text-slate-400" />
               {t('gradebook.ui.voice.title', 'Голосовое выставление ({{column}})', { column: column?.title })}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">{t('gradebook.ui.voice.subtitle', 'Продиктуйте оценки — AI разнесёт их по ученикам')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('gradebook.ui.voice.subtitle', 'Продиктуйте оценки — AI разнесёт их по ученикам')}</p>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="px-4 pt-2 pb-4">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm rounded-2xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="mb-3 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">{t('common.error', 'Ошибка')}</p>
+                <p className="font-medium">{t('common.error', 'Ошибка')}</p>
                 <p>{error}</p>
               </div>
             </div>
@@ -160,32 +160,32 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
             <div className="flex flex-col items-center justify-center py-8">
               {processing ? (
                 <>
-                  <div className="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-6 relative">
-                    <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 relative">
+                    <div className="absolute inset-0 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <Loader2 className="w-5 h-5 text-primary-500 animate-spin" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('gradebook.ui.voice.recognizing', 'Распознавание речи...')}</h4>
-                  <p className="text-sm text-slate-500 text-center max-w-xs">{t('gradebook.ui.voice.recognizingDesc', 'Искусственный интеллект анализирует запись и сопоставляет имена учеников.')}</p>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('gradebook.ui.voice.recognizing', 'Распознавание речи...')}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-xs">{t('gradebook.ui.voice.recognizingDesc', 'Искусственный интеллект анализирует запись и сопоставляет имена учеников.')}</p>
                 </>
               ) : (
                 <>
                   <button
                     onClick={recording ? stopRecording : startRecording}
                     className={`
-                      w-24 h-24 rounded-full flex items-center justify-center mb-8 transition-all hover:scale-105 active:scale-95 shadow-xl
-                      ${recording 
-                        ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'}
+                      w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors
+                      ${recording
+                        ? 'bg-rose-500 hover:bg-rose-600'
+                        : 'bg-primary-600 hover:bg-primary-700'}
                     `}
                   >
                     {recording ? (
-                      <Square className="w-8 h-8 text-white fill-current" />
+                      <Square className="w-5 h-5 text-white fill-current" />
                     ) : (
-                      <Mic className="w-10 h-10 text-white" />
+                      <Mic className="w-6 h-6 text-white" />
                     )}
                   </button>
 
-                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-white mb-3 text-center">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2 text-center">
                     {recording ? t('gradebook.ui.voice.recording', 'Идёт запись...') : t('gradebook.ui.voice.tapToStart', 'Нажмите, чтобы начать')}
                   </h4>
                   
@@ -196,7 +196,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500 text-center max-w-xs font-medium leading-relaxed">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-xs leading-relaxed">
                       {t('gradebook.ui.voice.hint', 'Автоматически распознаёт речь на любом языке. Просто назовите имена и их оценки.')}
                     </p>
                   )}
@@ -205,29 +205,29 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
             </div>
           ) : (
             <div className="flex flex-col h-[300px]">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1">{t('gradebook.ui.voice.parsed', 'Распознанные оценки:')}</h4>
+              <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('gradebook.ui.voice.parsed', 'Распознанные оценки:')}</h4>
               
               {parsedGrades.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                    <AlertCircle className="w-8 h-8 text-amber-500" />
+                  <div className="flex items-center justify-center mb-2">
+                    <AlertCircle className="w-6 h-6 text-slate-400" />
                   </div>
-                  <p className="font-bold text-slate-900 dark:text-white mb-1">{t('gradebook.ui.voice.noneFound', 'Оценки не найдены')}</p>
-                  <p className="text-sm text-slate-500">{t('gradebook.ui.voice.noneFoundDesc', 'Система не услышала имена или оценки из текущего списка студентов.')}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">{t('gradebook.ui.voice.noneFound', 'Оценки не найдены')}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('gradebook.ui.voice.noneFoundDesc', 'Система не услышала имена или оценки из текущего списка студентов.')}</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                <div className="flex-1 overflow-y-auto custom-scrollbar rounded-lg border border-slate-200 dark:border-slate-700">
                   {parsedGrades.map((g, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                      <div className="font-semibold text-slate-900 dark:text-white">{g.studentName}</div>
-                      <div className="flex items-center gap-3">
-                        {g.comment && <span className="text-xs italic text-slate-500 max-w-[150px] truncate">{g.comment}</span>}
-                        <div className={`px-3 py-1 bg-white dark:bg-slate-800 border-2 rounded-lg font-bold shadow-sm min-w-[40px] text-center text-sm ${mode === 'journal' 
-                          ? (g.status === 'present' ? 'border-emerald-500/20 text-emerald-600' :
-                             g.status === 'absent' ? 'border-rose-500/20 text-rose-600' :
-                             g.status === 'late' ? 'border-amber-500/20 text-amber-600' :
-                             'border-indigo-500/20 text-indigo-600')
-                          : 'border-indigo-500/20 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-400'}`}>
+                    <div key={idx} className="flex items-center justify-between min-h-[40px] px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{g.studentName}</div>
+                      <div className="flex items-center gap-2">
+                        {g.comment && <span className="text-xs text-slate-500 max-w-[150px] truncate">{g.comment}</span>}
+                        <div className={`inline-flex items-center justify-center h-5 px-1.5 rounded text-xs font-medium tabular-nums min-w-[28px] ${mode === 'journal'
+                          ? (g.status === 'present' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                             g.status === 'absent' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                             g.status === 'late' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                             'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
                           {mode === 'journal' 
                             ? (g.status === 'present' ? t('journal.present', 'Присутствует') :
                                g.status === 'absent' ? t('journal.absent', 'Отсутствует') :
@@ -241,10 +241,10 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                 </div>
               )}
 
-              <div className="mt-6 flex items-center gap-3 shrink-0">
+              <div className="mt-3 flex items-center justify-end gap-2 shrink-0">
                 <button
                   onClick={() => setParsedGrades(null)}
-                  className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm"
+                  className="btn-ghost"
                 >
                   {t('gradebook.ui.voice.rerecord', 'Перезаписать')}
                 </button>
@@ -254,9 +254,9 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                     onClose();
                   }}
                   disabled={parsedGrades.length === 0}
-                  className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 text-sm"
+                  className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Check className="w-5 h-5" />
+                  <Check className="w-3.5 h-3.5" />
                   {t('gradebook.ui.voice.applyAll', 'Применить ко всем')}
                 </button>
               </div>

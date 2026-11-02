@@ -9,67 +9,17 @@ import LanguageSwitcher from '../LanguageSwitcher';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import {
   Menu, Search, Sun, Moon, X,
-  LayoutDashboard, Building2, Users, CreditCard, BarChart3,
-  Activity, Server, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
-  Settings, HelpCircle
+  Users, CreditCard, BarChart3, BookOpen, ClipboardList, Zap,
+  HelpCircle
 } from 'lucide-react';
 import { usePageHelp } from '../../hooks/usePageHelp';
 import { HelpDrawer } from './HelpDrawer';
+import { useNavModel } from './navModel';
 import { orgGetStudents, orgGetCourses, orgGetGroups, apiGetLessons, apiGetExams } from '../../lib/api';
 
 interface TopbarProps {
   onMenuClick: () => void;
 }
-
-/* ── search items by role ── */
-const ADMIN_ITEMS = [
-  { icon: LayoutDashboard, label: 'nav.overview', path: '/admin' },
-  { icon: Building2, label: 'nav.organizations', path: '/admin/organizations' },
-  { icon: Users, label: 'nav.users', path: '/admin/users' },
-  { icon: CreditCard, label: 'nav.billing', path: '/admin/billing' },
-  { icon: Tag, label: 'nav.plans', path: '/admin/plans' },
-  { icon: BarChart3, label: 'nav.analytics', path: '/admin/analytics' },
-  { icon: Activity, label: 'nav.auditLogs', path: '/admin/audit-logs' },
-  { icon: Server, label: 'nav.systemHealth', path: '/admin/system-health' },
-  { icon: Puzzle, label: 'nav.integrations', path: '/admin/integrations' },
-  { icon: Zap, label: 'nav.featureFlags', path: '/admin/feature-flags' },
-];
-
-const USER_ITEMS = [
-  { icon: LayoutDashboard, label: 'nav.dashboard', path: '/dashboard' },
-  { icon: BookOpen, label: 'nav.lessons', path: '/lessons' },
-  { icon: ClipboardList, label: 'nav.exams', path: '/exams' },
-  { icon: Radio, label: 'nav.examRooms', path: '/rooms' },
-  { icon: BarChart3, label: 'nav.myResults', path: '/my-results' },
-];
-
-const TEACHER_ITEMS = [
-  { icon: LayoutDashboard, label: 'nav.dashboard', path: '/dashboard' },
-  { icon: BookOpen, label: 'nav.lessons', path: '/lessons' },
-  { icon: ClipboardList, label: 'nav.exams', path: '/exams' },
-  { icon: Radio, label: 'nav.examRooms', path: '/rooms' },
-  { icon: BarChart3, label: 'nav.results', path: '/results' },
-  { icon: Users, label: 'nav.students', path: '/students' },
-  { icon: Users, label: 'nav.groups', path: '/groups' },
-  { icon: BookOpen, label: 'nav.courses', path: '/courses' },
-  { icon: Activity, label: 'nav.schedule', path: '/schedule' },
-  { icon: ClipboardList, label: 'nav.journal', path: '/journal' },
-  { icon: BarChart3, label: 'nav.gradebook', path: '/gradebook' },
-  { icon: Puzzle, label: 'nav.quizLibrary', path: '/quiz/library' },
-  { icon: Settings, label: 'nav.settings', path: '/profile' },
-];
-
-const STUDENT_ITEMS = [
-  { icon: LayoutDashboard, label: 'nav.dashboard', path: '/dashboard' },
-  { icon: BookOpen, label: 'nav.lessons', path: '/lessons' },
-  { icon: Radio, label: 'nav.examRooms', path: '/join' },
-  { icon: BarChart3, label: 'nav.myResults', path: '/my-results' },
-  { icon: Activity, label: 'nav.schedule', path: '/schedule' },
-  { icon: BookOpen, label: 'nav.myCourses', path: '/courses' },
-  { icon: Users, label: 'nav.myGroups', path: '/groups' },
-  { icon: Zap, label: 'nav.achievements', path: '/achievements' },
-  { icon: BookOpen, label: 'nav.diary', path: '/diary' },
-];
 
 /* ── current-page title (longest-prefix match) ── */
 const TITLE_MAP: [string, string, string][] = [
@@ -89,7 +39,8 @@ const TITLE_MAP: [string, string, string][] = [
   ['/student/homework', 'nav.myHomework', 'Мои ДЗ'],
   ['/student/schedule', 'nav.schedule', 'Расписание'],
   ['/students', 'nav.students', 'Студенты'],
-  ['/teachers', 'nav.teachers', 'Учителя'],
+  ['/leads', 'nav.leads', 'Заявки'],
+  ['/teachers', 'nav.teachers', 'Преподаватели'],
   ['/courses', 'nav.courses', 'Курсы'],
   ['/lessons', 'nav.lessons', 'Уроки'],
   ['/exams', 'nav.exams', 'Экзамены'],
@@ -149,9 +100,9 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   }>({ students: [], courses: [], groups: [], lessons: [], exams: [] });
   const [globalDataLoaded, setGlobalDataLoaded] = useState(false);
 
-  // When search opens, fetch global data
+  // When search opens, fetch global data. Not for students: the hits link to staff routes (/courses/:id, /groups/:id…).
   useEffect(() => {
-    if (searchOpen && !globalDataLoaded && !isSuperAdmin) {
+    if (searchOpen && !globalDataLoaded && !isSuperAdmin && role !== 'student') {
       const load = async () => {
         try {
           const [studentsRes, coursesRes, groupsRes, lessonsRes, examsRes] = await Promise.allSettled([
@@ -177,14 +128,19 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
     }
   }, [searchOpen, globalDataLoaded, isSuperAdmin, isTeacher, role]);
 
-  const items = isSuperAdmin ? ADMIN_ITEMS : role === 'teacher' ? TEACHER_ITEMS : role === 'student' ? STUDENT_ITEMS : USER_ITEMS;
+  // Search offers exactly what the sidebar offers: same role/RBAC/branch filtering.
+  const navSections = useNavModel(institutionType);
+  const items = useMemo(
+    () => navSections.flatMap((s) => s.items).map((i) => ({ icon: i.icon, label: i.label, path: i.to })),
+    [navSections],
+  );
   
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     
     // 1. Navigation items
     const navResults = items
-      .filter((i) => t(i.label).toLowerCase().includes(q))
+      .filter((i) => i.label.toLowerCase().includes(q))
       .map(i => ({ ...i, type: 'nav' as const }));
 
     if (!q) return navResults; // Only show nav items when empty query
@@ -276,46 +232,49 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
     if (e.key === 'Enter' && filtered[selectedIdx]) { go(filtered[selectedIdx].path); }
   };
 
+  const iconBtn = 'w-8 h-8 flex items-center justify-center shrink-0 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors';
+  const kbd = 'inline-flex items-center px-1 h-4 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-slate-500 dark:text-slate-400';
+
   return (
     <>
-      <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between px-4 md:px-6 shrink-0">
+      <header className="h-11 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 px-2 md:px-5 shrink-0">
         {/* Left side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            aria-label={t('nav.mainNavigation', 'Основная навигация')}
+            className={`lg:hidden ${iconBtn}`}
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
 
           {/* Current page title */}
           {pageTitle && (
-            <h1 className="hidden md:block text-[15px] font-semibold text-slate-800 dark:text-white truncate max-w-[32vw] mr-1">{pageTitle}</h1>
+            <h1 className="hidden md:block text-lg font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[32vw] mr-2">{pageTitle}</h1>
           )}
 
           {/* ⌘K Search trigger */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/60 rounded-xl px-3 py-2 text-sm text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            aria-label={t('common.search')}
+            className="flex items-center gap-2 h-8 sm:h-7 w-8 sm:w-56 justify-center sm:justify-start px-0 sm:px-2 rounded-md border border-slate-300 bg-white text-[13px] text-slate-400 hover:border-slate-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-500 dark:hover:border-slate-600 transition-colors cursor-pointer"
           >
-            <Search className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('common.search')}...</span>
-            <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-[10px] font-mono text-slate-400 dark:text-slate-400 ml-2">⌘K</kbd>
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline truncate">{t('common.search')}...</span>
+            <kbd className={`hidden md:inline-flex ml-auto ${kbd}`}>⌘K</kbd>
           </button>
-          
-
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {/* Student Stats */}
           {role === 'student' && (
-            <div className="flex items-center gap-1 border-r border-slate-200 dark:border-slate-700/60 pr-2 mr-1">
-              <button onClick={() => navigate('/achievements')} className="p-2 rounded-lg text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors" title={t('gamification.badges')}>
-                <Zap className="w-5 h-5" />
+            <div className="flex items-center gap-0.5 sm:gap-1 border-r border-slate-200 dark:border-slate-700 pr-1 sm:pr-2 mr-0.5 sm:mr-1">
+              <button onClick={() => navigate('/achievements')} className={`${iconBtn} !text-amber-500 dark:!text-amber-400`} title={t('gamification.badges')}>
+                <Zap className="w-4 h-4" />
               </button>
-              <button onClick={() => navigate('/my-results')} className="p-2 rounded-lg text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" title={t('nav.myResults')}>
-                <BarChart3 className="w-5 h-5" />
+              <button onClick={() => navigate('/my-results')} className={`${iconBtn} !text-primary-600 dark:!text-primary-400`} title={t('nav.myResults')}>
+                <BarChart3 className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -326,10 +285,10 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* Theme Toggle */}
           <button
             onClick={toggle}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className={iconBtn}
             title={isDark ? t('common.lightMode', 'Светлая тема') : t('common.darkMode', 'Тёмная тема')}
           >
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
           {/* Notifications */}
@@ -339,18 +298,18 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {pageHelp && (
             <button
               onClick={() => setHelpOpen(true)}
-              className="p-2 rounded-lg text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+              className={`${iconBtn} !text-primary-600 dark:!text-primary-400`}
               title={t('common.howItWorks', "Как работает модуль?")}
             >
-              <HelpCircle className="w-5 h-5" />
+              <HelpCircle className="w-4 h-4" />
             </button>
           )}
 
           {/* Billing quick-access (Admin) — settings live in the sidebar to avoid duplication */}
           {role === 'admin' && !isSuperAdmin && (
-            <div className="flex items-center border-l border-slate-200 dark:border-slate-700/60 pl-2 ml-1">
-              <button onClick={() => navigate('/billing')} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('nav.billingPlans')}>
-                <CreditCard className="w-5 h-5" />
+            <div className="flex items-center border-l border-slate-200 dark:border-slate-700 pl-1 sm:pl-2 ml-0.5 sm:ml-1">
+              <button onClick={() => navigate('/billing')} className={iconBtn} title={t('nav.billingPlans')}>
+                <CreditCard className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -359,14 +318,14 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 
       {/* ═══ Global Search Modal ═══ */}
       {searchOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-lg mx-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Search Input */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0" />
+            <div className="flex items-center gap-2 px-3 h-11 border-b border-slate-200 dark:border-slate-700">
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
               <input
                 ref={inputRef}
                 type="text"
@@ -374,20 +333,21 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                 onChange={(e) => { setQuery(e.target.value); setSelectedIdx(0); }}
                 onKeyDown={handleKeyDown}
                 placeholder={`${t('common.search')}...`}
-                className="bg-transparent text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none w-full"
+                className="bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none w-full"
               />
               <button
                 onClick={() => setSearchOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                aria-label={t('common.close')}
+                className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Results */}
-            <div className="max-h-[50vh] overflow-y-auto py-2">
+            <div className="max-h-[50vh] overflow-y-auto p-1">
               {filtered.length === 0 ? (
-                <p className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">{t('common.noData')}</p>
+                <p className="text-center py-8 text-[13px] text-slate-500 dark:text-slate-400">{t('common.noData')}</p>
               ) : (
                 filtered.map((item, idx) => {
                   const Icon = item.icon;
@@ -396,18 +356,18 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                       key={item.path}
                       onClick={() => go(item.path)}
                       onMouseEnter={() => setSelectedIdx(idx)}
-                      className={`flex items-center gap-3 w-full px-5 py-3 text-sm transition-colors ${
+                      className={`flex items-center gap-2 w-full h-8 px-2 rounded text-[13px] transition-colors ${
                         idx === selectedIdx
-                          ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                          ? 'bg-slate-100 text-slate-900 dark:bg-slate-700/60 dark:text-slate-100'
+                          : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="font-medium truncate max-w-[200px] md:max-w-xs text-left">
-                        {item.type === 'nav' ? t(item.label) : item.label}
+                      <Icon className="w-3.5 h-3.5 shrink-0 text-slate-500 dark:text-slate-400" />
+                      <span className="truncate max-w-[200px] md:max-w-xs text-left">
+                        {item.label}
                       </span>
                       {item.type !== 'nav' && (
-                        <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 rounded font-semibold shrink-0">
+                        <span className="ml-auto inline-flex items-center h-5 px-1.5 text-[11px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shrink-0">
                           {item.meta}
                         </span>
                       )}
@@ -418,10 +378,10 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
             </div>
 
             {/* Footer hints */}
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex items-center gap-4 text-[11px] text-slate-400 dark:text-slate-500">
-              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">↑↓</kbd> {t('common.navigate') || 'navigate'}</span>
-              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">↵</kbd> {t('common.select') || 'select'}</span>
-              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">esc</kbd> {t('common.close') || 'close'}</span>
+            <div className="px-3 h-9 border-t border-slate-200 dark:border-slate-700 flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1"><kbd className={kbd}>↑↓</kbd> {t('common.navigate') || 'navigate'}</span>
+              <span className="flex items-center gap-1"><kbd className={kbd}>↵</kbd> {t('common.select') || 'select'}</span>
+              <span className="flex items-center gap-1"><kbd className={kbd}>esc</kbd> {t('common.close') || 'close'}</span>
             </div>
           </div>
         </div>

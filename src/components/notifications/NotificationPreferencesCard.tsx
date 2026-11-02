@@ -38,11 +38,11 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled?: 
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50
+      className={`relative w-8 h-[18px] rounded-full transition-colors shrink-0 disabled:opacity-50
         ${checked ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
     >
-      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform
-        ${checked ? 'translate-x-5' : ''}`} />
+      <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full transition-transform
+        ${checked ? 'translate-x-3.5' : ''}`} />
     </button>
   );
 }
@@ -91,39 +91,39 @@ export default function NotificationPreferencesCard({ collapsible = true }: Prop
 
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700
-      rounded-2xl overflow-hidden mb-4">
+      rounded-lg overflow-hidden mb-4">
       {collapsible ? (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="w-full flex items-center gap-3 px-4 py-3 text-left
+          className="w-full flex items-center gap-2.5 h-11 px-4 text-left
             hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
         >
-          <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className="flex-1 text-sm font-medium text-slate-900 dark:text-white">
+          <Settings2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('notifications.prefsTitle', 'Настройки уведомлений')}
           </span>
-          {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       ) : (
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
-          <h2 className="flex-1 text-sm font-medium text-slate-900 dark:text-white">
+        <div className="flex items-center gap-2.5 h-11 px-4">
+          <Settings2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <h2 className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('notifications.prefsTitle', 'Настройки уведомлений')}
           </h2>
-          {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
         </div>
       )}
 
       {open && (
         <div className="border-t border-slate-200 dark:border-slate-700 divide-y
-          divide-slate-100 dark:divide-slate-700/50">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <BellRing className="w-4 h-4 text-slate-400 shrink-0" />
+          divide-slate-200 dark:divide-slate-700">
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <BellRing className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 {t('notifications.prefsAll', 'Все уведомления')}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -138,10 +138,10 @@ export default function NotificationPreferencesCard({ collapsible = true }: Prop
           </div>
 
           {ROWS.map(({ key, icon: Icon, labelRu, descRu }) => (
-            <div key={key} className="flex items-center gap-3 px-4 py-3">
-              <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+            <div key={key} className="flex items-center gap-3 px-4 py-2.5">
+              <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-slate-900 dark:text-white">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {t(`notifications.prefs.${key}`, labelRu)}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -158,7 +158,7 @@ export default function NotificationPreferencesCard({ collapsible = true }: Prop
             </div>
           ))}
 
-          <p className="px-4 py-3 text-xs text-slate-400">
+          <p className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">
             {t('notifications.prefsChatHint', 'Отдельную переписку можно заглушить колокольчиком в самом чате — это не трогает остальные.')}
           </p>
         </div>

@@ -4,7 +4,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   orgGetStudents, orgGetResults, orgGetGroups, orgGetCourses, orgUpdateGroup, apiRemoveMember,
-  apiRestoreStudent, apiGetPaymentPlans, apiGetTransactions, apiGetStudentTuitions,
+  apiRestoreStudent, apiDeleteMember, apiGetPaymentPlans, apiGetTransactions, apiGetStudentTuitions,
 } from '../../lib/api';
 import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
@@ -31,7 +31,6 @@ import {
 import { tuitionKey, tuitionRateMap } from '../../lib/tuition';
 import { formatMoney, formatDayKey } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
-import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import {
   ArrowLeft, Users, Phone, MessageCircle, BookOpen, Plus, X, AlertTriangle,
   Wallet, Tag, Receipt, History, KeyRound, Pencil, Sparkles, Link2, Copy,
@@ -141,7 +140,6 @@ const StudentDetailPage: React.FC = () => {
   // содержит `finances`, поэтому обычный менеджер видел денежный блок и получал
   // 403; и зеркально — преподаватель с «ведением контингента» не видел ни одного
   // действия, хотя в списке ему всё разрешено.
-  const isOrgAdmin = role === 'admin' || role === 'super_admin';
   // Зеркало серверного isRosterManager (utils/auth.ts): роль admin/manager ЛИБО
   // явный модификатор roster_management — и всё это ПОВЕРХ прав на students.
   const isRosterManager = hasRosterManagement(role, can);
@@ -171,6 +169,7 @@ const StudentDetailPage: React.FC = () => {
   const [showBillModal, setShowBillModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
+  const [accessPanelOpen, setAccessPanelOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [moveMode, setMoveMode] = useState<'group' | 'branch' | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -282,11 +281,20 @@ const StudentDetailPage: React.FC = () => {
     if (loading) return;
     const target = searchParams.get('section');
     if (!target) return;
+    // «Доступ и связи» живут в окне из шапки — ссылка открывает его.
+    if (target === 'access') { setAccessPanelOpen(true); return; }
     const el = sectionRefs.current[target];
     if (!el) return;
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
   }, [loading, searchParams]);
+
+  useEffect(() => {
+    if (!accessPanelOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAccessPanelOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [accessPanelOpen]);
 
   const registerSection = (id: SectionId) => (el: HTMLElement | null) => { sectionRefs.current[id] = el; };
 
@@ -418,6 +426,37 @@ const StudentDetailPage: React.FC = () => {
     }
   };
 
+  // Тот же поток, что в списке студентов (StudentsPage.handleDeleteExpelled):
+  // 409 member_has_debt — вопрос с суммой, при согласии сервер спишет счета.
+  const handleDeleteExpelled = async () => {
+    if (!student || !organizationId) return;
+    if (!window.confirm(t('org.students.confirmDeleteExpelled', 'Вы уверены что хотите полностью удалить этого студента из организации? Это действие необратимо.'))) return;
+    const done = () => {
+      toast.success(t('org.students.deleted', 'Студент полностью удален'));
+      navigate(backTo);
+    };
+    try {
+      await apiDeleteMember(student.uid, organizationId);
+      done();
+    } catch (err: any) {
+      if (err?.status === 409 && err?.code === 'member_has_debt') {
+        const proceed = window.confirm(
+          `${err.message}\n\n${t('org.students.confirmDeleteWithDebt', 'Удалить всё равно и закрыть его счета?')}`
+        );
+        if (proceed) {
+          try {
+            await apiDeleteMember(student.uid, organizationId, true);
+            done();
+          } catch (e: any) {
+            toast.error(e?.message || t('common.error', 'Ошибка'));
+          }
+        }
+      } else {
+        toast.error(err?.message || t('common.error', 'Ошибка'));
+      }
+    }
+  };
+
   /* ─── Состояния до отрисовки ─── */
   if (loading) return <DetailSkeleton />;
 
@@ -481,7 +520,7 @@ const StudentDetailPage: React.FC = () => {
   // видел пункт, который на сервере всегда отвечал 403.
   if (canPurgeStudent) {
     if (expelled) {
-      menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => navigate(backTo) });
+      menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: handleDeleteExpelled });
     } else {
       menuItems.push({ label: t('org.students.menu.expel', 'Отчислить'), icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) });
     }
@@ -489,31 +528,36 @@ const StudentDetailPage: React.FC = () => {
 
   const showMoneyProblem = canSeeMoney && money.overdue.length > 0;
   const showEngagementProblem = !!risk && risk.riskLevel !== 'low';
+  // Оба блока «Доступа» скрыты — кнопку в шапке не рисуем.
+  const showAccess = canManageAccess || !!student.parentPortalKey || canEditRoster;
+  const showExams = failed.results || sortedResults.length > 0;
+  // Оплаты и экзамены — рядом на широком экране; если виден один, он на всю строку.
+  const pairCols = canSeeMoney && showExams;
 
   return (
-    <div className="max-w-5xl mx-auto pb-16">
+    <div className="pb-10">
       <Link
         to={backTo}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors mb-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
       >
-        <ArrowLeft className="w-4 h-4" />{backLabel}
+        <ArrowLeft className="w-3.5 h-3.5" />{backLabel}
       </Link>
 
       {/* ═══ Идентичность ═══ */}
-      <header className="flex items-start gap-4 mb-6">
+      <header className="flex items-start gap-3 mb-4">
         {student.avatarUrl ? (
-          <img src={student.avatarUrl} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0" />
+          <img src={student.avatarUrl} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
         ) : (
-          <div className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-xl font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          <div className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center text-lg font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
             {student.displayName?.[0]?.toUpperCase() || '?'}
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{student.displayName}</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.displayName}</h1>
             {expelled && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                 {t('common.expelled', 'Отчислен')}
               </span>
             )}
@@ -521,7 +565,7 @@ const StudentDetailPage: React.FC = () => {
           </div>
 
           {/* Мета одной строкой: телефон — действие, а не подпись. */}
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
             {groups.length > 0 && (
               <span className="inline-flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 shrink-0" />
@@ -550,7 +594,7 @@ const StudentDetailPage: React.FC = () => {
                     aria-label={t('org.students.detail.whatsappAria', 'Написать {{name}} в WhatsApp', { name: student.displayName })}
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-3.5 h-3.5" />
                   </a>
                 )}
               </>
@@ -563,9 +607,9 @@ const StudentDetailPage: React.FC = () => {
           {canTakeMoney && money.total > 0 && (
             <button
               onClick={() => setPayModalPlan(money.debtPlans[0])}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="btn-primary hidden sm:inline-flex items-center gap-1.5"
             >
-              <Wallet className="w-4 h-4" />
+              <Wallet className="w-3.5 h-3.5" />
               {t('finances.acceptPayment', 'Принять оплату')} · <span className="tabular-nums">{formatMoney(money.total)}</span>
             </button>
           )}
@@ -573,9 +617,19 @@ const StudentDetailPage: React.FC = () => {
             <button
               onClick={() => setReportOpen(true)}
               title={t('org.students.detail.aiReportHint', 'AI-комментарий в табель')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              className="btn-secondary inline-flex items-center gap-1.5"
             >
-              <Sparkles className="w-4 h-4" /><span className="hidden lg:inline">{t('org.students.detail.aiReport', 'AI-отзыв')}</span>
+              <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" /><span className="hidden lg:inline">{t('org.students.detail.aiReport', 'AI-отзыв')}</span>
+            </button>
+          )}
+          {showAccess && (
+            <button
+              onClick={() => setAccessPanelOpen(true)}
+              title={t('org.students.detail.accessSection', 'Доступ и связи')}
+              aria-label={t('org.students.detail.accessSection', 'Доступ и связи')}
+              className="btn-secondary inline-flex items-center gap-1.5"
+            >
+              <KeyRound className="w-3.5 h-3.5" /><span className="hidden lg:inline">{t('org.students.detail.accessButton', 'Доступ')}</span>
             </button>
           )}
           <RowMenu items={menuItems} />
@@ -585,7 +639,7 @@ const StudentDetailPage: React.FC = () => {
       {/* ═══ Что не так — максимум две строки, деньги и вовлечённость раздельно ═══
           Это разные столы: просрочка — вопрос к бухгалтерии, пропуски — к куратору. */}
       {(showMoneyProblem || showEngagementProblem) && (
-        <div className="space-y-2 mb-6">
+        <div className="space-y-2 mb-4">
           {showMoneyProblem && (
             <ProblemRow
               tone="rose"
@@ -617,7 +671,7 @@ const StudentDetailPage: React.FC = () => {
       {/* ═══ Полоса показателей — текстом, без плиток и без иконок ═══
           Посещаемость и средний балл приходят в риск-профиле и раньше были видны
           ТОЛЬКО у проблемного студента: у здорового карточка молчала о главном. */}
-      <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
+      <dl className="grid grid-cols-2 md:grid-cols-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-4">
         <Metric
           label={t('org.students.detail.attendance', 'Посещаемость')}
           value={risk ? `${risk.attendanceRate}%` : '—'}
@@ -649,12 +703,12 @@ const StudentDetailPage: React.FC = () => {
       </dl>
 
       {/* ═══ Группы ═══ */}
-      <section className="mb-8">
+      <section className="mb-4">
         <SectionHeading title={t('org.students.groups', 'Группы')} />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {failed.groups && <LoadError onRetry={() => window.location.reload()} />}
           {!failed.groups && groups.map(g => (
-            <span key={g.id} className="group inline-flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-xl text-sm font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+            <span key={g.id} className="group inline-flex items-center gap-1 h-7 pl-2 pr-1 rounded-md text-sm font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
               <Link to={`/groups/${g.id}`} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                 {g.name}{g.courseName ? ` · ${g.courseName}` : ''}
               </Link>
@@ -665,7 +719,7 @@ const StudentDetailPage: React.FC = () => {
                   // Видно всегда, а не по hover: действие, доступное только наведением,
                   // недоступно с клавиатуры и с телефона. slate-500, а не 400:
                   // иконка — графический объект, ему нужен контраст ≥3:1.
-                  className="p-0.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                  className="w-5 h-5 flex items-center justify-center rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -678,7 +732,7 @@ const StudentDetailPage: React.FC = () => {
           {canEditRoster && !expelled && (
             <button
               onClick={() => setShowAssignModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
+              className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />{t('org.students.groupCol', 'Группа')}
             </button>
@@ -687,8 +741,10 @@ const StudentDetailPage: React.FC = () => {
       </section>
 
       {/* ═══ Оплаты ═══ */}
+      {(canSeeMoney || showExams) && (
+      <div className="grid gap-4 lg:grid-cols-2 items-start mb-4">
       {canSeeMoney && (
-        <section ref={registerSection('payments')} className="mb-8 scroll-mt-6">
+        <section ref={registerSection('payments')} className={`min-w-0 scroll-mt-6 ${pairCols ? '' : 'lg:col-span-2'}`}>
           <SectionHeading
             title={t('org.students.detail.payments', 'Оплаты')}
             action={{ label: t('org.students.detail.openInFinances', 'Открыть в финансах'), to: `/finances?tab=debts&student=${uid}` }}
@@ -698,17 +754,17 @@ const StudentDetailPage: React.FC = () => {
               заплатил». Раньше цену можно было узнать только по сумме последнего
               начисления — то есть постфактум и только если начисление есть. */}
           {!failed.finance && tuitionRows.length > 0 && (
-            <div className="mb-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+            <div className="mb-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+              <div className="px-3 h-8 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
                 <Tag className="w-3.5 h-3.5 text-slate-400" />
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('org.students.detail.tuition', 'Стоимость обучения')}</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('org.students.detail.tuition', 'Стоимость обучения')}</p>
               </div>
-              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {tuitionRows.map(row => (
-                  <li key={row.courseId} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                  <li key={row.courseId} className="px-3 py-2 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm text-slate-900 dark:text-white truncate">{row.courseName}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-sm text-slate-900 dark:text-slate-100 truncate">{row.courseName}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {row.agreed ? (
                           <>
                             <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t('org.students.detail.ownPrice', 'своя цена')}</span>
@@ -726,7 +782,7 @@ const StudentDetailPage: React.FC = () => {
                           onClick={() => setTuitionRow(row)}
                           title={t('org.students.detail.editTuition', 'Изменить сумму оплаты')}
                           aria-label={t('org.students.detail.editTuitionAria', 'Изменить сумму оплаты: {{course}}', { course: row.courseName })}
-                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -738,7 +794,7 @@ const StudentDetailPage: React.FC = () => {
             </div>
           )}
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
             {failed.finance ? (
               <div className="p-4"><LoadError onRetry={reloadFinances} /></div>
             ) : paymentPlans.length === 0 ? (
@@ -749,7 +805,7 @@ const StudentDetailPage: React.FC = () => {
                 )}
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {[...paymentPlans]
                   .sort((a, b) => (planPeriodKey(b) || '').localeCompare(planPeriodKey(a) || ''))
                   .map(plan => {
@@ -764,12 +820,12 @@ const StudentDetailPage: React.FC = () => {
                     // а не подмена статуса, иначе «Частично» затирается.
                     const cfg = PLAN_STATUS[planProgressKey(plan)];
                     return (
-                      <li key={plan.id} className={`px-4 py-3.5 ${writtenOff ? 'opacity-60' : ''}`}>
+                      <li key={plan.id} className={`px-3 py-2.5 ${writtenOff ? 'opacity-60' : ''}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             {/* Заголовок строки — МЕСЯЦ: карточка про «оплату за месяц»,
                                 как и раздел финансов. У легаси-плана без периода — курс. */}
-                            <p className={`text-sm font-semibold ${writtenOff ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
+                            <p className={`text-sm font-semibold ${writtenOff ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-100'}`}>
                               {monthLabel(planPeriodKey(plan)) || plan.courseName || t('finances.payment', 'Оплата')}
                             </p>
                             {monthLabel(planPeriodKey(plan)) && plan.courseName && (
@@ -777,13 +833,13 @@ const StudentDetailPage: React.FC = () => {
                             )}
                           </div>
                           <div className="shrink-0 flex items-center gap-1.5">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cls}`}>
+                            <span className={`inline-flex items-center h-5 text-xs px-1.5 rounded font-medium ${cfg.cls}`}>
                               {t(cfg.key, cfg.fallback)}
                             </span>
                             {overdue && (
                               <span
                                 title={t('finances.overdueTagHint', 'Снимется, когда оплатят полностью или продлят срок.')}
-                                className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
                               >
                                 {t('finances.overdueTag', 'срок прошёл')}
                               </span>
@@ -793,7 +849,7 @@ const StudentDetailPage: React.FC = () => {
                                 onClick={() => setEditPlan(plan)}
                                 title={t('finances.editAmount', 'Изменить сумму')}
                                 aria-label={t('finances.editAmount', 'Изменить сумму')}
-                                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
@@ -853,7 +909,7 @@ const StudentDetailPage: React.FC = () => {
                         ) : owes && canTakeMoney ? (
                           <button
                             onClick={() => setPayModalPlan(plan)}
-                            className="mt-2.5 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-800 dark:hover:bg-emerald-900/40 transition-colors"
+                            className="btn-secondary mt-2 w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
                           >
                             {t('finances.acceptPayment', 'Принять оплату')}: <span className="tabular-nums">{formatMoney(debt)}</span>
                           </button>
@@ -865,7 +921,7 @@ const StudentDetailPage: React.FC = () => {
             )}
 
             {ledger.length > 0 && !failed.finance && (
-              <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3">
+              <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     {t('finances.paymentHistory', 'История оплат')}
@@ -904,12 +960,14 @@ const StudentDetailPage: React.FC = () => {
       {/* ═══ Экзамены — понижены в приоритете ═══
           Для офлайн-академии это второстепенный модуль: раньше он занимал 2/3
           ширины и полтора экрана, у большинства академий — нулями. */}
-      <section ref={registerSection('progress')} className="mb-8 scroll-mt-6">
+      {/* Пустой список прячем целиком; ошибку загрузки — показываем. */}
+      {showExams && (
+      <section ref={registerSection('progress')} className={`min-w-0 scroll-mt-6 ${pairCols ? '' : 'lg:col-span-2'}`}>
         <SectionHeading
           title={t('org.students.detail.onlineExams', 'Онлайн-экзамены')}
           meta={results.length > 0 ? `${t('org.students.detail.attempts', { count: results.length })} · ${t('org.students.detail.avgInline', 'средний {{score}}%', { score: stats.avgScore })}` : undefined}
         />
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
           {failed.results ? (
             <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
           ) : sortedResults.length === 0 ? (
@@ -917,25 +975,25 @@ const StudentDetailPage: React.FC = () => {
               {t('org.students.detail.noExams', 'Ученик ещё не проходил онлайн-экзамены')}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
+            <ul className="divide-y divide-slate-200 dark:divide-slate-700 max-h-96 overflow-y-auto">
               {sortedResults.map(r => {
                 const pct = r.percentage || 0;
                 return (
                   <li key={r.id}>
                     <Link
                       to={`/results/${r.id}`}
-                      className="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors focus-visible:outline-none focus-visible:bg-slate-50 dark:focus-visible:bg-slate-700/40"
+                      className="block px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:bg-slate-50 dark:focus-visible:bg-slate-800"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{r.examTitle}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{r.examTitle}</p>
                         <div className="shrink-0 flex items-center gap-2.5">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${r.passed
+                          <span className={`inline-flex items-center h-5 text-xs font-medium px-1.5 rounded ${r.passed
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                             : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}
                           >
                             {r.passed ? t('common.passed', 'Сдан') : t('common.failed', 'Не сдан')}
                           </span>
-                          <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white w-11 text-right">{pct}%</span>
+                          <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 w-11 text-right">{pct}%</span>
                         </div>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
@@ -953,20 +1011,35 @@ const StudentDetailPage: React.FC = () => {
           )}
         </div>
       </section>
+      )}
+      </div>
+      )}
 
-      {/* ═══ Доступ и связи ═══
-          Три редких, но родственных вопроса в одном месте: как ученик заходит,
-          что видит родитель, какие у него роли. Раньше это были три отдельные
-          карточки, конкурировавшие с деньгами за первый экран. */}
-      <section ref={registerSection('access')} className="scroll-mt-6">
-        <SectionHeading title={t('org.students.detail.accessSection', 'Доступ и связи')} />
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
+      {/* ═══ Доступ и связи — окно из кнопки в шапке ═══
+          Редкие, но родственные вопросы: как студент заходит и что видит родитель.
+          В теле страницы они конкурировали с деньгами за первый экран. */}
+      {accessPanelOpen && showAccess && (
+      <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setAccessPanelOpen(false)}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-access-title"
+        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-[560px] shadow-pop max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
+          <h2 id="student-access-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('org.students.detail.accessSection', 'Доступ и связи')}</h2>
+          <button autoFocus onClick={() => setAccessPanelOpen(false)} className="-mt-1 -mr-1 w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 transition-colors" aria-label={t('common.close', 'Закрыть')}>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {/* Вход в систему */}
           {canManageAccess && (
-            <div className="px-4 py-3.5 flex items-start justify-between gap-3 flex-wrap">
+            <div className="px-4 py-3 flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-slate-400" />{t('org.students.detail.login', 'Вход в систему')}
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <KeyRound className="w-3.5 h-3.5 text-slate-400" />{t('org.students.detail.login', 'Вход в систему')}
                 </p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 break-all">
                   {hasLogin
@@ -978,8 +1051,8 @@ const StudentDetailPage: React.FC = () => {
                   чужом аккаунте = войти вместо человека (сервер: resetStudentPassword). */}
               {!expelled && (canEditRoster || !hasLogin || isIssuedLoginEmail(student.email)) && (
                 <button
-                  onClick={() => setShowAccessModal(true)}
-                  className="shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                  onClick={() => { setAccessPanelOpen(false); setShowAccessModal(true); }}
+                  className="btn-secondary shrink-0"
                 >
                   {hasLogin ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grant', 'Выдать доступ')}
                 </button>
@@ -987,12 +1060,13 @@ const StudentDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Портал для родителей */}
-          <div className="px-4 py-3.5">
+          {/* Портал для родителей — без ссылки и без права её создать показывать нечего */}
+          {(student.parentPortalKey || canEditRoster) && (
+          <div className="px-4 py-3">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-slate-400" />{t('org.students.detail.parentPortal', 'Портал для родителей')}
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-slate-400" />{t('org.students.detail.parentPortal', 'Портал для родителей')}
                 </p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                   {t('org.students.detail.parentPortalHint', 'Ссылка на успеваемость без регистрации.')}
@@ -1007,16 +1081,16 @@ const StudentDetailPage: React.FC = () => {
                       toast.success(t('org.students.detail.linkCreated', 'Ссылка создана'));
                     } catch { toast.error(t('org.students.detail.linkCreateFailed', 'Не удалось создать ссылку')); }
                   }}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+                  className="btn-primary shrink-0 inline-flex items-center gap-1.5"
                 >
-                  <ExternalLink className="w-4 h-4" />{t('org.students.detail.createLink', 'Создать ссылку')}
+                  <ExternalLink className="w-3.5 h-3.5" />{t('org.students.detail.createLink', 'Создать ссылку')}
                 </button>
               )}
             </div>
             {student.parentPortalKey && (
               <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-2 min-w-0 flex-1 rounded-lg bg-slate-50 dark:bg-slate-700/50 px-3 py-2">
-                  <Link2 className="w-4 h-4 shrink-0 text-slate-400" />
+                <span className="inline-flex items-center gap-2 min-w-0 flex-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5">
+                  <Link2 className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                   <span className="text-sm text-slate-600 dark:text-slate-300 truncate font-mono">
                     {window.location.origin}/parent/{student.parentPortalKey}
                   </span>
@@ -1026,14 +1100,14 @@ const StudentDetailPage: React.FC = () => {
                     navigator.clipboard.writeText(`${window.location.origin}/parent/${student.parentPortalKey}`);
                     toast.success(t('org.students.detail.linkCopied', 'Ссылка скопирована'));
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                  className="btn-secondary inline-flex items-center gap-1.5"
                 >
-                  <Copy className="w-4 h-4" />{t('common.copy', 'Копировать')}
+                  <Copy className="w-3.5 h-3.5" />{t('common.copy', 'Копировать')}
                 </button>
                 {canEditRoster && (
                   <button
-                    onClick={() => setConfirm({ kind: 'revokeParent' })}
-                    className="px-3.5 py-2 rounded-xl text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 dark:text-rose-300 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 transition-colors"
+                    onClick={() => { setAccessPanelOpen(false); setConfirm({ kind: 'revokeParent' }); }}
+                    className="btn-ghost !text-rose-700 dark:!text-rose-400 hover:!bg-rose-50 dark:hover:!bg-rose-900/20"
                   >
                     {t('org.students.detail.reset', 'Сбросить')}
                   </button>
@@ -1041,24 +1115,20 @@ const StudentDetailPage: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Роли — только настоящие админы и только у тех, кто вообще может войти. */}
-          {isOrgAdmin && organizationId && hasLogin && (
-            <div className="px-4 py-3.5">
-              <MemberRolesEditor uid={student.uid} orgId={organizationId} />
-            </div>
           )}
         </div>
-      </section>
+      </div>
+      </div>
+      )}
 
       {/* Мобильная панель первичного действия: на телефоне кнопка из шапки уезжает. */}
       {canTakeMoney && money.total > 0 && (
-        <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-700">
+        <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 p-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setPayModalPlan(money.debtPlans[0])}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+            className="btn-primary w-full inline-flex items-center justify-center gap-1.5 !py-2"
           >
-            <Wallet className="w-4 h-4" />{t('finances.acceptPayment', 'Принять оплату')} · <span className="tabular-nums">{formatMoney(money.total)}</span>
+            <Wallet className="w-3.5 h-3.5" />{t('finances.acceptPayment', 'Принять оплату')} · <span className="tabular-nums">{formatMoney(money.total)}</span>
           </button>
         </div>
       )}
@@ -1172,7 +1242,7 @@ const StudentDetailPage: React.FC = () => {
                   value={selectedGroupId}
                   onChange={e => setSelectedGroupId(e.target.value)}
                   aria-label={t('org.students.groupCol', 'Группа')}
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                  className="input"
                 >
                   <option value="">{t('org.students.detail.chooseGroup', '— Выберите группу —')}</option>
                   {allGroups.filter(g => !(g.studentIds || []).includes(uid!)).map(g => (
@@ -1246,8 +1316,8 @@ const SectionHeading: React.FC<{
 }> = ({ title, meta, action }) => (
   // Заголовок живёт НАД контейнером, а не внутри него: иначе получается карточка
   // в карточке — самый частый способ утопить иерархию.
-  <div className="flex items-baseline justify-between gap-3 mb-2.5">
-    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+  <div className="flex items-baseline justify-between gap-3 mb-2">
+    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
       {title}
       {meta && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{meta}</span>}
     </h2>
@@ -1269,8 +1339,8 @@ const Metric: React.FC<{
 }> = ({ label, value, hint, alarming, trend }) => (
   <div className="px-4 py-3">
     <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
-    <dd className={`mt-0.5 text-xl font-semibold tabular-nums flex items-center gap-1 ${
-      alarming ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
+    <dd className={`mt-0.5 text-2xl font-semibold tabular-nums flex items-center gap-1 ${
+      alarming ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'
     }`}>
       {value}
       {trend === 'down' && <ArrowDownRight className="w-4 h-4 text-rose-500" aria-hidden />}
@@ -1289,7 +1359,7 @@ const ProblemRow: React.FC<{
     ? 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-100'
     : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100';
   return (
-    <div className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap ${cls}`}>
+    <div className={`rounded-lg border px-3 py-2 flex items-center justify-between gap-3 flex-wrap ${cls}`}>
       <p className="text-sm flex items-center gap-2 min-w-0">
         <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden />
         <span>{text}</span>
@@ -1322,20 +1392,20 @@ const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
 const DetailSkeleton: React.FC = () => {
   const { t } = useTranslation();
   return (
-  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label={t('org.students.detail.loadingAria', 'Загрузка карточки студента')}>
+  <div aria-busy="true" aria-label={t('org.students.detail.loadingAria', 'Загрузка карточки студента')}>
     <Skeleton className="h-5 w-24 mb-5" />
-    <div className="flex items-start gap-4 mb-6">
-      <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+    <div className="flex items-start gap-4 mb-4">
+      <Skeleton className="w-14 h-14 rounded-lg shrink-0" />
       <div className="flex-1">
         <Skeleton className="h-7 w-56 mb-2" />
         <Skeleton className="h-4 w-80" />
       </div>
     </div>
-    <Skeleton className="h-20 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-20 w-full rounded-lg mb-4" />
     <Skeleton className="h-4 w-20 mb-2.5" />
-    <Skeleton className="h-40 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-40 w-full rounded-lg mb-4" />
     <Skeleton className="h-4 w-28 mb-2.5" />
-    <Skeleton className="h-32 w-full rounded-2xl" />
+    <Skeleton className="h-32 w-full rounded-lg" />
   </div>
   );
 };

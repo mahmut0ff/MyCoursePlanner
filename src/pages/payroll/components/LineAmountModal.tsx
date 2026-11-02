@@ -81,29 +81,29 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
       onClick={() => { if (!saving) onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] tabular-nums overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {manual ? t('payroll.editManualLine', 'Изменить строку') : t('payroll.overrideTitle', 'Изменить сумму вручную')}
           </h2>
-          <button onClick={onClose} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50" aria-label={t('payroll.close', 'Закрыть')}>
-            <X className="w-5 h-5" />
+          <button onClick={onClose} disabled={saving} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50" aria-label={t('payroll.close', 'Закрыть')}>
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>}
+        <div className="px-4 py-2 space-y-3">
+          {error && <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-lg">{error}</div>}
 
           <div className="text-sm text-slate-600 dark:text-slate-300">
-            <p className="font-medium text-slate-900 dark:text-white">{line.teacherName || line.teacherId}</p>
+            <p className="font-medium text-slate-900 dark:text-slate-100">{line.teacherName || line.teacherId}</p>
             {!manual && (
               <p className="text-xs text-slate-400 mt-0.5">
                 {t('payroll.computedWas', 'Система посчитала: {{amount}}', { amount: formatMinor(line.computedMinor) })}
@@ -112,7 +112,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {manual ? t('payroll.plainAmountField', 'Сумма') : t('payroll.overrideAmount', 'Сумма к выплате')} *
             </label>
             <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
                 autoFocus
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                className="w-40 input"
               />
               <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
             </div>
@@ -130,19 +130,19 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
 
           {manual ? (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('payroll.noteField', 'Комментарий')}
               </label>
               <input
                 type="text"
                 value={note}
                 onChange={e => setNote(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                className="input"
               />
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('payroll.reasonField', 'Причина изменения')} *
               </label>
               <input
@@ -150,7 +150,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
                 value={reason}
                 onChange={e => setReason(e.target.value)}
                 placeholder={t('payroll.reasonPlaceholder', 'Договорились о доплате за замену')}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                className="input"
               />
               <p className="text-[11px] text-slate-400 mt-1">
                 {t('payroll.reasonHint', 'Расчётная сумма сохранится рядом — правка не стирает то, что посчитала система.')}
@@ -159,24 +159,24 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between gap-3">
+        <div className="px-4 pt-2 pb-4 flex justify-between gap-2">
           {!manual && line.overrideMinor !== null ? (
             <button
               onClick={() => submit(true)}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 disabled:opacity-50 underline"
+              className="btn-ghost disabled:opacity-50"
             >
               {t('payroll.clearOverride', 'Вернуть расчётную сумму')}
             </button>
           ) : <span />}
-          <div className="flex gap-3">
-            <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 disabled:opacity-50">
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={saving} className="btn-ghost disabled:opacity-50">
               {t('payroll.cancel', 'Отмена')}
             </button>
             <button
               onClick={() => submit(false)}
               disabled={saving}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+              className="btn-primary disabled:opacity-50"
             >
               {saving ? t('payroll.saving', 'Сохранение...') : t('payroll.save', 'Сохранить')}
             </button>

@@ -52,7 +52,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
       </div>
     );
   }
@@ -62,15 +62,15 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-4 relative max-w-3xl">
       {!hasAccess && (
-        <div className="absolute inset-0 z-10 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center border border-slate-200/50 dark:border-slate-700/50">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm text-center border border-slate-200 dark:border-slate-700">
-            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-full flex items-center justify-center mb-4">
+        <div className="absolute inset-0 z-10 bg-white/70 dark:bg-slate-900/70 rounded-lg flex flex-col items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-pop flex flex-col items-center max-w-sm text-center border border-slate-200 dark:border-slate-700">
+            <div className="text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2">
               <Lock className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('integrations.unavailable', 'Интеграции недоступны')}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">{t('integrations.unavailable', 'Интеграции недоступны')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               {t('integrations.unavailableDesc', 'Ваш текущий тариф не поддерживает расширенные настройки интеграций и автоматизацию Telegram.')}
             </p>
           </div>
@@ -78,32 +78,32 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       )}
 
       {/* ── Telegram Integration ── */}
-      <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-3 ${!hasAccess ? 'opacity-50 pointer-events-none filter blur-[1px]' : ''}`}>
+      <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3 ${!hasAccess ? 'opacity-50 pointer-events-none filter blur-[1px]' : ''}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl">
-              <MessageCircle className="w-6 h-6" />
+            <div className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-md">
+              <MessageCircle className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t('integrations.botTitle', 'Telegram Бот AI-ассистента')}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('integrations.botTitle', 'Telegram Бот AI-ассистента')}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('integrations.botDesc', 'Собственный Telegram-бот для автоматической поддержки ваших клиентов (Webhooks синхронизируются автоматически)')}
               </p>
             </div>
           </div>
           <button 
             onClick={() => setShowHelp(!showHelp)} 
-            className={`p-2 rounded-full transition-colors ${showHelp ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${showHelp ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800'}`}
             title={t('integrations.helpTitle', 'Как настроить бота?')}
             aria-label={t('integrations.helpTitle', 'Как настроить бота?')}
           >
-            <HelpCircle className="w-5 h-5" />
+            <HelpCircle className="w-4 h-4" />
           </button>
         </div>
 
         {showHelp && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 text-sm text-blue-900 dark:text-blue-100 animate-in fade-in slide-in-from-top-2">
-            <h4 className="font-bold mb-3 flex items-center gap-2">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 text-sm text-blue-900 dark:text-blue-100 animate-in fade-in slide-in-from-top-2">
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
               <MessageCircle className="w-4 h-4" /> {t('integrations.howTo', 'Как создать своего бота?')}
             </h4>
             <ol className="list-decimal pl-5 space-y-2.5">
@@ -120,7 +120,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
         )}
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label className="label">
             {t('integrations.tokenLabel', 'Bot Token (API Ключ от @BotFather)')}
           </label>
           <input
@@ -134,10 +134,10 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
         </div>
 
         {settings.telegramBotUsername && (
-          <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/30 rounded-xl">
-            <Link2 className="w-5 h-5 flex-shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 rounded-md">
+            <Link2 className="w-4 h-4 flex-shrink-0" />
             <div className="text-sm">
-              <strong>{t('integrations.webhookActive', 'Вебхук активен!')}</strong> {t('integrations.connectedBot', 'Подключенный AI-ассистент:')} <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-bold hover:underline">@{settings.telegramBotUsername}</a>
+              <strong>{t('integrations.webhookActive', 'Вебхук активен!')}</strong> {t('integrations.connectedBot', 'Подключенный AI-ассистент:')} <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-semibold hover:underline">@{settings.telegramBotUsername}</a>
             </div>
           </div>
         )}
@@ -145,8 +145,8 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
 
       {/* ── Save Action ── */}
       <div className="flex justify-end">
-        <button onClick={handleSave} disabled={saving || !hasAccess} className="btn-primary flex items-center gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        <button onClick={handleSave} disabled={saving || !hasAccess} className="btn-primary inline-flex items-center gap-1.5">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           {t('integrations.saveActivate', 'Сохранить и активировать Webhook')}
         </button>
       </div>

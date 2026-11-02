@@ -83,7 +83,7 @@ const TeacherOnboardingWizard: React.FC = () => {
   const segments = steps.map((s) => (
     <div
       key={s.id}
-      className={`h-1.5 flex-1 rounded-full ${s.done ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'}`}
+      className={`h-1 flex-1 rounded-full ${s.done ? 'bg-primary-600' : 'bg-slate-200 dark:bg-slate-700'}`}
     />
   ));
   const setupLabel = t('teacherOnboarding.setupLabel', {
@@ -98,7 +98,7 @@ const TeacherOnboardingWizard: React.FC = () => {
   };
 
   return (
-    <section className="card px-4 sm:px-5 py-3">
+    <section className="card px-4 py-3">
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Progress: 4 segments + label (desktop) */}
         <div className="hidden sm:block w-32 shrink-0">
@@ -108,19 +108,19 @@ const TeacherOnboardingWizard: React.FC = () => {
 
         {/* Next step = the row's action */}
         <Link to={next.link} className="flex-1 min-w-0 flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-            <NextIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+          <div className="w-7 h-7 rounded-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
+            <NextIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{next.title}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{next.title}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{next.desc}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors shrink-0" />
         </Link>
 
         <button
           onClick={dismiss}
-          className="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors shrink-0"
+          className="btn-ghost shrink-0 text-slate-500 dark:text-slate-400"
         >
           {t('teacherOnboarding.dismiss', 'Скрыть')}
         </button>

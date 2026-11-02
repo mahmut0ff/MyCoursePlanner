@@ -271,7 +271,7 @@ const QuizBuilderPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto kahoot-font">
+    <div className="kahoot-font">
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">

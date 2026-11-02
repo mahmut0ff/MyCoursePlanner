@@ -53,7 +53,6 @@ vi.mock('../../../contexts/BranchContext', () => ({ useBranch: vi.fn() }));
 vi.mock('../../../hooks/useStudentRisks', () => ({ useStudentRisks: vi.fn() }));
 
 // Тяжёлые дети, которые сами ходят в сеть, к предмету теста отношения не имеют.
-vi.mock('../../../components/shared/MemberRolesEditor', () => ({ default: () => <div /> }));
 vi.mock('../../../components/ai/ReportCommentModal', () => ({ default: () => null }));
 vi.mock('../../../lib/badges', () => ({ PinnedBadgesDisplay: () => null }));
 

@@ -43,38 +43,38 @@ const RoomListPage: React.FC = () => {
   }, [isStaff]);
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 font-sans animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+    <div className="pb-12 font-sans animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              <Network className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+          <div className="flex items-center gap-2">
+            <div className="hidden">
+              <Network className="w-3.5 h-3.5 text-slate-400" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{t('rooms.title', 'Exam Rooms')}</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('rooms.title', 'Exam Rooms')}</h1>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium ml-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('rooms.activeRoomsCount', 'Активные сессии: {{count}}', { count: rooms.filter(r => r.status !== 'closed').length })}
           </p>
         </div>
         
         {isStaff && (
           <div className="flex items-center">
-            <Link to="/exams" className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm hover:shadow-md">
-              <Plus className="w-4 h-4" />{t('rooms.startFromExam', 'Start New Room')}
+            <Link to="/exams" className="btn-primary inline-flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" />{t('rooms.startFromExam', 'Start New Room')}
             </Link>
           </div>
         )}
       </div>
 
       {isStaff && (
-        <div className="flex gap-2 mb-5" role="tablist">
+        <div className="flex gap-1 mb-3" role="tablist">
           {[false, true].map(archive => (
             <button
               key={String(archive)}
               role="tab"
               aria-selected={showArchive === archive}
               onClick={() => setShowArchive(archive)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showArchive === archive ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+              className={`h-7 px-2 rounded-md text-sm transition-colors ${showArchive === archive ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               {archive ? t('common.archived', 'Архив') : t('org.students.statusActive', 'Активные')}
               {' '}({rooms.filter(r => (r.status === 'closed') === archive).length})
@@ -84,41 +84,41 @@ const RoomListPage: React.FC = () => {
       )}
 
       {loading ? (
-         <div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>
+         <div className="flex items-center justify-center py-32"><div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>
       ) : visible.length === 0 ? (
-        <div className="exam-slide-up bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-3xl p-16 text-center max-w-2xl mx-auto shadow-sm">
-          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Radio className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+        <div className="exam-slide-up bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-12 px-4 text-center">
+          <div className="flex items-center justify-center mx-auto mb-2">
+            <Radio className="w-6 h-6 text-slate-400" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('rooms.noRooms', 'No Active Rooms')}</h3>
-          <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">{t('rooms.noRoomsDesc', 'Go to the Exams Library to launch a new live assessment session.')}</p>
+          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">{t('rooms.noRooms', 'No Active Rooms')}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">{t('rooms.noRoomsDesc', 'Go to the Exams Library to launch a new live assessment session.')}</p>
           {isStaff && (
-            <Link to="/exams" className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2 transition-all shadow-md">
-              {t('rooms.startFromExam', 'Browse Exams')} <ChevronRight className="w-4 h-4" />
+            <Link to="/exams" className="btn-primary inline-flex items-center gap-1.5">
+              {t('rooms.startFromExam', 'Browse Exams')} <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {visible.map((room, i) => (
             <Link 
               key={room.id} 
               to={`/rooms/${room.id}`} 
-              className="exam-slide-up exam-card-hover bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-6 group flex flex-col justify-between h-full relative overflow-hidden"
+              className="exam-slide-up bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors rounded-lg p-4 group flex flex-col justify-between h-full relative overflow-hidden"
               style={{ animationDelay: `${i * 0.05}s` }}
             >
               {room.status === 'active' && (
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110" />
+                <div className="hidden" />
               )}
               
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Radio className={`w-4 h-4 ${room.status === 'active' ? 'text-emerald-500 animate-pulse' : room.status === 'waiting' ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
-                      room.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' : 
-                      room.status === 'waiting' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' :
-                      'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                    <Radio className={`w-3.5 h-3.5 ${room.status === 'active' ? 'text-emerald-500 animate-pulse' : room.status === 'waiting' ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                    <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${
+                      room.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 
+                      room.status === 'waiting' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                     }`}>
                       {room.status === 'waiting' ? t('rooms.waiting', 'ОЖИДАНИЕ')
                         : room.status === 'active' ? t('rooms.statusActive', 'ИДЁТ')
@@ -126,28 +126,28 @@ const RoomListPage: React.FC = () => {
                         : room.status}
                     </span>
                   </div>
-                  <span className="font-mono text-sm font-bold tracking-widest text-slate-900 dark:text-white px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md select-all">
+                  <span className="font-mono text-sm font-medium tracking-widest text-slate-900 dark:text-slate-100 h-6 inline-flex items-center px-2 border border-slate-200 dark:border-slate-700 rounded select-all">
                     {room.code}
                   </span>
                 </div>
                 
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors leading-snug mb-1 line-clamp-2">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-0.5 line-clamp-2">
                   {room.examTitle}
                 </h3>
                 
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                   {t('rooms.host', 'Host')}: {room.hostName}
                 </p>
               </div>
 
-              <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-auto pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md">
+                  <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
+                    <span className="flex items-center gap-1 tabular-nums">
                       <Users className="w-3.5 h-3.5" />
                       {room.participants?.length || 0}
                     </span>
-                    <span className="text-slate-400 dark:text-slate-500 font-medium">
+                    <span className="text-slate-500 dark:text-slate-400">
                       {formatDate(room.createdAt)}
                     </span>
                   </div>
@@ -157,13 +157,13 @@ const RoomListPage: React.FC = () => {
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setClosing(room); }}
                       title={t('rooms.closeRoom', 'Закрыть комнату')}
                       aria-label={t('rooms.closeRoom', 'Закрыть комнату')}
-                      className="ml-auto mr-2 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                      className="ml-auto mr-1 w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors">
-                    <ChevronRight className="w-4 h-4 ml-0.5" />
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 group-hover:text-slate-900 group-hover:bg-slate-100 dark:group-hover:text-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 </div>
               </div>

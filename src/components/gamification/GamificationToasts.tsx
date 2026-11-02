@@ -14,14 +14,14 @@ export const showGamificationToasts = (newBadges: any[], leveledUp?: boolean) =>
     });
     
     toast.custom((t) => (
-      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-4 rounded-2xl shadow-2xl flex items-center gap-4 text-white pointer-events-auto border border-white/20`}>
-         <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-3xl shrink-0 shadow-inner">
+      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white dark:bg-slate-800 p-3 rounded-lg shadow-float flex items-center gap-3 text-slate-900 dark:text-slate-100 pointer-events-auto border border-slate-200 dark:border-slate-700`}>
+         <div className="w-10 h-10 bg-primary-50 dark:bg-primary-950 rounded-lg flex items-center justify-center text-2xl shrink-0">
             ⭐
          </div>
          <div>
-            <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-violet-200 mb-0.5">{i18n.t('gamification.levelUpKicker', 'Повышение!')}</p>
-            <h3 className="font-extrabold text-lg leading-tight">{i18n.t('gamification.levelUp', 'Новый уровень!')}</h3>
-            <p className="text-white/80 text-xs mt-1">{i18n.t('gamification.levelUpText', 'Вы достигли нового уровня. Так держать!')}</p>
+            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-0.5">{i18n.t('gamification.levelUpKicker', 'Повышение!')}</p>
+            <h3 className="text-sm font-semibold leading-tight">{i18n.t('gamification.levelUp', 'Новый уровень!')}</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{i18n.t('gamification.levelUpText', 'Вы достигли нового уровня. Так держать!')}</p>
          </div>
       </div>
     ), { duration: 6000, position: 'top-center' });
@@ -40,14 +40,14 @@ export const showGamificationToasts = (newBadges: any[], leveledUp?: boolean) =>
         });
 
         toast.custom((t) => (
-          <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white dark:bg-slate-800 border-[3px] border-emerald-500 rounded-3xl p-4 shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] flex items-center gap-4 pointer-events-auto`}>
-            <div className="w-16 h-16 shrink-0 bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/60 dark:to-emerald-800/40 rounded-2xl flex items-center justify-center text-4xl shadow-inner border border-emerald-300 dark:border-emerald-700/50">
+          <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-float flex items-center gap-3 pointer-events-auto`}>
+            <div className="w-10 h-10 shrink-0 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center text-2xl">
               {badge.icon}
             </div>
             <div>
-              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-extrabold text-emerald-600 dark:text-emerald-400 mb-0.5">{i18n.t('gamification.newAchievement', 'Новое достижение!')}</p>
-              <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight mb-1">{i18n.t(`gamification.badgesList.${badge.id}.title`, { defaultValue: String(badge.title ?? '') })}</h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-snug">{i18n.t(`gamification.badgesList.${badge.id}.description`, { defaultValue: String(badge.description ?? '') })}</p>
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">{i18n.t('gamification.newAchievement', 'Новое достижение!')}</p>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm leading-tight mb-0.5">{i18n.t(`gamification.badgesList.${badge.id}.title`, { defaultValue: String(badge.title ?? '') })}</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-snug">{i18n.t(`gamification.badgesList.${badge.id}.description`, { defaultValue: String(badge.description ?? '') })}</p>
             </div>
           </div>
         ), { duration: 6000, position: 'bottom-center' });

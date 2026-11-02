@@ -45,12 +45,10 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
   };
 
   return (
-    <div className="card p-6 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
-        <h2 className="font-semibold text-slate-900 dark:text-white">{t('ai.mistakes.title', 'Разбор ошибок с AI')}</h2>
+    <div className="card p-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('ai.mistakes.title', 'Разбор ошибок с AI')}</h2>
       </div>
 
       {!items && (
@@ -58,8 +56,8 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {t('ai.mistakes.intro', { count: incorrect.length })}
           </p>
-          <button onClick={explain} disabled={loading} className="btn-primary inline-flex items-center gap-2">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          <button onClick={explain} disabled={loading} className="btn-primary inline-flex items-center gap-1.5">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             {loading ? t('ai.mistakes.loading', 'Разбираю…') : t('ai.mistakes.cta', 'Разобрать мои ошибки')}
           </button>
           {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
@@ -67,10 +65,10 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
       )}
 
       {items && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {summary && (
-            <div className="flex items-start gap-2.5 px-4 py-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-xl">
-              <Sparkles className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-md">
+              <Sparkles className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-700 dark:text-slate-200">{summary}</p>
             </div>
           )}
@@ -78,10 +76,10 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
             <p className="text-sm text-slate-500 text-center py-2">{t('ai.mistakes.none', 'Отличная работа — серьёзных ошибок не найдено!')}</p>
           ) : (
             items.map((it, i) => (
-              <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                <p className="font-medium text-slate-900 dark:text-white mb-2">{it.question}</p>
-                <p className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+              <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1.5">{it.question}</p>
+                <p className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 mb-1">
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <span>{it.why}</span>
                 </p>
                 <p className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">

@@ -72,23 +72,23 @@ export function StudentAudioRecorder({ onRecordingComplete, disabled }: Props) {
 
   if (hasRecorded) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm w-full max-w-sm mx-auto kahoot-font">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-green-100 dark:bg-green-900/40">
-          <Mic className="w-8 h-8 text-green-600 dark:text-green-400" />
+      <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-w-sm mx-auto">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2 bg-emerald-100 dark:bg-emerald-900/30">
+          <Mic className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <div className="text-lg font-black text-slate-800 dark:text-white mb-2">{t('quiz.audioRecorded', 'Аудио записано')}</div>
-        <p className="text-sm text-slate-500">{t('quiz.readyToSubmit', 'Готово к отправке')}</p>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-0.5">{t('quiz.audioRecorded', 'Аудио записано')}</div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t('quiz.readyToSubmit', 'Готово к отправке')}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm w-full max-w-md mx-auto kahoot-font transition-all delay-75">
-      <div className={`w-28 h-28 rounded-full flex items-center justify-center mb-6 transition-all duration-300 ${isRecording ? 'bg-red-100/50 dark:bg-red-900/20 animate-pulse ring-[8px] ring-red-500/30' : 'bg-slate-100 dark:bg-slate-700/50'}`}>
-        <Mic className={`w-14 h-14 ${isRecording ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
+    <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 w-full max-w-md mx-auto">
+      <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-colors ${isRecording ? 'bg-red-100 dark:bg-red-900/30 animate-pulse ring-4 ring-red-500/20' : 'bg-slate-100 dark:bg-slate-700/50'}`}>
+        <Mic className={`w-6 h-6 ${isRecording ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`} />
       </div>
       
-      <div className="text-4xl font-black text-slate-800 dark:text-white mb-8 tabular-nums tracking-widest">
+      <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4 tabular-nums">
         {formatTime(timer)}
       </div>
 
@@ -96,16 +96,16 @@ export function StudentAudioRecorder({ onRecordingComplete, disabled }: Props) {
         <button
           onClick={startRecording}
           disabled={disabled}
-          className="w-full py-5 rounded-2xl font-bold text-white text-xl bg-red-500 hover:bg-red-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-red-500/20"
+          className="btn-danger w-full inline-flex items-center justify-center gap-1.5"
         >
           {t('quiz.startRecording', 'Начать запись')}
         </button>
       ) : (
         <button
           onClick={stopRecording}
-          className="w-full py-5 rounded-2xl font-bold text-slate-900 text-xl bg-yellow-400 hover:bg-yellow-500 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg shadow-yellow-400/20"
+          className="btn-secondary w-full inline-flex items-center justify-center gap-1.5"
         >
-          <Square className="w-6 h-6 fill-current" /> {t('quiz.stopRecording', 'Остановить')}
+          <Square className="w-3.5 h-3.5 fill-current" /> {t('quiz.stopRecording', 'Остановить')}
         </button>
       )}
     </div>

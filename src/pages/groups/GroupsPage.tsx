@@ -39,18 +39,18 @@ const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: Re
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       onClick={onClick}
-      className={`group/row hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${isDragging ? 'relative z-10 opacity-60 bg-white shadow-lg dark:bg-slate-800' : ''}`}
+      className={`group/row hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${isDragging ? 'relative z-10 opacity-60 bg-white dark:bg-slate-800' : ''}`}
     >
-      <td className="pl-4 pr-1 py-4 w-8">
+      <td className="pl-3 pr-1 py-1.5 w-8">
         {/* touch-none: without it a touch drag scrolls the page instead of moving the row. */}
         <button
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="touch-none p-1 -m-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 transition-all"
+          className="touch-none p-1 -m-1 rounded-md text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 transition-all"
           title={t('groups.list.dragHint', 'Перетащите, чтобы изменить порядок')}
         >
-          <GripVertical className="w-4 h-4" />
+          <GripVertical className="w-3.5 h-3.5" />
         </button>
       </td>
       {children}
@@ -65,8 +65,9 @@ const GroupsPage: React.FC = () => {
   const { institutionType } = useOrg();
   const { role, profile } = useAuth();
   const { activeBranchId, branches } = useBranch();
-  const { canDelete, can } = usePermissions();
-  const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+  const { canWrite, canDelete, can } = usePermissions();
+  // Группами всей организации распоряжается ведущий контингент — как isRosterManager на сервере.
+  const isAdmin = hasRosterManagement(role, can);
   // Вступить в чужую группу — значит получить её учеников, поэтому сам вступает
   // только ведущий контингент (сервер: teacherJoinGroup). Выйти может любой.
   const canSelfJoin = hasRosterManagement(role, can);
@@ -91,7 +92,7 @@ const GroupsPage: React.FC = () => {
   // Org policy: may teachers create/edit/delete groups they own? (admin-controlled)
   const [teacherCanManage, setTeacherCanManage] = useState(false);
   // Who may create groups from this page: admins/managers always, teachers when the policy is on.
-  const canCreate = isAdmin || (role === 'teacher' && teacherCanManage);
+  const canCreate = canWrite('groups') && (isAdmin || (role === 'teacher' && teacherCanManage));
 
   const load = () => {
     setLoading(true); setError('');
@@ -193,53 +194,53 @@ const GroupsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10 cursor-default">
+    <div className="space-y-4 pb-10 cursor-default">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{term(t, institutionType, 'groups')}</h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-            <Users className="w-4 h-4" /> {t('groups.list.total', 'Всего групп: {{count}}', { count: filtered.length })}
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{term(t, institutionType, 'groups')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" /> {t('groups.list.total', 'Всего групп: {{count}}', { count: filtered.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {hasCustomOrder && (
             <button
               onClick={resetOrder}
-              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
               title={t('org.groups.resetOrder', 'Сбросить свой порядок групп')}
             >
-              <ListRestart className="w-5 h-5" />
+              <ListRestart className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={load} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><RefreshCw className="w-5 h-5" /></button>
+          <button onClick={load} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
           {canCreate && (
-            <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
-              <Plus className="w-5 h-5" /> {t('groups.list.create', 'Создать группу')}
+            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" /> {t('groups.list.create', 'Создать группу')}
             </button>
           )}
         </div>
       </div>
 
-      {error && <div className="px-5 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-sm font-bold text-red-600 dark:text-red-400">{error}</div>}
+      {error && <div className="px-3 py-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
 
       {/* Search + teacher view toggle */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={`${t('common.search', 'Поиск')}...`}
-            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm"
+            className="input pl-8"
           />
         </div>
         {role === 'teacher' && (
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
+          <div className="flex gap-0.5 shrink-0">
             {(['mine', 'all'] as const).map((m) => (
               <button key={m} onClick={() => setViewMode(m)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === m ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                className={`h-7 px-2 rounded-md text-sm transition-colors ${viewMode === m ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}>
                 {m === 'mine' ? t('org.teach.mine', 'Мои') : t('org.teach.all', 'Все')}
               </button>
             ))}
@@ -249,38 +250,36 @@ const GroupsPage: React.FC = () => {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-emerald-400" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-primary-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm">
-          <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto mb-5 rotate-3 hover:rotate-6 transition-transform">
-            <Users className="w-10 h-10 text-emerald-500" />
-          </div>
-          <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{t('org.groups.empty', 'Список пуст')}</h3>
-          <p className="text-sm font-medium text-slate-500 mb-6 max-w-sm mx-auto">{t('org.groups.emptyDesc', 'Создайте первую группу, чтобы распределить учеников.')}</p>
+        <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <Users className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">{t('org.groups.empty', 'Список пуст')}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">{t('org.groups.emptyDesc', 'Создайте первую группу, чтобы распределить учеников.')}</p>
           {canCreate && (
-            <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold inline-flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 active:translate-y-0">
-              <Plus className="w-5 h-5" /> {t('groups.list.create', 'Создать группу')}
+            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" /> {t('groups.list.create', 'Создать группу')}
             </button>
           )}
         </div>
       ) : (
         /* ═══ Premium Data Table ═══ */
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                <tr className="h-8 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                   {/* Drag handle column — mirrors the grip cell below, or the column count drifts. */}
-                  <th className="w-8 pl-4 pr-1" />
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colGroup', 'Группа')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colCourse', 'Курс')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colStudents', 'Студенты')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colTeachers', 'Учителя')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colCreated', 'Создана')}</th>
+                  <th className="w-8 pl-3 pr-1" />
+                  <th className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t('groups.list.colGroup', 'Группа')}</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t('groups.list.colCourse', 'Курс')}</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t('groups.list.colStudents', 'Студенты')}</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t('groups.list.colTeachers', 'Учителя')}</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t('groups.list.colCreated', 'Создана')}</th>
                   {/* Mirrors the cell below exactly, or the column count drifts from the header. */}
-                  {(canDeleteGroups || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{canDeleteGroups ? t('common.actions', 'Действия') : t('groups.list.colTeaching', 'Преподавание')}</th>}
+                  {(canDeleteGroups || role === 'teacher') && <th className="px-3 py-1.5 text-right text-xs font-medium text-slate-500 dark:text-slate-400">{canDeleteGroups ? t('common.actions', 'Действия') : t('groups.list.colTeaching', 'Преподавание')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -299,18 +298,18 @@ const GroupsPage: React.FC = () => {
                       id={g.id}
                       onClick={() => navigate(`/groups/${g.id}`)}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-lg shrink-0">
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-semibold text-xs shrink-0">
                             {g.name[0]?.toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-slate-900 dark:text-white group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400 transition-colors">
+                              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                                 {g.name}
                               </p>
                               {g.status && g.status !== 'active' && (
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${GROUP_STATUS_PILL[g.status].className}`}>
+                                <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${GROUP_STATUS_PILL[g.status].className}`}>
                                   {t(`groups.status.${g.status}`, GROUP_STATUS_PILL[g.status].label)}
                                 </span>
                               )}
@@ -318,32 +317,32 @@ const GroupsPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                      <td className="px-3 py-1.5">
+                        <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium">
                           <BookOpen className="w-3.5 h-3.5" />
                           {courseName(g.courseId)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-1.5">
                         <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-slate-400" />
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">{studentCount}</span>
+                          <Users className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-sm text-slate-700 dark:text-slate-300 tabular-nums">{studentCount}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-1.5">
                         {groupTeachers.length > 0 ? (
                           <div className="flex -space-x-2">
                              {groupTeachers.slice(0, 3).map((t, tid) => (
                                 t.avatarUrl ? (
-                                  <img key={tid} src={t.avatarUrl} className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-slate-800" title={t.displayName} />
+                                  <img key={tid} src={t.avatarUrl} className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-800" title={t.displayName} />
                                 ) : (
-                                  <div key={tid} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 flex items-center justify-center text-[11px] font-bold ring-2 ring-white dark:ring-slate-800" title={t.displayName}>
+                                  <div key={tid} className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-slate-800" title={t.displayName}>
                                      {t.displayName?.[0]?.toUpperCase() || '?'}
                                   </div>
                                 )
                              ))}
                              {groupTeachers.length > 3 && (
-                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-slate-800">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-slate-800">
                                   +{groupTeachers.length - 3}
                                 </div>
                              )}
@@ -352,36 +351,36 @@ const GroupsPage: React.FC = () => {
                           <span className="text-xs text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      <td className="px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
                         {g.createdAt ? new Date(g.createdAt).toLocaleDateString(numericDateLocale()) : '—'}
                       </td>
                       {canDeleteGroups ? (
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-1.5 text-right">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors opacity-0 group-hover/row:opacity-100"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover/row:opacity-100"
                             title={t('common.delete', 'Удалить')}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </td>
                       ) : role === 'teacher' ? (
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-1.5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {(isMemberOfGroup || canSelfJoin) && <button
                               onClick={(e) => toggleTeachGroup(g, e)}
                               disabled={togglingId === g.id}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${isMemberOfGroup ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+                              className={`inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${isMemberOfGroup ? 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
                             >
                               {isMemberOfGroup ? <><LogOut className="w-3.5 h-3.5" />{t('org.teach.leave', 'Выйти')}</> : <><UserPlus className="w-3.5 h-3.5" />{t('org.teach.teach', 'Вести')}</>}
                             </button>}
                             {canDeleteOwn && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
-                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors opacity-0 group-hover/row:opacity-100"
+                                className="w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover/row:opacity-100"
                                 title={t('org.groups.deleteOwn', 'Удалить свою группу')}
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </div>
@@ -400,27 +399,27 @@ const GroupsPage: React.FC = () => {
 
       {/* Create Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-6">{t('groups.list.createNew', 'Создать новую группу')}</h2>
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-md shadow-pop border border-slate-200 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">{t('groups.list.createNew', 'Создать новую группу')}</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('common.name', 'Название')}</label>
+                <label className="label">{t('common.name', 'Название')}</label>
                 <input 
                   placeholder={t('groups.list.namePh', 'Осенний интенсив...')} 
                   value={form.name} 
                   onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} 
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
+                  className="input" 
                   autoFocus 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('nav.courses', 'Курс')}</label>
+                <label className="label">{t('nav.courses', 'Курс')}</label>
                 <select 
                   value={form.courseId} 
                   onChange={(e) => setForm(f => ({ ...f, courseId: e.target.value }))} 
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors cursor-pointer"
+                  className="input cursor-pointer"
                 >
                   <option value="">{t('groups.list.selectCourse', '-- Выберите курс --')}</option>
                   {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -428,7 +427,7 @@ const GroupsPage: React.FC = () => {
               </div>
               <div>
                 {branches.length > 1 && (
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                  <label className="label flex items-center gap-1">
                     <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
                   </label>
                 )}
@@ -440,24 +439,24 @@ const GroupsPage: React.FC = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('groups.list.chatOptional', 'Чат (Опционально)')}</label>
-                  <input placeholder="Telegram" value={form.chatLinkTitle} onChange={(e) => setForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
+                  <label className="label">{t('groups.list.chatOptional', 'Чат (Опционально)')}</label>
+                  <input placeholder="Telegram" value={form.chatLinkTitle} onChange={(e) => setForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="input" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('groups.list.chatLink', 'Ссылка на чат')}</label>
-                  <input placeholder="https://t.me/..." value={form.chatLinkUrl} onChange={(e) => setForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
+                  <label className="label">{t('groups.list.chatLink', 'Ссылка на чат')}</label>
+                  <input placeholder="https://t.me/..." value={form.chatLinkUrl} onChange={(e) => setForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="input" />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
-               <button onClick={() => setShowModal(false)} className="px-5 py-2.5 font-bold text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+            <div className="flex justify-end gap-2 mt-4">
+               <button onClick={() => setShowModal(false)} className="btn-ghost">
                  {t('common.cancel', 'Отмена')}
                </button>
-               <button onClick={handleCreate} disabled={saving || !form.name.trim() || !form.courseId} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2">
-                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> ...</> : t('common.save', 'Создать')}
+               <button onClick={handleCreate} disabled={saving || !form.name.trim() || !form.courseId} className="btn-primary disabled:opacity-50 inline-flex items-center gap-1.5">
+                 {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> ...</> : t('common.save', 'Создать')}
                </button>
             </div>
           </div>

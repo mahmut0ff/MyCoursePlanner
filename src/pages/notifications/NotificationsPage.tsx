@@ -82,16 +82,16 @@ const NotificationsPage: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('notifications.title')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('notifications.title')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {unreadCount > 0 ? t('notifications.unreadCount', '{{count}} непрочитанных', { count: unreadCount }) : t('notifications.subtitle')}
           </p>
         </div>
         {unreadCount > 0 && (
-          <button onClick={handleMarkAllRead} className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1.5 transition-colors">
-            <Check className="w-4 h-4" />{t('notifications.markAllRead')}
+          <button onClick={handleMarkAllRead} className="btn-ghost inline-flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5" />{t('notifications.markAllRead')}
           </button>
         )}
       </div>
@@ -100,15 +100,15 @@ const NotificationsPage: React.FC = () => {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
         </div>
       ) : notifications.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
-          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Bell className="w-8 h-8 text-slate-300 dark:text-slate-500" />
+        <div className="text-center py-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <div className="flex items-center justify-center mx-auto mb-2">
+            <Bell className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{t('notifications.emptyTitle')}</h2>
-          <p className="text-sm text-slate-400">{t('notifications.emptyDesc')}</p>
+          <h2 className="text-sm font-medium text-slate-900 dark:text-white mb-1">{t('notifications.emptyTitle')}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('notifications.emptyDesc')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -116,10 +116,10 @@ const NotificationsPage: React.FC = () => {
             <div
               key={n.id}
               onClick={() => handleClick(n)}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 transition-all hover:shadow-md cursor-pointer ${!n.read ? 'ring-2 ring-primary-500/20' : ''}`}
+              className={`bg-white dark:bg-slate-800 border rounded-lg p-3 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/80 ${!n.read ? 'border-primary-200 dark:border-primary-900' : 'border-slate-200 dark:border-slate-700'}`}
             >
               <div className="flex items-start gap-3">
-                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${!n.read ? 'bg-primary-500' : 'bg-transparent'}`} />
+                <div className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${!n.read ? 'bg-primary-600' : 'bg-transparent'}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900 dark:text-white">{n.title}</p>
@@ -131,25 +131,25 @@ const NotificationsPage: React.FC = () => {
                     <div className="mt-3 flex items-center gap-2">
                       <button 
                         onClick={(e) => handleResolve(e, n, 'approve')}
-                        className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                        className="btn-primary inline-flex items-center gap-1.5"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" /> {t('notifications.transfer.approve', 'Одобрить')}
                       </button>
                       <button 
                         onClick={(e) => handleResolve(e, n, 'reject')}
-                        className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 rounded-lg transition-colors flex items-center gap-1.5"
+                        className="btn-secondary inline-flex items-center gap-1.5 hover:text-red-600"
                       >
                         <XCircle className="w-3.5 h-3.5" /> {t('notifications.transfer.reject', 'Отклонить')}
                       </button>
                     </div>
                   )}
                   {n.type === 'transfer_request' && n.metadata?.status !== 'pending' && (
-                    <div className="mt-2 inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500">
+                    <div className="mt-2 inline-flex items-center h-5 px-1.5 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
                       {n.metadata?.status === 'approved' ? t('notifications.transfer.approved', 'Одобрено') : t('notifications.transfer.rejected', 'Отклонено')}
                     </div>
                   )}
 
-                  <p className="text-[10px] text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString(numericDateLocale(), { dateStyle: 'short', timeStyle: 'short' })}</p>
+                  <p className="text-xs text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString(numericDateLocale(), { dateStyle: 'short', timeStyle: 'short' })}</p>
                 </div>
               </div>
             </div>

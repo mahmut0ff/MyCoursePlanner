@@ -650,13 +650,13 @@ const StudentsPage: React.FC = () => {
   if (loading) return <ListSkeleton rows={6} />;
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
+    <div className="pb-10">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.students')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('nav.students')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs">
             {(() => {
               // Счётчик следует вкладке статуса (Активные / Отчисленные / Все), а не всегда активным.
               const n = statusFilter === 'all' ? students.length : students.filter(s => ((s as any).status || 'active') === statusFilter).length;
@@ -664,30 +664,30 @@ const StudentsPage: React.FC = () => {
             })()}
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button onClick={() => { loadStudents(); loadGroups(); }} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button onClick={() => { loadStudents(); loadGroups(); }} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           {/* Moved here from the retired risk dashboard — it belongs next to the
               roster it analyses. Only offered when someone is actually at risk. */}
           {canAccess('ai') && flaggedCount > 0 && (
             <button
               onClick={() => setChurnOpen(true)}
-              className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+              className="btn-secondary shrink-0 inline-flex items-center gap-1.5"
             >
-              <Sparkles className="w-4 h-4" /> {t('org.students.churnAnalysis', 'AI-анализ оттока')}
+              <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" /> {t('org.students.churnAnalysis', 'AI-анализ оттока')}
             </button>
           )}
           {/* Both endpoints require students:write — a read-only member used to see
               these and only find out on the 403. */}
           {permsLoaded && canWrite('students') && (
             <>
-              <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
-                <Upload className="w-4 h-4" />
+              <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="btn-secondary inline-flex justify-center items-center gap-1.5 shrink-0">
+                <Upload className="w-3.5 h-3.5" />
                 {t('org.students.import', 'Импорт')}
               </button>
-              <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
-                <Plus className="w-4 h-4" />
+              <button onClick={() => setShowCreateModal(true)} className="btn-primary flex-1 sm:flex-none inline-flex justify-center items-center gap-1.5 shrink-0">
+                <Plus className="w-3.5 h-3.5" />
                 {t('org.students.create', 'Добавить студента')}
               </button>
             </>
@@ -698,21 +698,19 @@ const StudentsPage: React.FC = () => {
       {/* Onboarding Hint for Managers */}
       {/* The hint explains how to add students — only useful to someone who can. */}
       {!hintDismissed && permsLoaded && canWrite('students') && (
-        <div className="mb-6 relative overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-yellow-900/10 border border-amber-200/80 dark:border-amber-700/40 rounded-2xl p-4 shadow-sm">
+        <div className="mb-4 relative overflow-hidden bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 rounded-lg p-3">
           <button
             onClick={dismissHint}
-            className="absolute top-3 right-3 p-1 text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 rounded-lg transition-colors"
+            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-md text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 transition-colors"
             title={t('common.close', 'Закрыть')}
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-400/20 dark:bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Lightbulb className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
-            </div>
+            <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1 pr-6">
-              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200 mb-2">
+              <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-0.5">
                 {t('org.students.hintTitle', 'Как добавить студентов?')}
               </h3>
               <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
@@ -723,31 +721,32 @@ const StudentsPage: React.FC = () => {
         </div>
       )}
 
-      {error && <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">{error}</div>}
+      {error && <div className="mb-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
 
       <>
           {/* Unified Filter Bar */}
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
+          {/* Dolboor toolbar: a row of controls on the page, not a card */}
+          <div className="mb-3 flex flex-col md:flex-row md:items-center gap-2">
+            <div className="relative md:w-72">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('org.students.searchPlaceholder', 'Поиск по имени, email или телефону...')}
-                className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20" 
+                className="input pl-8"
               />
             </div>
 
-            <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
               {courses.length > 0 && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <BookOpen className="w-4 h-4 text-slate-400" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
                   <select
                     value={selectedCourse}
                     onChange={e => setSelectedCourse(e.target.value)}
                     aria-label={t('org.students.filterByCourse', 'Фильтр по курсу')}
-                    className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                    className="input w-auto"
                   >
                     <option value="all">{t('org.students.allCourses', 'Все курсы')}</option>
                     {courses.map((c: any) => (
@@ -758,13 +757,13 @@ const StudentsPage: React.FC = () => {
               )}
 
               {visibleGroups.length > 0 && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <Filter className="w-4 h-4 text-slate-400" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Filter className="w-3.5 h-3.5 text-slate-400" />
                   <select
                     value={selectedGroup}
                     onChange={e => setSelectedGroup(e.target.value)}
                     aria-label={t('org.students.filterByGroup', 'Фильтр по группе')}
-                    className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                    className="input w-auto"
                   >
                     <option value="all">{t('org.students.allGroups', 'Все группы')}</option>
                     {visibleGroups.map(g => (
@@ -774,10 +773,12 @@ const StudentsPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0 ml-2">
+              {/* Queue chips, as in Dolboor: active one sits on accent-soft */}
+              <div className="flex gap-0.5 shrink-0 md:ml-1">
                 {(['active', 'expelled', 'all'] as const).map((s) => (
                   <button key={s} onClick={() => setStatusFilter(s)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                    aria-pressed={statusFilter === s}
+                    className={`h-7 px-2 rounded-md text-sm transition-colors ${statusFilter === s ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}>
                     {s === 'active' ? t('org.students.statusActive', 'Активные') : s === 'expelled' ? t('org.students.statusExpelled', 'Отчисленные') : t('org.students.statusAll', 'Все')}
                   </button>
                 ))}
@@ -793,15 +794,15 @@ const StudentsPage: React.FC = () => {
                   onClick={() => setRiskOnly(v => !v)}
                   aria-pressed={riskOnly}
                   title={t('org.students.riskOnlyHint', 'Показать только тех, кто требует внимания')}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  className={`shrink-0 flex items-center gap-1.5 h-7 px-2 rounded-md text-sm transition-colors ${
                     riskOnly
-                      ? 'bg-red-500 border-red-500 text-white'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-red-300 dark:hover:border-red-800'
+                      ? 'bg-red-50 text-red-700 font-medium dark:bg-red-900/20 dark:text-red-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${riskOnly ? 'bg-white' : 'bg-red-500'}`} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                   {t('org.students.atRisk', 'В зоне риска')}
-                  <span className={riskOnly ? 'text-white/80' : 'text-slate-400'}>{flaggedCount}</span>
+                  <span className="text-xs text-slate-400">{flaggedCount}</span>
                 </button>
               )}
             </div>
@@ -835,16 +836,16 @@ const StudentsPage: React.FC = () => {
               onAction={permsLoaded && canWrite('students') ? () => setShowCreateModal(true) : undefined}
             />
           ) : (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-              {/* Table header */}
-              <div className={`hidden md:grid ${gridCols} gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500`}>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              {/* Table header — Dolboor DataTable: 32px, 12/500 muted, no caps */}
+              <div className={`hidden md:grid ${gridCols} gap-3 items-center px-3 h-8 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400`}>
                 {bulkEnabled && (
                   <span className="flex items-center">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer"
                       title={t('roster.bulk.selectAll', 'Выбрать всех')}
                     />
                   </span>
@@ -872,7 +873,7 @@ const StudentsPage: React.FC = () => {
                   <div
                     key={s.uid}
                     onClick={() => navigate(`/students/${s.uid}`)}
-                    className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
+                    className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-3 py-3 md:py-1.5 md:min-h-[40px] border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
                   >
                     {/* Select — the whole row navigates, so keep the click to itself */}
                     {bulkEnabled && (
@@ -881,7 +882,7 @@ const StudentsPage: React.FC = () => {
                           type="checkbox"
                           checked={selected.has(s.uid)}
                           onChange={() => toggleSelect(s.uid)}
-                          className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer"
                         />
                       </div>
                     )}
@@ -892,14 +893,14 @@ const StudentsPage: React.FC = () => {
                           the eye already lands when scanning names. */}
                       <div className="relative shrink-0">
                         {s.avatarUrl ? (
-                          <img src={s.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
+                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-100 dark:bg-slate-700 cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
                         ) : (
-                          <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                          <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs text-slate-700 dark:text-slate-200 font-semibold">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
                         )}
                         <StudentRiskDot risk={riskByStudent[s.uid]} className="absolute -top-0.5 -right-0.5" />
                       </div>
                       <div className="min-w-0 flex-1 pr-8 md:pr-0">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate flex items-center gap-2">
                           {s.displayName}
                           <PinnedBadgesDisplay badges={s.pinnedBadges} />
                           {/* Debt is a separate problem for a separate person —
@@ -911,7 +912,7 @@ const StudentsPage: React.FC = () => {
                             <button
                               onClick={(e) => { e.stopPropagation(); setPayFor({ student: s, plans: unpaidFor(s.uid) }); }}
                               title={t('org.students.acceptPayment', 'Принять оплату')}
-                              className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                              className={`shrink-0 inline-flex items-center gap-1 h-5 text-xs font-medium px-1.5 rounded transition-colors ${
                                 isOverdueFor(s.uid)
                                   ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60'
                                   : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -924,15 +925,15 @@ const StudentsPage: React.FC = () => {
                         {/* The reason in plain words, not just a coloured dot —
                             "почему" was the question the old page never answered. */}
                         {(riskByStudent[s.uid]?.reasons?.length ?? 0) > 0 && (
-                          <p className="text-[11px] text-red-600/90 dark:text-red-400/90 truncate mt-0.5" title={riskSummary(riskByStudent[s.uid])}>
+                          <p className="text-xs text-red-600/90 dark:text-red-400/90 truncate mt-0.5" title={riskSummary(riskByStudent[s.uid])}>
                             {riskByStudent[s.uid].reasons!.join(' · ')}
                           </p>
                         )}
                         {/* Mobile-only meta */}
                         <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
-                          {studentBranchNames.length > 0 && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{studentBranchNames.join(', ')}</span>}
-                          {s.phone && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</span>}
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(s as any).status === 'expelled' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
+                          {studentBranchNames.length > 0 && <span className="text-xs text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{studentBranchNames.join(', ')}</span>}
+                          {s.phone && <span className="text-xs text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</span>}
+                          <span className={`inline-flex items-center h-5 text-xs font-medium px-1.5 rounded ${(s as any).status === 'expelled' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
                             {(s as any).status === 'expelled' ? t('common.expelled', 'Отчислен') : t('common.active', 'Активен')}
                           </span>
                         </div>
@@ -940,7 +941,7 @@ const StudentsPage: React.FC = () => {
                     </div>
 
                     {/* Branch */}
-                    <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 min-w-0">
+                    <div className="hidden md:flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 min-w-0">
                       {studentBranchNames.length > 0 ? (
                         <><Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="truncate" title={studentBranchNames.join(', ')}>{studentBranchNames.join(', ')}</span></>
                       ) : (
@@ -949,7 +950,7 @@ const StudentsPage: React.FC = () => {
                     </div>
 
                     {/* Phone */}
-                    <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="hidden md:flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
                       {s.phone ? (
                         <><Phone className="w-3.5 h-3.5 text-slate-400" /><span>{s.phone}</span></>
                       ) : (
@@ -962,14 +963,14 @@ const StudentsPage: React.FC = () => {
                       {studentCourseNames.length > 0 ? (
                         <>
                           {studentCourseNames.slice(0, 2).map((name, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium truncate max-w-[110px]" title={name}>{name}</span>
+                            <span key={i} className="inline-flex items-center h-5 text-xs px-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium truncate max-w-[110px]" title={name}>{name}</span>
                           ))}
                           {studentCourseNames.length > 2 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 font-medium" title={studentCourseNames.slice(2).join(', ')}>+{studentCourseNames.length - 2}</span>
+                            <span className="inline-flex items-center h-5 text-xs px-1.5 rounded border border-slate-200 dark:border-slate-700 text-slate-500 font-medium" title={studentCourseNames.slice(2).join(', ')}>+{studentCourseNames.length - 2}</span>
                           )}
                         </>
                       ) : (
-                        <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+                        <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                       )}
                     </div>
 
@@ -978,23 +979,23 @@ const StudentsPage: React.FC = () => {
                       {studentGroupNames.length > 0 ? (
                         <>
                           {studentGroupNames.slice(0, 2).map((name, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium truncate max-w-[100px]">{name}</span>
+                            <span key={i} className="inline-flex items-center h-5 text-xs px-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium truncate max-w-[100px]">{name}</span>
                           ))}
                           {studentGroupNames.length > 2 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 font-medium">+{studentGroupNames.length - 2}</span>
+                            <span className="inline-flex items-center h-5 text-xs px-1.5 rounded border border-slate-200 dark:border-slate-700 text-slate-500 font-medium">+{studentGroupNames.length - 2}</span>
                           )}
                         </>
                       ) : (
-                        <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+                        <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                       )}
                     </div>
 
                     {/* Status */}
                     <div className="hidden md:flex items-center gap-2">
                       {(s as any).status === 'expelled' ? (
-                        <span className="text-[10px] px-2 py-1 rounded-full font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">{t('common.expelled', 'Отчислен')}</span>
+                        <span className="inline-flex items-center h-5 text-xs px-1.5 rounded font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">{t('common.expelled', 'Отчислен')}</span>
                       ) : (
-                        <span className="text-[10px] px-2 py-1 rounded-full font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">{t('common.active', 'Активен')}</span>
+                        <span className="inline-flex items-center h-5 text-xs px-1.5 rounded font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">{t('common.active', 'Активен')}</span>
                       )}
                     </div>
 
@@ -1002,7 +1003,7 @@ const StudentsPage: React.FC = () => {
                         прижато к верхнему правому углу вместо своей колонки. */}
                     <div className="absolute top-3 right-3 md:static md:flex md:justify-end">
                       {deletingId === s.uid
-                        ? <RefreshCw className="w-4 h-4 m-1.5 animate-spin text-slate-400" />
+                        ? <RefreshCw className="w-3.5 h-3.5 m-1.5 animate-spin text-slate-400" />
                         : <RowMenu items={buildRowMenu(s)} />}
                     </div>
                   </div>
@@ -1022,33 +1023,33 @@ const StudentsPage: React.FC = () => {
 
       {/* Create Student Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 w-full max-w-md shadow-pop max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
 
             {createdInfo ? (
               /* ─── Credentials result: show the login to hand to the student ─── */
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="w-8 h-8 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.students.createdTitle', 'Ученик создан')}</h2>
-                <p className="text-xs text-slate-500 mb-5">{t('org.students.createdDesc', 'Передайте ученику эти данные для входа. Пароль показывается только сейчас.')}</p>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('org.students.createdTitle', 'Ученик создан')}</h2>
+                <p className="text-xs text-slate-500 mb-4">{t('org.students.createdDesc', 'Передайте ученику эти данные для входа. Пароль показывается только сейчас.')}</p>
 
                 {createdInfo.username && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
-                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.username}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-slate-100 truncate">{createdInfo.username}</p>
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"><Copy className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('auth.password', 'Пароль')}</p>
-                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.password}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('auth.password', 'Пароль')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-slate-100 truncate">{createdInfo.password}</p>
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"><Copy className="w-3.5 h-3.5" /></button>
                     </div>
                     <button
                       onClick={() => { navigator.clipboard.writeText(`${t('org.students.loginLabel', 'Логин')}: ${createdInfo.username}\n${t('auth.password', 'Пароль')}: ${createdInfo.password}`); toast.success(t('common.copied', 'Скопировано')); }}
@@ -1059,42 +1060,42 @@ const StudentsPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3 mt-8">
-                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('org.students.addAnother', 'Добавить ещё')}</button>
-                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="btn-ghost">{t('org.students.addAnother', 'Добавить ещё')}</button>
+                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="btn-primary">{t('common.done', 'Готово')}</button>
                 </div>
               </div>
             ) : (
             <>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary-500" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-slate-500" />
               {t('org.students.createTitle', 'Добавить ученика')}
             </h2>
-            <p className="text-xs text-slate-500 mb-6">{t('org.students.createDescV2', 'По умолчанию — запись для журнала и оплат, без входа. Включите «Дать доступ», чтобы ученик мог входить сам.')}</p>
-            <div className="space-y-4">
+            <p className="text-xs text-slate-500 mb-4">{t('org.students.createDescV2', 'По умолчанию — запись для журнала и оплат, без входа. Включите «Дать доступ», чтобы ученик мог входить сам.')}</p>
+            <div className="space-y-3">
               {/* ФИО */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.fullName', 'ФИО')} *</label>
-                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.students.namePlaceholder', 'ФИО студента')} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                <label className="label">{t('org.students.fullName', 'ФИО')} *</label>
+                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.students.namePlaceholder', 'ФИО студента')} className="input" />
               </div>
               {/* Телефон */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
-                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                <label className="label flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="input" />
               </div>
               {/* Дата поступления (необязательно) */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
-                <input type="date" value={createForm.enrollmentDate} onChange={e => setCreateForm(f => ({ ...f, enrollmentDate: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                <label className="label flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                <input type="date" value={createForm.enrollmentDate} onChange={e => setCreateForm(f => ({ ...f, enrollmentDate: e.target.value }))} className="input" />
               </div>
               {/* Курс */}
               {courses.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {t('org.students.course', 'Курс')}</label>
+                  <label className="label flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {t('org.students.course', 'Курс')}</label>
                   <select
                     value={createForm.courseId}
                     onChange={e => setCreateForm(f => ({ ...f, courseId: e.target.value, groupId: '' }))}
-                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none appearance-none"
+                    className="input appearance-none"
                   >
                     <option value="">{t('org.students.selectCourse', '— Выберите курс —')}</option>
                     {courses.map((c: any) => (
@@ -1106,11 +1107,11 @@ const StudentsPage: React.FC = () => {
               {/* Группа */}
               {createForm.courseId && filteredGroupsForCreate.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><UsersRound className="w-3.5 h-3.5" /> {t('org.students.group', 'Группа')}</label>
+                  <label className="label flex items-center gap-1"><UsersRound className="w-3.5 h-3.5" /> {t('org.students.group', 'Группа')}</label>
                   <select
                     value={createForm.groupId}
                     onChange={e => setCreateForm(f => ({ ...f, groupId: e.target.value }))}
-                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none appearance-none"
+                    className="input appearance-none"
                   >
                     <option value="">{t('org.students.selectGroup', '— Выберите группу —')}</option>
                     {filteredGroupsForCreate.map((g: any) => (
@@ -1120,16 +1121,16 @@ const StudentsPage: React.FC = () => {
                 </div>
               )}
               {createForm.courseId && filteredGroupsForCreate.length === 0 && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-4 py-3">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg px-3 py-2">
                   <p className="text-xs text-amber-700 dark:text-amber-300">{t('org.students.noGroupsForCourse', 'У этого курса пока нет групп. Студент будет создан без группы.')}</p>
                 </div>
               )}
 
               {/* ─── Optional login access ─── */}
-              <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    <KeyRound className="w-4 h-4 text-primary-500" />
+                  <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <KeyRound className="w-3.5 h-3.5 text-slate-500" />
                     {t('org.students.giveLogin', 'Дать доступ в систему')}
                   </span>
                   <button
@@ -1137,24 +1138,24 @@ const StudentsPage: React.FC = () => {
                     role="switch"
                     aria-checked={giveLogin}
                     onClick={() => setGiveLogin(v => !v)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </button>
                 </label>
                 {giveLogin && (
                   <div className="space-y-3 mt-3">
-                    <p className="text-[11px] text-slate-400">{t('org.students.giveLoginHint', 'Ученик сможет войти по этому логину и паролю на странице входа.')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.students.giveLoginHint', 'Ученик сможет войти по этому логину и паролю на странице входа.')}</p>
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.loginLabel', 'Логин')} *</label>
-                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                      <label className="label">{t('org.students.loginLabel', 'Логин')} *</label>
+                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="input font-mono" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('auth.password', 'Пароль')} *</label>
+                      <label className="label">{t('auth.password', 'Пароль')} *</label>
                       <div className="relative">
-                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
-                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                          {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="input pr-8" />
+                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                          {showCreatePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
@@ -1162,9 +1163,9 @@ const StudentsPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
-              <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName.trim()} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                 {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 {creating ? t('common.loading', 'Добавление...') : t('org.students.addStudent', 'Добавить')}
               </button>
@@ -1177,38 +1178,38 @@ const StudentsPage: React.FC = () => {
 
       {/* Bulk Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!importing) closeImportModal(); }}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => { if (!importing) closeImportModal(); }}>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 w-full max-w-lg shadow-pop max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             {importResult ? (
               /* ─── Import result ─── */
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="w-8 h-8 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.students.importDone', 'Импорт завершён')}</h2>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('org.students.importDone', 'Импорт завершён')}</h2>
                 <p className="text-sm text-slate-500 mb-2">
-                  {t('org.students.importedCount', 'Добавлено учеников')}: <span className="font-bold text-slate-900 dark:text-white">{importResult.created}</span>
+                  {t('org.students.importedCount', 'Добавлено учеников')}: <span className="font-semibold text-slate-900 dark:text-slate-100">{importResult.created}</span>
                 </p>
                 {!!importResult.skipped && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">{t('org.students.importSkipped', 'Пропущено из-за лимита тарифа')}: {importResult.skipped}</p>
                 )}
-                <div className="flex justify-end mt-8">
-                  <button onClick={closeImportModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                <div className="flex justify-end mt-4">
+                  <button onClick={closeImportModal} className="btn-primary">{t('common.done', 'Готово')}</button>
                 </div>
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-primary-500" />
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-slate-500" />
                   {t('org.students.importTitle', 'Импорт учеников')}
                 </h2>
-                <p className="text-xs text-slate-500 mb-5">{t('org.students.importDesc', 'Вставьте список из Excel/таблицы или загрузите CSV-файл. Колонки: имя и телефон.')}</p>
+                <p className="text-xs text-slate-500 mb-4">{t('org.students.importDesc', 'Вставьте список из Excel/таблицы или загрузите CSV-файл. Колонки: имя и телефон.')}</p>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Paste / upload */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold text-slate-500">{t('org.students.importList', 'Список')} *</label>
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('org.students.importList', 'Список')} *</label>
                       <button onClick={() => importFileRef.current?.click()} className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
                         <Upload className="w-3.5 h-3.5" /> {t('org.students.importUpload', 'Загрузить CSV')}
                       </button>
@@ -1219,16 +1220,16 @@ const StudentsPage: React.FC = () => {
                       onChange={e => setImportText(e.target.value)}
                       rows={6}
                       placeholder={t('org.students.importPlaceholder', 'Айбек Тологонов, +996700112233\nАйгерим Осмонова, +996555998877\n...')}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none resize-y"
+                      className="input font-mono resize-y"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">{t('org.students.importParsed', 'Распознано записей')}: <span className="font-semibold text-slate-600 dark:text-slate-300">{parsedImport.length}</span></p>
+                    <p className="text-xs text-slate-400 mt-1">{t('org.students.importParsed', 'Распознано записей')}: <span className="font-semibold text-slate-600 dark:text-slate-300">{parsedImport.length}</span></p>
                   </div>
 
                   {/* Optional course + group for the whole batch */}
                   {courses.length > 0 && (
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {t('org.students.course', 'Курс')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
-                      <select value={importCourseId} onChange={e => { setImportCourseId(e.target.value); setImportGroupId(''); }} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none appearance-none">
+                      <label className="label flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {t('org.students.course', 'Курс')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                      <select value={importCourseId} onChange={e => { setImportCourseId(e.target.value); setImportGroupId(''); }} className="input appearance-none">
                         <option value="">{t('org.students.selectCourse', '— Выберите курс —')}</option>
                         {courses.map((c: any) => (<option key={c.id} value={c.id}>{c.title}</option>))}
                       </select>
@@ -1236,8 +1237,8 @@ const StudentsPage: React.FC = () => {
                   )}
                   {importCourseId && importGroupsForCourse.length > 0 && (
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><UsersRound className="w-3.5 h-3.5" /> {t('org.students.group', 'Группа')}</label>
-                      <select value={importGroupId} onChange={e => setImportGroupId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none appearance-none">
+                      <label className="label flex items-center gap-1"><UsersRound className="w-3.5 h-3.5" /> {t('org.students.group', 'Группа')}</label>
+                      <select value={importGroupId} onChange={e => setImportGroupId(e.target.value)} className="input appearance-none">
                         <option value="">{t('org.students.selectGroup', '— Выберите группу —')}</option>
                         {importGroupsForCourse.map((g: any) => (<option key={g.id} value={g.id}>{g.name}</option>))}
                       </select>
@@ -1246,27 +1247,27 @@ const StudentsPage: React.FC = () => {
 
                   {/* Дата поступления для всей группы (необязательно) */}
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
-                    <input type="date" value={importEnrollmentDate} onChange={e => setImportEnrollmentDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none" />
+                    <label className="label flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                    <input type="date" value={importEnrollmentDate} onChange={e => setImportEnrollmentDate(e.target.value)} className="input" />
                   </div>
 
                   {/* Preview */}
                   {parsedImport.length > 0 && (
-                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 max-h-40 overflow-y-auto">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 max-h-40 overflow-y-auto">
                       {parsedImport.slice(0, 8).map((r, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-200 dark:border-slate-700 last:border-0">
                           <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{r.displayName}</span>
                           <span className="text-slate-400 shrink-0 ml-3">{r.phone || '—'}</span>
                         </div>
                       ))}
-                      {parsedImport.length > 8 && <p className="text-[11px] text-slate-400 pt-1.5">+{parsedImport.length - 8} {t('org.students.more', 'ещё')}</p>}
+                      {parsedImport.length > 8 && <p className="text-xs text-slate-400 pt-1.5">+{parsedImport.length - 8} {t('org.students.more', 'ещё')}</p>}
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 mt-8">
-                  <button onClick={closeImportModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
-                  <button onClick={handleBulkImport} disabled={importing || parsedImport.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+                <div className="flex justify-end gap-2 mt-4">
+                  <button onClick={closeImportModal} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
+                  <button onClick={handleBulkImport} disabled={importing || parsedImport.length === 0} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                     {importing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                     {importing ? t('common.loading', 'Импорт...') : `${t('org.students.importBtn', 'Импортировать')} (${parsedImport.length})`}
                   </button>
@@ -1279,9 +1280,9 @@ const StudentsPage: React.FC = () => {
 
       {/* Avatar Full-Screen Modal */}
       {expandedAvatar && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setExpandedAvatar(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4" onClick={() => setExpandedAvatar(null)}>
           <div className="relative max-w-2xl max-h-[90vh] w-full flex justify-center" onClick={e => e.stopPropagation()}>
-            <img src={expandedAvatar} alt={t('org.students.avatarAlt', 'Аватар')} className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+            <img src={expandedAvatar} alt={t('org.students.avatarAlt', 'Аватар')} className="max-w-full max-h-[90vh] object-contain rounded-xl" />
             <button onClick={() => setExpandedAvatar(null)} className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors bg-black/40 hover:bg-black/60 rounded-full">
               <XCircle className="w-6 h-6" />
             </button>

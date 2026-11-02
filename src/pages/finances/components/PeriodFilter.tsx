@@ -32,10 +32,10 @@ const PeriodFilter: React.FC<Props> = ({ value, onChange, hint }) => {
           <button
             key={p.id}
             onClick={() => onChange({ period: p.id })}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`h-7 px-2 rounded-md text-sm transition-colors ${
               value.period === p.id
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             {t(p.labelKey, p.fallback)}
@@ -44,10 +44,10 @@ const PeriodFilter: React.FC<Props> = ({ value, onChange, hint }) => {
 
         <button
           onClick={() => onChange(custom ? { period: 'current_month' } : { period: 'custom' })}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all inline-flex items-center gap-1.5 ${
+          className={`h-7 px-2 rounded-md text-sm transition-colors inline-flex items-center gap-1.5 ${
             custom
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <CalendarRange className="w-3.5 h-3.5" />
@@ -65,7 +65,7 @@ const PeriodFilter: React.FC<Props> = ({ value, onChange, hint }) => {
             max={value.endDate || undefined}
             onChange={e => onChange({ ...value, period: 'custom', startDate: e.target.value })}
             aria-label={t('finances.rangeFrom', 'Начало периода')}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm dark:text-white"
+            className="input w-auto"
           />
           <span className="text-slate-400 text-sm">—</span>
           <input
@@ -74,14 +74,14 @@ const PeriodFilter: React.FC<Props> = ({ value, onChange, hint }) => {
             min={value.startDate || undefined}
             onChange={e => onChange({ ...value, period: 'custom', endDate: e.target.value })}
             aria-label={t('finances.rangeTo', 'Конец периода')}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm dark:text-white"
+            className="input w-auto"
           />
           <button
             onClick={() => onChange({ period: 'current_month' })}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label={t('finances.rangeReset', 'Сбросить период')}
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
           {incomplete && (
             <span className="text-xs text-amber-600 dark:text-amber-500">

@@ -50,11 +50,11 @@ const AIUsagePanel: React.FC = () => {
   return (
     <section
       aria-labelledby="ai-usage-heading"
-      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 flex flex-col"
+      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex flex-col"
     >
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="ai-usage-heading" className="font-semibold text-slate-900 dark:text-white">{t('ai.usage.title', 'Что делал ИИ')}</h2>
+          <h2 id="ai-usage-heading" className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('ai.usage.title', 'Что делал ИИ')}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 first-letter:uppercase">{monthLabel}</p>
         </div>
         <p className="shrink-0 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
@@ -91,7 +91,7 @@ const AIUsagePanel: React.FC = () => {
           {hidden > 0 && (
             <button
               onClick={() => setExpanded(true)}
-              className="mt-1 self-start inline-flex items-center min-h-[36px] px-2 -ml-2 rounded-lg text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              className="mt-1 self-start inline-flex items-center h-7 px-2 -ml-2 rounded-md text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
               {t('ai.usage.moreFeatures', { count: hidden })}
             </button>

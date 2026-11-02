@@ -40,13 +40,13 @@ const LazyListFooter: React.FC<LazyListFooterProps> = ({
           до того, как пользователь упрётся в конец. */}
       <div ref={sentinelRef} aria-hidden className="h-px" />
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
           {t('common.lazyShown', 'Показано {{shown}} из {{total}}', { shown: visibleCount, total })}
         </p>
         <button
           type="button"
           onClick={onLoadMore}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          className="btn-secondary"
         >
           {t('common.showMore', 'Показать ещё')}
         </button>

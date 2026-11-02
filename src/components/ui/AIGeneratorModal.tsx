@@ -87,29 +87,29 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
   const modelName = type === 'quiz' ? t('ai.quizTitle', 'Сгенерировать Викторину') : t('ai.examTitle', 'Сгенерировать Экзамен');
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700/50">
-          <div className="flex items-center gap-3 text-primary-600 dark:text-primary-400">
-            <Sparkles className="w-6 h-6" />
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{modelName}</h2>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <div className="flex items-center gap-2 text-primary-600 dark:text-primary-400">
+            <Sparkles className="w-3.5 h-3.5" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{modelName}</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="-mr-1 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="px-4 py-2 space-y-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('ai.description', 'Используйте ИИ (Gemini 1.5 Pro) для создания вопросов. Вы можете загрузить лекцию (PDF/Image) или просто написать, какие вопросы вам нужны.')}
           </p>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label !mb-0">
                 {t('ai.promptLabel', 'Что нужно сгенерировать? (Промпт)')}
               </label>
               {isSupported && (
@@ -117,10 +117,10 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
                   type="button"
                   onClick={toggleListening}
                   className={`
-                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                    flex items-center gap-1 h-6 px-2 rounded-md text-xs font-medium transition-colors
                     ${isListening
-                      ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 ring-2 ring-red-200 dark:ring-red-800 animate-pulse'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400'
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'
                     }
                   `}
                   title={isListening ? t('ai.stopListening', 'Остановить запись') : t('ai.startListening', 'Говорить голосом')}
@@ -141,7 +141,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
             </div>
             <div className="relative">
               <textarea
-                className={`input min-h-[100px] resize-y transition-all ${isListening ? 'ring-2 ring-red-300 dark:ring-red-700 border-red-300 dark:border-red-700' : ''}`}
+                className={`input min-h-[100px] resize-y ${isListening ? 'border-red-400 dark:border-red-700' : ''}`}
                 placeholder={isListening
                   ? t('ai.listeningPlaceholder', '🎙️ Говорите... Текст появится здесь автоматически')
                   : t('ai.promptPlaceholder', 'Например: Создай 5 сложных вопросов по истории Древнего Рима для учеников 6 класса.')
@@ -150,46 +150,46 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
                 onChange={(e) => setPrompt(e.target.value)}
               />
               {isListening && (
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
-                  <span className="relative flex h-2.5 w-2.5">
+                <div className="absolute bottom-2 right-2.5 flex items-center gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute h-full w-full rounded-full bg-red-400 opacity-75" />
-                    <span className="relative rounded-full h-2.5 w-2.5 bg-red-500" />
+                    <span className="relative rounded-full h-1.5 w-1.5 bg-red-500" />
                   </span>
-                  <span className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">{t('ai.voice.rec', 'Запись')}</span>
+                  <span className="text-xs font-medium text-red-600 dark:text-red-400">{t('ai.voice.rec', 'Запись')}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+          <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-4 flex flex-col items-center justify-center text-center">
             {file ? (
               <div className="flex items-center gap-3 justify-between w-full">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
                   </div>
                   <div className="text-left min-w-0">
-                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{file.name}</p>
-                    <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setFile(null)}
-                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-md transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
               <>
-                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                <div className="flex items-center justify-center mb-2">
                   <UploadCloud className="w-6 h-6 text-slate-400" />
                 </div>
-                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                   {t('ai.uploadMaterial', 'Загрузить материал (PDF/Image)')}
                 </h4>
-                <p className="text-xs text-slate-500 max-w-[250px] mb-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[250px] mb-3">
                   {t('ai.uploadDesc', 'ИИ прочитает файл и составит вопросы на его основе.')}
                 </p>
                 <input
@@ -206,7 +206,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="btn-secondary !py-2 !px-4 text-sm"
+                  className="btn-secondary"
                 >
                   {t('common.selectFile')}
                 </button>
@@ -215,11 +215,11 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex gap-3 bg-slate-50 dark:bg-slate-800/50">
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary flex-1"
+            className="btn-ghost"
             disabled={loading}
           >
             {t('common.cancel')}
@@ -228,23 +228,23 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
             type="button"
             onClick={handleGenerate}
             disabled={loading || (!prompt.trim() && !file)}
-            className="btn-primary flex-1 bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 border-none relative overflow-hidden group"
+            className="btn-primary relative overflow-hidden"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 {t('common.loading')}
               </span>
             ) : (
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
                 {t('ai.generateButton', 'Сгенерировать')}
               </span>
             )}
             
             {/* Shimmer effect */}
             {!loading && (
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
+              <div className="hidden" />
             )}
           </button>
         </div>

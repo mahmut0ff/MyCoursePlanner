@@ -134,7 +134,7 @@ const monthLabel = (key: string): string => { const s = formatMonthKey(key); ret
 const PROGRESS_META: Record<string, { key: string; fallback: string; cls: string; Icon: typeof Clock }> = {
   paid: { key: 'finances.statusPaidMonth', fallback: 'Оплачено', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', Icon: CheckCircle2 },
   partial: { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', Icon: Clock },
-  pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400', Icon: Clock },
+  pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', Icon: Clock },
   cancelled: { key: 'finances.statusWrittenOff', fallback: 'Списан', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500', Icon: Ban },
 };
 
@@ -559,13 +559,13 @@ const MonthTab: React.FC<Props> = ({
     <div className="space-y-4">
       {/* Переключатель месяца + «Начислить» */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1 w-fit">
-          <button onClick={() => onMonthChange(shiftMonth(month, -1))} aria-label={t('finances.prevMonth', 'Предыдущий месяц')} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-            <ChevronLeft className="w-4 h-4" />
+        <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-0.5 w-fit">
+          <button onClick={() => onMonthChange(shiftMonth(month, -1))} aria-label={t('finances.prevMonth', 'Предыдущий месяц')} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="px-3 text-sm font-bold text-slate-900 dark:text-white min-w-[130px] text-center">{monthLabel(month)}</span>
-          <button onClick={() => onMonthChange(shiftMonth(month, 1))} aria-label={t('finances.nextMonth', 'Следующий месяц')} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-            <ChevronRight className="w-4 h-4" />
+          <span className="px-2 text-sm font-medium text-slate-900 dark:text-slate-100 min-w-[130px] text-center">{monthLabel(month)}</span>
+          <button onClick={() => onMonthChange(shiftMonth(month, 1))} aria-label={t('finances.nextMonth', 'Следующий месяц')} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -574,10 +574,10 @@ const MonthTab: React.FC<Props> = ({
           {canPrice && (
             <button
               onClick={() => setReapplyOpen(true)}
-              className="inline-flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              className="btn-secondary inline-flex items-center gap-1.5"
               title={t('finances.reapplyHint', 'Привести неоплаченные начисления к суммам, которые платят сами студенты')}
             >
-              <BadgePercent className="w-4 h-4" />
+              <BadgePercent className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t('finances.reapply', 'Пересчитать по своим ценам')}</span>
             </button>
           )}
@@ -586,9 +586,9 @@ const MonthTab: React.FC<Props> = ({
           <button
             onClick={() => setShowBill(true)}
             disabled={allMonths}
-            className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
+            className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <CalendarPlus className="w-4 h-4" />{t('finances.billMonth', 'Начислить за месяц')}
+            <CalendarPlus className="w-3.5 h-3.5" />{t('finances.billMonth', 'Начислить за месяц')}
           </button>
         </div>
       </div>
@@ -596,17 +596,17 @@ const MonthTab: React.FC<Props> = ({
       {/* Сводка за месяц. Счётчики оплат — операционные, их видит и кассир;
           «Собрано» — сводная сумма, только для роли с `finance_overview`. */}
       <div className={`grid grid-cols-1 gap-3 ${canOverview ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div>
-          <div>
-            <p className="text-xs text-slate-500">{t('finances.paidCount', 'Оплатили')}</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.paid} <span className="text-sm font-normal text-slate-400">{t('finances.outOf', 'из')} {stats.total}</span></p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-start justify-between gap-3">
+          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0 order-last mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('finances.paidCount', 'Оплатили')}</p>
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{stats.paid} <span className="text-sm font-normal text-slate-400">{t('finances.outOf', 'из')} {stats.total}</span></p>
           </div>
         </div>
         {canOverview && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
-            <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><Wallet className="w-5 h-5 text-sky-600" /></div>
-            <div>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-start justify-between gap-3">
+            <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 order-last mt-0.5" />
+            <div className="min-w-0">
               {/* Подпись называет БАЗУ, а не просто «Собрано за месяц».
                   Это сумма paidAmount по НАЧИСЛЕНИЯМ выбранного месяца, а
                   соседняя вкладка «Платежи» суммирует транзакции по ДАТЕ КАССЫ.
@@ -615,34 +615,34 @@ const MonthTab: React.FC<Props> = ({
                   синонимами, и на вопрос «сколько собрали в июле» экран давал
                   два разных ответа без единого пояснения, какой из них нести
                   директору. */}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('finances.collectedByCharges', 'Оплачено по начислениям месяца')}
               </p>
-              <p className="text-lg font-bold text-emerald-600">{formatMoney(stats.collected)}</p>
+              <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(stats.collected)}</p>
               <Link
                 to="/finances?tab=payments"
-                className="text-[11px] text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:underline"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
               >
                 {t('finances.cashForPeriodLink', 'Что пришло в кассу за период →')}
               </Link>
             </div>
           </div>
         )}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 flex items-start justify-between gap-3">
           {/* «Ещё не оплатили» — операционный счётчик «сколько ещё собрать», не тревога:
               1-го числа ВСЕ свежие счета ещё не оплачены, и это норма. Поэтому
               нейтральный янтарный, а не красный. Красный — только реальная просрочка. */}
-          <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl"><Clock className="w-5 h-5 text-amber-600" /></div>
-          <div>
-            <p className="text-xs text-slate-500">{t('finances.unpaidCount', 'Ещё не оплатили')}</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.unpaid}</p>
+          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 order-last mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('finances.unpaidCount', 'Ещё не оплатили')}</p>
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{stats.unpaid}</p>
             {/* Счётчик, который ведёт к списку: раньше он называл число и не
                 давал способа увидеть, кто за ним стоит. */}
             {onUnpaidOnlyChange && !unpaidOnly && stats.unpaid > 0 && (
               <button
                 type="button"
                 onClick={() => onUnpaidOnlyChange(true)}
-                className="text-[11px] text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
               >
                 {t('finances.showAllUnpaidShort', 'Показать всех должников →')}
               </button>
@@ -654,13 +654,13 @@ const MonthTab: React.FC<Props> = ({
       {/* Поиск + режим «все неоплаченные» */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input
             type="text"
             value={filters.search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('finances.searchStudent', 'Поиск по студенту или курсу...')}
-            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm"
+            className="input pl-8"
           />
         </div>
         {/* Единственный способ ответить на «кто должен»: долг копится по разным
@@ -671,7 +671,7 @@ const MonthTab: React.FC<Props> = ({
               type="checkbox"
               checked={unpaidOnly}
               onChange={e => onUnpaidOnlyChange(e.target.checked)}
-              className="w-4 h-4 accent-amber-500"
+              className="w-3.5 h-3.5 accent-primary-600"
             />
             {t('finances.showAllUnpaid', 'Все неоплаченные, за любой месяц')}
           </label>
@@ -685,11 +685,11 @@ const MonthTab: React.FC<Props> = ({
               type="checkbox"
               checked={overdueOnly}
               onChange={e => onOverdueOnlyChange(e.target.checked)}
-              className="w-4 h-4 accent-rose-500"
+              className="w-3.5 h-3.5 accent-primary-600"
             />
             {t('finances.showOverdueOnly', 'Только просроченные')}
             {stats.overdue > 0 && (
-              <span className="text-[11px] text-rose-500 font-semibold">{stats.overdue}</span>
+              <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{stats.overdue}</span>
             )}
           </label>
         )}
@@ -698,11 +698,11 @@ const MonthTab: React.FC<Props> = ({
       {/* Панель массового действия. Появляется только вместе с выделением —
           пустая полоса «Выбрано: 0» занимала бы место круглый год. */}
       {canPrice && selectedPlans.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30">
-          <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {t('finances.tuitionSelectedRows', 'Выбрано начислений: {{n}}', { n: selectedPlans.length })}
             {selectedStudentIds.length !== selectedPlans.length && (
-              <span className="font-normal text-emerald-700/70 dark:text-emerald-400/70">
+              <span className="font-normal text-slate-500 dark:text-slate-400">
                 {' '}· {t('finances.tuitionSelectedStudents', 'студентов: {{n}}', { n: selectedStudentIds.length })}
               </span>
             )}
@@ -710,31 +710,31 @@ const MonthTab: React.FC<Props> = ({
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={() => setShowTuition(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+              className="btn-primary inline-flex items-center gap-1.5"
             >
-              <BadgePercent className="w-4 h-4" />
+              <BadgePercent className="w-3.5 h-3.5" />
               {t('roster.bulk.setTuition', 'Сумма оплаты')}
             </button>
             <button
               onClick={() => setSelected(new Set())}
-              className="p-1.5 rounded-lg text-emerald-700/60 hover:text-emerald-800 dark:text-emerald-400/60 dark:hover:text-emerald-300"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors"
               title={t('finances.cancel', 'Отмена')}
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
       {allMonths && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
           {overdueOnly
             ? t('finances.overdueOnlyHint', 'Показаны только счета, срок оплаты которых уже прошёл, за любые месяцы. Это то же число, что на плитке «Просроченные платежи».')
             : unpaidOnly
               ? t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')
               : t('finances.allMonthsHint', 'Показаны счета за все месяцы, включая оплаченные. Плитки выше считают только выбранный месяц.')}
           {' '}
-          <span className="font-semibold">
+          <span className="font-semibold tabular-nums">
             {t('finances.shownRowsDebt', 'На экране: {{n}} счетов, долг {{sum}}', {
               n: filtered.length,
               sum: formatMoney(shownDebt),
@@ -747,7 +747,7 @@ const MonthTab: React.FC<Props> = ({
       {loading ? (
         <ListSkeleton rows={6} />
       ) : error ? (
-        <div className="p-4 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl flex items-center justify-between gap-3">
+        <div className="px-3 py-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center justify-between gap-3">
           <span>{error}</span>
           <button onClick={load} className="text-sm font-medium underline shrink-0">{t('finances.retry', 'Повторить')}</button>
         </div>
@@ -778,30 +778,30 @@ const MonthTab: React.FC<Props> = ({
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
                     {canPrice && (
-                      <th className="pl-5 pr-2 py-3.5 w-10">
+                      <th className="h-8 pl-3 pr-1 w-8">
                         <input
                           type="checkbox"
                           checked={allVisibleSelected}
                           onChange={toggleAllVisible}
-                          className="w-4 h-4 accent-emerald-500 align-middle"
+                          className="w-3.5 h-3.5 accent-primary-600 align-middle"
                           title={t('roster.bulk.selectAll', 'Выбрать всех')}
                           aria-label={t('roster.bulk.selectAll', 'Выбрать всех')}
                         />
                       </th>
                     )}
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colStudent', 'Студент')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colCourse', 'Курс')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colForMonth', 'За месяц')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('finances.colActions', 'Действия')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colStudent', 'Студент')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colCourse', 'Курс')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colForMonth', 'За месяц')}</th>
+                    <th className="h-8 px-3 font-medium text-right">{t('finances.colActions', 'Действия')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {pageRows.map(p => {
                     const student = studentById.get(String(p.studentId));
                     // Имя приходит с сервера (users → зеркало членства, обе
@@ -818,54 +818,54 @@ const MonthTab: React.FC<Props> = ({
                     // Просрочка — отдельная ось (метка «срок прошёл»), не подмена статуса.
                     const overdue = !writtenOff && isPlanOverdue(p);
                     return (
-                      <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${writtenOff ? 'opacity-60' : ''} ${selected.has(p.id) ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : ''}`}>
+                      <tr key={p.id} className={`h-10 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors ${writtenOff ? 'opacity-60' : ''} ${selected.has(p.id) ? 'bg-primary-50 dark:bg-primary-950/40' : ''}`}>
                         {canPrice && (
-                          <td className="pl-5 pr-2 py-3.5">
+                          <td className="pl-3 pr-1 py-1.5">
                             <input
                               type="checkbox"
                               checked={selected.has(p.id)}
                               onChange={() => toggleRow(p.id)}
-                              className="w-4 h-4 accent-emerald-500 align-middle"
+                              className="w-3.5 h-3.5 accent-primary-600 align-middle"
                               aria-label={name}
                             />
                           </td>
                         )}
-                        <td className="px-5 py-3.5 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           {student ? (
-                            <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors">{name}</Link>
+                            <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors">{name}</Link>
                           ) : (
-                            <span className="font-medium text-slate-900 dark:text-white">{name}</span>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{name}</span>
                           )}
                           {/* В режиме «кто должен» сюда попадают и ушедшие: их
                               долг реален и его надо чем-то закрывать. Помечаем,
                               иначе менеджер не поймёт, почему видит человека,
                               которого отчислили. */}
                           {isExpelled(student) && (
-                            <span className="block text-[11px] text-slate-400">
+                            <span className="block text-xs text-slate-400">
                               {t('finances.expelledTag', 'отчислен(а)')}
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           {p.courseName || p.courseId || '—'}
                           {/* «Своя цена» — признак того, что сумма пришла из
                               договорённости, а не из прайса: без него менеджер не
                               отличает счёт со скидкой от счёта с опечаткой. */}
                           {hasAgreedPrice && (
-                            <span className="block text-[11px] text-emerald-600 font-medium">
+                            <span className="block text-xs text-emerald-600 dark:text-emerald-400 font-medium tabular-nums">
                               {t('finances.agreedPrice', 'своя цена')}: {formatMoney(agreedAmount!)}
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${meta.cls}`}>
-                            <meta.Icon className="w-3.5 h-3.5" />
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium tabular-nums ${meta.cls}`}>
+                            <meta.Icon className="w-3 h-3" />
                             {t(meta.key, meta.fallback)}
                             {pk === 'partial' && (
-                              <span className="font-bold">· {formatMoney(p.paidAmount)} {t('finances.outOf', 'из')} {formatMoney(p.totalAmount)}</span>
+                              <span className="font-semibold">· {formatMoney(p.paidAmount)} {t('finances.outOf', 'из')} {formatMoney(p.totalAmount)}</span>
                             )}
                             {pk === 'pending' && owes && (
-                              <span className="font-bold">· {formatMoney(planDebt(p))}</span>
+                              <span className="font-semibold">· {formatMoney(planDebt(p))}</span>
                             )}
                           </span>
                           {/* Срок оплаты неоплаченного счёта: нейтрально «до 10.08», не тревожно.
@@ -873,7 +873,7 @@ const MonthTab: React.FC<Props> = ({
                               красным «Не оплачено» — и оплата 28-го выглядела долгом уже 1-го.
                               Теперь до срока это спокойное «Ожидает · до <дата>». */}
                           {owes && p.deadline && (
-                            <span className={`ml-2 text-[11px] align-middle ${overdue ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
+                            <span className={`ml-2 text-xs align-middle tabular-nums ${overdue ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-400'}`}>
                               {t('finances.until', 'до')} {formatDayKey(p.deadline)}
                             </span>
                           )}
@@ -881,7 +881,7 @@ const MonthTab: React.FC<Props> = ({
                           {overdue && (
                             <span
                               title={t('finances.overdueTagHint', 'Снимется, когда оплатят полностью или продлят срок.')}
-                              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 align-middle"
+                              className="ml-2 inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 align-middle"
                             >
                               <AlertCircle className="w-3 h-3" /> {t('finances.overdueTag', 'срок прошёл')}
                             </span>
@@ -889,19 +889,19 @@ const MonthTab: React.FC<Props> = ({
                           {/* Скидка от цены курса — не долг. Показываем рядом со статусом. */}
                           {!writtenOff && planDiscount(p) > 0 && (
                             <span
-                              className="ml-2 inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium align-middle"
+                              className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium tabular-nums align-middle"
                               title={`${t('finances.coursePrice', 'Цена курса')} ${formatMoney(p.listAmount || 0)}`}
                             >
                               <Tag className="w-3 h-3" /> {t('finances.discount', 'Скидка')} {formatMoney(planDiscount(p))}
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
                             {owes && !writtenOff && (
                               <button
                                 onClick={() => openPay(p)}
-                                className="text-emerald-600 hover:text-emerald-700 font-medium bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors text-xs"
+                                className="inline-flex items-center h-7 px-2 rounded-md text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
                               >
                                 {t('finances.acceptPayment', 'Принять оплату')}
                               </button>

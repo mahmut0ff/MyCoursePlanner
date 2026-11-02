@@ -35,14 +35,14 @@ const TelegramStatus: React.FC<{ linked: boolean; label: string; off: string; la
   linked, label, off, labelClass = '',
 }) => (
   <span
-    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold ${
+    className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-xs font-medium ${
       linked
         ? 'bg-[#229ED9]/10 text-[#1a7fb8] dark:text-[#4fb6e6]'
         : 'bg-slate-100 text-slate-400 dark:bg-slate-700/50 dark:text-slate-500'
     }`}
     title={linked ? label : off}
   >
-    <TelegramIcon className="w-3.5 h-3.5 shrink-0" />
+    <TelegramIcon className="w-3 h-3 shrink-0" />
     <span className={labelClass}>{linked ? label : off}</span>
   </span>
 );
@@ -313,23 +313,23 @@ const TeachersPage: React.FC = () => {
   if (loading) return <ListSkeleton rows={6} />;
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
+    <div className="pb-10">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.teachers')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('nav.teachers')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs">
             {t('common.teachersCount', '{{count}} преподавателей', { count: teachers.length })}
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button onClick={() => loadTeachers()} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button onClick={() => loadTeachers()} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           {mayAdd && (
-            <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
-              <Plus className="w-4 h-4" />
+            <button onClick={() => setShowCreateModal(true)} className="btn-primary flex-1 sm:flex-none inline-flex justify-center items-center gap-1.5 shrink-0">
+              <Plus className="w-3.5 h-3.5" />
               {t('org.teachers.add', 'Добавить')}
             </button>
           )}
@@ -338,21 +338,19 @@ const TeachersPage: React.FC = () => {
 
       {/* Onboarding Hint for Managers */}
       {!hintDismissed && (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'super_admin') && (
-        <div className="mb-6 relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+        <div className="mb-4 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
           <button
             onClick={dismissHint}
-            className="absolute top-3 right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
             title={t('common.close', 'Закрыть')}
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Lightbulb className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
-            </div>
+            <Lightbulb className="w-4 h-4 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1 pr-6">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-0.5">
                 {t('org.teachers.hintTitle', 'Как добавить преподавателя?')}
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -363,15 +361,15 @@ const TeachersPage: React.FC = () => {
         </div>
       )}
 
-      {error && <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">{error}</div>}
+      {error && <div className="mb-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
 
       <>
           {/* Unified Filter Bar */}
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="mb-3 flex flex-col md:flex-row md:items-center gap-2">
+            <div className="relative md:w-72">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`}
-                className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20" />
+                className="input pl-8" />
             </div>
           </div>
 
@@ -396,16 +394,16 @@ const TeachersPage: React.FC = () => {
               onAction={mayAdd ? () => setShowCreateModal(true) : undefined}
             />
           ) : (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               {/* Table header */}
-              <div className={`hidden md:grid ${gridCols} gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500`}>
+              <div className={`hidden md:grid ${gridCols} gap-3 items-center px-3 h-8 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400`}>
                 {bulkEnabled && (
                   <span className="flex items-center">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer"
                       title={t('roster.bulk.selectAll', 'Выбрать всех')}
                     />
                   </span>
@@ -425,7 +423,7 @@ const TeachersPage: React.FC = () => {
                 <div
                   key={teacher.uid}
                   onClick={() => navigate(`/teachers/${teacher.uid}`)}
-                  className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
+                  className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-3 py-3 md:py-1.5 md:min-h-[40px] border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
                 >
                   {/* Select — the whole row navigates, so keep the click to itself */}
                   {bulkEnabled && (
@@ -434,7 +432,7 @@ const TeachersPage: React.FC = () => {
                         type="checkbox"
                         checked={selected.has(teacher.uid)}
                         onChange={() => toggleSelect(teacher.uid)}
-                        className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer"
                       />
                     </div>
                   )}
@@ -443,9 +441,9 @@ const TeachersPage: React.FC = () => {
                   <div className="flex items-center gap-3 min-w-0 w-full pr-8 md:pr-0">
                     <div className="relative shrink-0">
                       {teacher.avatarUrl ? (
-                        <img src={teacher.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform" />
+                        <img src={teacher.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-100 dark:bg-slate-700" />
                       ) : (
-                        <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
+                        <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs text-slate-700 dark:text-slate-200 font-semibold">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
                       )}
                       <PresenceDot
                         online={online}
@@ -454,10 +452,10 @@ const TeachersPage: React.FC = () => {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{teacher.displayName}</h3>
+                      <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{teacher.displayName}</h3>
                       {/* Mobile meta */}
                       <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
-                        {teacher.email && !isSyntheticEmail(teacher.email) && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
+                        {teacher.email && !isSyntheticEmail(teacher.email) && <span className="text-xs text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
                         <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
                         {showTelegram && <TelegramStatus linked={!!teacher.telegramLinked} label={tgOn} off={tgOff} />}
                       </div>
@@ -465,13 +463,13 @@ const TeachersPage: React.FC = () => {
                   </div>
 
                   {/* Email */}
-                  <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  <div className="hidden md:flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 truncate">
                     <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span className="truncate">{isSyntheticEmail(teacher.email) ? '' : teacher.email}</span>
                   </div>
 
                   {/* Phone */}
-                  <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="hidden md:flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
                     {teacher.phone ? (
                       <><Phone className="w-3.5 h-3.5 text-slate-400" /><span>{teacher.phone}</span></>
                     ) : (
@@ -495,7 +493,7 @@ const TeachersPage: React.FC = () => {
                       прижато к верхнему правому углу вместо своей колонки. */}
                   <div className="absolute top-3 right-3 md:static md:flex md:justify-end">
                     {deletingId === teacher.uid
-                      ? <RefreshCw className="w-4 h-4 m-1.5 animate-spin text-slate-400" />
+                      ? <RefreshCw className="w-3.5 h-3.5 m-1.5 animate-spin text-slate-400" />
                       : <RowMenu items={buildRowMenu(teacher)} />}
                   </div>
                 </div>
@@ -515,33 +513,33 @@ const TeachersPage: React.FC = () => {
 
       {/* Create Teacher Modal — add a teacher directly, no self-registration */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-pop max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
 
             {createdInfo ? (
               /* ─── Credentials result: show the login to hand to the teacher ─── */
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="w-8 h-8 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.createdTitle', 'Преподаватель создан')}</h2>
-                <p className="text-xs text-slate-500 mb-5">{t('org.teachers.createdDesc', 'Передайте преподавателю эти данные для входа. Пароль показывается только сейчас.')}</p>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{t('org.teachers.createdTitle', 'Преподаватель создан')}</h2>
+                <p className="text-xs text-slate-500 mb-4">{t('org.teachers.createdDesc', 'Передайте преподавателю эти данные для входа. Пароль показывается только сейчас.')}</p>
 
                 {createdInfo.username && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
-                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.username}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-slate-100 truncate">{createdInfo.username}</p>
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"><Copy className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('auth.password', 'Пароль')}</p>
-                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.password}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('auth.password', 'Пароль')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-slate-100 truncate">{createdInfo.password}</p>
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"><Copy className="w-3.5 h-3.5" /></button>
                     </div>
                     <button
                       onClick={() => { navigator.clipboard.writeText(`${t('org.students.loginLabel', 'Логин')}: ${createdInfo.username}\n${t('auth.password', 'Пароль')}: ${createdInfo.password}`); toast.success(t('common.copied', 'Скопировано')); }}
@@ -552,35 +550,35 @@ const TeachersPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3 mt-8">
-                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('org.students.addAnother', 'Добавить ещё')}</button>
-                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="btn-ghost">{t('org.students.addAnother', 'Добавить ещё')}</button>
+                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="btn-primary">{t('common.done', 'Готово')}</button>
                 </div>
               </div>
             ) : (
             <>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary-500" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-slate-500" />
               {t('org.teachers.createTitle', 'Добавить преподавателя')}
             </h2>
-            <p className="text-xs text-slate-500 mb-6">{t('org.teachers.createDescV2', 'Создайте аккаунт преподавателя с логином и паролем. Отключите «Дать доступ», чтобы завести только запись без входа.')}</p>
-            <div className="space-y-4">
+            <p className="text-xs text-slate-500 mb-4">{t('org.teachers.createDescV2', 'Создайте аккаунт преподавателя с логином и паролем. Отключите «Дать доступ», чтобы завести только запись без входа.')}</p>
+            <div className="space-y-3">
               {/* ФИО */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.fullName', 'ФИО')} *</label>
-                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.teachers.namePlaceholder', 'ФИО преподавателя')} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                <label className="label">{t('org.students.fullName', 'ФИО')} *</label>
+                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.teachers.namePlaceholder', 'ФИО преподавателя')} className="input" />
               </div>
               {/* Телефон */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
-                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                <label className="label flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="input" />
               </div>
 
               {/* ─── Optional login access ─── */}
-              <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    <KeyRound className="w-4 h-4 text-primary-500" />
+                  <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <KeyRound className="w-3.5 h-3.5 text-slate-500" />
                     {t('org.teachers.giveLogin', 'Дать доступ в систему')}
                   </span>
                   <button
@@ -588,24 +586,24 @@ const TeachersPage: React.FC = () => {
                     role="switch"
                     aria-checked={giveLogin}
                     onClick={() => setGiveLogin(v => !v)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </button>
                 </label>
                 {giveLogin && (
                   <div className="space-y-3 mt-3">
-                    <p className="text-[11px] text-slate-400">{t('org.teachers.giveLoginHint', 'Преподаватель сможет войти по этому логину и паролю на странице входа.')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.teachers.giveLoginHint', 'Преподаватель сможет войти по этому логину и паролю на странице входа.')}</p>
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.loginLabel', 'Логин')} *</label>
-                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                      <label className="label">{t('org.students.loginLabel', 'Логин')} *</label>
+                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="input font-mono" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('auth.password', 'Пароль')} *</label>
+                      <label className="label">{t('auth.password', 'Пароль')} *</label>
                       <div className="relative">
-                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
-                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                          {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="input pr-8" />
+                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                          {showCreatePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
@@ -613,9 +611,9 @@ const TeachersPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
-              <button onClick={handleCreateTeacher} disabled={creating || !createForm.displayName.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={handleCreateTeacher} disabled={creating || !createForm.displayName.trim()} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                 {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 {creating ? t('common.loading', 'Добавление...') : t('org.teachers.add', 'Добавить')}
               </button>

@@ -31,36 +31,32 @@ export const HomeworkTelegramNotice: React.FC<Props> = ({ compact = false }) => 
         href={BOT_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold text-sm transition-colors"
+        className="inline-flex items-center gap-1.5 h-8 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium text-sm transition-colors"
       >
-        <Send className="w-4 h-4" />
+        <Send className="w-3.5 h-3.5" />
         {t('homework.tg.submitCompact', 'Сдать в Telegram')}
       </a>
     );
   }
 
   return (
-    <div className="relative overflow-hidden bg-white dark:bg-slate-900 border-2 border-sky-200/70 dark:border-sky-700/40 rounded-2xl p-6 shadow-xl shadow-sky-100/30 dark:shadow-black/20">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-400" />
-
-      <div className="flex items-center gap-3 mb-5">
-        <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
-          <Send className="w-6 h-6 text-sky-500" />
-        </div>
+    <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+      <div className="flex items-start gap-2 mb-3">
+        <Send className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-1" />
         <div>
-          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('homework.tg.title', 'Домашние задания сдаются в Telegram')}
           </h3>
-          <p className="text-[13px] text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('homework.tg.desc', 'Здесь работу больше не загрузить — бот принимает текст, фото и файлы')}
           </p>
         </div>
       </div>
 
-      <ol className="space-y-2.5 mb-6">
+      <ol className="space-y-2 mb-4">
         {steps.map(({ icon: Icon, key, text }, i) => (
-          <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
-            <span className="shrink-0 w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+          <li key={i} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <span className="shrink-0 w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
               <Icon className="w-3.5 h-3.5" />
             </span>
             {t(key, text)}
@@ -72,9 +68,9 @@ export const HomeworkTelegramNotice: React.FC<Props> = ({ compact = false }) => 
         href={BOT_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold text-sm transition-colors"
+        className="w-full flex items-center justify-center gap-1.5 h-8 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium text-sm transition-colors"
       >
-        <Send className="w-4 h-4" />
+        <Send className="w-3.5 h-3.5" />
         {t('homework.tg.openBot', 'Открыть бота и сдать ДЗ')}
       </a>
     </div>

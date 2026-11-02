@@ -87,7 +87,6 @@ const MaterialsPage = lazyRetry(() => import('./pages/materials/MaterialsPage'))
 const SchedulePage = lazyRetry(() => import('./pages/schedule/SchedulePage'));
 const ClassroomsPage = lazyRetry(() => import('./pages/classrooms/ClassroomsPage'));
 const OrgResultsPage = lazyRetry(() => import('./pages/results/ResultsPage'));
-const OrgUsersPage = lazyRetry(() => import('./pages/org-users/OrgUsersPage'));
 const OrgSettingsPage = lazyRetry(() => import('./pages/org-settings/OrgSettingsPage'));
 const BranchesPage = lazyRetry(() => import('./pages/branches/BranchesPage'));
 const TeacherInvitesPage = lazyRetry(() => import('./pages/invites/TeacherInvitesPage'));
@@ -102,7 +101,6 @@ const StudentDetailPage = lazyRetry(() => import('./pages/students/StudentDetail
 const TeacherDetailPage = lazyRetry(() => import('./pages/teachers/TeacherDetailPage'));
 const CourseDetailPage = lazyRetry(() => import('./pages/courses/CourseDetailPage'));
 const GroupDetailPage = lazyRetry(() => import('./pages/groups/GroupDetailPage'));
-const OrgUserDetailPage = lazyRetry(() => import('./pages/org-users/OrgUserDetailPage'));
 const AdminUserDetailPage = lazyRetry(() => import('./pages/admin/AdminUserDetailPage'));
 const AdminOrgDetailPage = lazyRetry(() => import('./pages/admin/AdminOrgDetailPage'));
 
@@ -301,8 +299,7 @@ const App: React.FC = () => {
             <Route path="teachers" element={<ProtectedRoute><PermissionRoute resource="teachers"><TeachersPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="teachers/:uid" element={<ProtectedRoute><PermissionRoute resource="teachers"><TeacherDetailPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="team" element={<ProtectedRoute><PermissionRoute resource="team"><PlanGuard feature="rbac"><TeamRolesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
-            <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
-            <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
+            <Route path="org-users/*" element={<Navigate to="/team" replace />} />
 
             {/* ═══ Teacher (global) ═══ */}
             <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />

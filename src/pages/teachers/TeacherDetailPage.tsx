@@ -19,7 +19,6 @@ import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { PresenceDot } from '../../components/presence/PresenceBadge';
-import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import EditTeacherModal from '../../components/teachers/EditTeacherModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
@@ -131,12 +130,11 @@ const relativeDay = (iso: string | null): string => {
 const TeacherDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const { t } = useTranslation();
-  const { role, organizationId } = useAuth();
+  const { organizationId } = useAuth();
   const { activeBranchId, setActiveBranch, branches } = useBranch();
   const { loaded: permsLoaded, canRead, canWrite } = usePermissions();
   const presence = useOrgPresence(organizationId);
 
-  const isOrgAdmin = role === 'admin' || role === 'super_admin';
   const canEditTeachers = permsLoaded && canWrite('teachers');
   // Активность и KPI — отдельное право: его специально выдают тем, кто следит за
   // работой преподавателей, и оно не должно протекать всем, кто видит карточку.
@@ -319,21 +317,21 @@ const TeacherDetailPage: React.FC = () => {
     .filter(b => b.value > 0);
 
   return (
-    <div className="max-w-5xl mx-auto pb-16">
+    <div className="pb-10">
       <Link
         to="/teachers"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors mb-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
       >
-        <ArrowLeft className="w-4 h-4" />{t('nav.teachers', 'Преподаватели')}
+        <ArrowLeft className="w-3.5 h-3.5" />{t('nav.teachers', 'Преподаватели')}
       </Link>
 
       {/* ═══ Идентичность ═══ */}
-      <header className="flex items-start gap-4 mb-6">
+      <header className="flex items-start gap-3 mb-4">
         <div className="relative shrink-0">
           {teacher.avatarUrl ? (
-            <img src={teacher.avatarUrl} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+            <img src={teacher.avatarUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
           ) : (
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
               {teacher.displayName?.[0]?.toUpperCase() || '?'}
             </div>
           )}
@@ -345,8 +343,8 @@ const TeacherDetailPage: React.FC = () => {
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{teacher.displayName}</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{teacher.displayName}</h1>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>{online ? t('presence.online', 'В сети') : lastSeenMs ? t('teachers.detail.lastSeenAgo', 'Был(а) в сети {{time}}', { time: relativeDay(new Date(lastSeenMs).toISOString()) }) : t('presence.offline', 'Не в сети')}</span>
             {teacher.email && !isSyntheticEmail(teacher.email) && <><Dot />{teacher.email}</>}
             {teacher.phone && (
@@ -366,7 +364,7 @@ const TeacherDetailPage: React.FC = () => {
                     aria-label={t('teachers.detail.writeWhatsappTo', 'Написать {{name}} в WhatsApp', { name: teacher.displayName })}
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-3.5 h-3.5" />
                   </a>
                 )}
               </>
@@ -379,9 +377,9 @@ const TeacherDetailPage: React.FC = () => {
           {canEditTeachers && (
             <button
               onClick={() => setShowEdit(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+              className="btn-secondary hidden sm:inline-flex items-center gap-1.5"
             >
-              <Pencil className="w-4 h-4" />{t('common.edit', 'Редактировать')}
+              <Pencil className="w-3.5 h-3.5" />{t('common.edit', 'Редактировать')}
             </button>
           )}
           <RowMenu items={menuItems} />
@@ -393,7 +391,7 @@ const TeacherDetailPage: React.FC = () => {
           стабильность отсюда убраны намеренно: это величины за окно, и наверху,
           вдали от переключателя периода, их ноль читался как приговор
           преподавателю, а не как факт о двух выходных днях. */}
-      <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
+      <dl className="grid grid-cols-2 md:grid-cols-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-4">
         <Metric label={t('teachers.detail.groupsMetric', 'Групп')} value={String(groups.length)} />
         <Metric label={t('teachers.detail.coursesMetric', 'Курсов')} value={String(courseCount)} />
         <Metric
@@ -408,24 +406,29 @@ const TeacherDetailPage: React.FC = () => {
       </dl>
 
       {/* ═══ Нагрузка: группы ═══ */}
-      <section className="mb-8">
+      <section className="mb-4">
         <SectionHeading title={t('teachers.detail.groups', 'Группы')} meta={groups.length > 0 ? `${groups.length}` : undefined} />
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-          {failed.groups ? (
-            <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
-          ) : groups.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-              {t('teachers.detail.noGroups', 'Преподаватель не ведёт ни одной группы')}
-              {canEditTeachers && (
-                <> · <button onClick={() => setShowAssign(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{t('teachers.detail.assignLower', 'назначить')}</button></>
-              )}
-            </p>
-          ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+        {failed.groups || groups.length === 0 ? (
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+            {failed.groups ? (
+              <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
+            ) : (
+              <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
+                {t('teachers.detail.noGroups', 'Преподаватель не ведёт ни одной группы')}
+                {canEditTeachers && (
+                  <> · <button onClick={() => setShowAssign(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{t('teachers.detail.assignLower', 'назначить')}</button></>
+                )}
+              </p>
+            )}
+          </div>
+        ) : (
+            // Сетка компактных карточек: строка на всю ширину экрана оставляла
+            // посередине пустую полосу и прятала крестик далеко от названия.
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {groups.map(g => (
-                <li key={g.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <li key={g.id} className="px-3 py-2 min-h-[52px] flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
                   <Link to={`/groups/${g.id}`} className="min-w-0 flex-1 group">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                       {g.name}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
@@ -439,46 +442,45 @@ const TeacherDetailPage: React.FC = () => {
                       // Видно всегда, а не по hover: действие только по наведению
                       // недоступно с клавиатуры и с телефона. slate-500, а не 400:
                       // иконка — графический объект, ему нужен контраст ≥3:1.
-                      className="shrink-0 p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-900/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                      className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-900/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </li>
               ))}
+              {canEditTeachers && (
+                <li>
+                  <button
+                    onClick={() => setShowAssign(true)}
+                    className="w-full h-full min-h-[52px] inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  >
+                    <Plus className="w-3.5 h-3.5" />{t('teachers.detail.assignGroup', 'Назначить группу')}
+                  </button>
+                </li>
+              )}
             </ul>
-          )}
-          {canEditTeachers && groups.length > 0 && (
-            <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700">
-              <button
-                onClick={() => setShowAssign(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />{t('teachers.detail.assignGroup', 'Назначить группу')}
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </section>
 
       {/* ═══ Активность ═══ */}
       {canSeeActivity && (
-        <section className="mb-8">
+        <section className="mb-4">
           <SectionHeading
             title={t('teachers.detail.activity', 'Активность')}
             action={{ label: t('teachers.detail.wholeSection', 'Весь раздел'), to: '/teacher-activity' }}
           />
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+            <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-0.5">
               {PERIODS.map(p => (
                 <button
                   key={p.id}
                   onClick={() => setPeriod(p.id)}
                   aria-pressed={period === p.id}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`h-7 px-2 rounded-md text-sm transition-colors ${
                     period === p.id
-                      ? 'bg-primary-600 text-white'
-                      : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   {t(`teacherActivity.period.${p.id}`, p.label)}
@@ -492,8 +494,14 @@ const TeacherDetailPage: React.FC = () => {
                 сравнивается с типичным по школе в этом же окне (teacher-kpi.ts),
                 поэтому «0» значит «в этом окне действий нет», а не «плохо
                 работает», и большой контингент сам по себе балла не прибавляет. */}
-            {!failed.activity && (
-              <dl className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
+            {failed.activity ? (
+              <div className="p-4"><LoadError onRetry={retryActivity} /></div>
+            ) : (
+            // На широком экране цифры — узкой колонкой слева, лента — справа:
+            // в одну строку на всю ширину три числа терялись в пустоте.
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <div className="border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700">
+              <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700 [&>div]:bg-white dark:[&>div]:bg-slate-900">
                 <Metric
                   label={t('teachers.detail.kpiPeriod', 'KPI за период')}
                   value={kpi ? String(kpi.kpiScore) : '—'}
@@ -506,13 +514,29 @@ const TeacherDetailPage: React.FC = () => {
                   value={kpi ? String(kpi.totalActions) : '—'}
                   hint={kpi ? t('teachers.detail.engagementLine', 'вовлечённость {{engagement}}% · стабильность {{consistency}}%', { engagement: kpi.engagementPct ?? 0, consistency: kpi.consistencyPct }) : undefined}
                 />
+                <Metric
+                  label={t('teachers.detail.lastActionMetric', 'Последнее действие')}
+                  value={kpi?.lastActivityAt ? relativeDay(kpi.lastActivityAt) : '—'}
+                />
               </dl>
-            )}
 
-            {failed.activity ? (
-              <div className="p-4"><LoadError onRetry={retryActivity} /></div>
-            ) : breakdown.length === 0 && (events?.length ?? 0) === 0 ? (
-              <div className="px-4 py-6 text-center">
+                {breakdown.length > 0 && (
+                  <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-700">
+                    {breakdown.map(b => (
+                      <li key={b.type} className="bg-white dark:bg-slate-900 px-3 py-2.5 flex items-center gap-2.5">
+                        <b.icon className={`w-4 h-4 shrink-0 ${b.color}`} aria-hidden />
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100 leading-tight">{b.value}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t(`teacherActivity.type.${b.type}`, b.label)}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+            {breakdown.length === 0 && (events?.length ?? 0) === 0 ? (
+              <div className="px-4 py-6 text-center self-center">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t('teachers.detail.noActions', 'За выбранный период действий не зафиксировано')}
                 </p>
@@ -525,32 +549,16 @@ const TeacherDetailPage: React.FC = () => {
                   </button>
                 )}
               </div>
-            ) : (
-              <>
-                {breakdown.length > 0 && (
-                  <ul className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100 dark:bg-slate-700 border-b border-slate-100 dark:border-slate-700">
-                    {breakdown.map(b => (
-                      <li key={b.type} className="bg-white dark:bg-slate-800 px-4 py-3 flex items-center gap-2.5">
-                        <b.icon className={`w-4 h-4 shrink-0 ${b.color}`} aria-hidden />
-                        <div className="min-w-0">
-                          <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white leading-tight">{b.value}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t(`teacherActivity.type.${b.type}`, b.label)}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {events && events.length > 0 && (
-                  <ul className="divide-y divide-slate-100 dark:divide-slate-700 max-h-80 overflow-y-auto">
+            ) : events && events.length > 0 ? (
+                  <ul className="divide-y divide-slate-200 dark:divide-slate-700 max-h-80 lg:max-h-[26rem] overflow-y-auto">
                     {events.slice(0, 30).map(ev => {
                       const meta = TYPE_META[ev.type];
                       const Icon = meta?.icon || CalendarCheck;
                       return (
-                        <li key={ev.id} className="px-4 py-2.5 flex items-start gap-3">
+                        <li key={ev.id} className="px-3 py-2 flex items-start gap-3">
                           <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${meta?.color || 'text-slate-400'}`} aria-hidden />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-slate-900 dark:text-white">
+                            <p className="text-sm text-slate-900 dark:text-slate-100">
                               {t(`teacherActivity.type.${ev.type}`, meta?.label || ev.type)}
                               {ev.count > 1 && <span className="ml-1.5 text-slate-500 dark:text-slate-400 tabular-nums">×{ev.count}</span>}
                             </p>
@@ -565,19 +573,9 @@ const TeacherDetailPage: React.FC = () => {
                       );
                     })}
                   </ul>
-                )}
-              </>
+            ) : null}
+            </div>
             )}
-          </div>
-        </section>
-      )}
-
-      {/* ═══ Роли ═══ */}
-      {isOrgAdmin && organizationId && (
-        <section>
-          <SectionHeading title={t('teachers.detail.rolesAccess', 'Роли и доступ')} />
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5">
-            <MemberRolesEditor uid={teacher.uid} orgId={organizationId} />
           </div>
         </section>
       )}
@@ -611,7 +609,7 @@ const TeacherDetailPage: React.FC = () => {
                   value={selectedGroupId}
                   onChange={e => setSelectedGroupId(e.target.value)}
                   aria-label={t('teachers.detail.group', 'Группа')}
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                  className="input"
                 >
                   <option value="">{t('teachers.detail.selectGroup', '— Выберите группу —')}</option>
                   {allGroups.filter(g => !(g.teacherIds || []).includes(uid!)).map(g => (
@@ -647,8 +645,8 @@ const SectionHeading: React.FC<{
   action?: { label: string; to: string };
 }> = ({ title, meta, action }) => (
   // Заголовок над контейнером, а не внутри: иначе получается карточка в карточке.
-  <div className="flex items-baseline justify-between gap-3 mb-2.5">
-    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+  <div className="flex items-baseline justify-between gap-3 mb-2">
+    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
       {title}
       {meta && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400 tabular-nums">{meta}</span>}
     </h2>
@@ -668,7 +666,7 @@ const Metric: React.FC<{
 }> = ({ label, value, hint, valueClass }) => (
   <div className="px-4 py-3">
     <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
-    <dd className={`mt-0.5 text-xl font-semibold tabular-nums ${valueClass || 'text-slate-900 dark:text-white'}`}>{value}</dd>
+    <dd className={`mt-0.5 text-2xl font-semibold tabular-nums ${valueClass || 'text-slate-900 dark:text-slate-100'}`}>{value}</dd>
     {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
   </div>
 );
@@ -688,20 +686,20 @@ const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
 
 /** Скелет вместо спиннера: экран сразу показывает свою форму. */
 const DetailSkeleton: React.FC = () => (
-  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label={i18n.t('teachers.detail.loadingCard', 'Загрузка карточки преподавателя')}>
+  <div aria-busy="true" aria-label={i18n.t('teachers.detail.loadingCard', 'Загрузка карточки преподавателя')}>
     <Skeleton className="h-5 w-32 mb-5" />
-    <div className="flex items-start gap-4 mb-6">
-      <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+    <div className="flex items-start gap-4 mb-4">
+      <Skeleton className="w-14 h-14 rounded-lg shrink-0" />
       <div className="flex-1">
         <Skeleton className="h-7 w-52 mb-2" />
         <Skeleton className="h-4 w-72" />
       </div>
     </div>
-    <Skeleton className="h-20 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-20 w-full rounded-lg mb-4" />
     <Skeleton className="h-4 w-16 mb-2.5" />
-    <Skeleton className="h-32 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-32 w-full rounded-lg mb-4" />
     <Skeleton className="h-4 w-24 mb-2.5" />
-    <Skeleton className="h-48 w-full rounded-2xl" />
+    <Skeleton className="h-48 w-full rounded-lg" />
   </div>
 );
 

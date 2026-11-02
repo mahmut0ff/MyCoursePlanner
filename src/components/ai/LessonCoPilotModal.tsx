@@ -69,33 +69,33 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
   const { hasSelection } = getSource();
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center">
-              <Wand2 className="w-5 h-5" />
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[640px] max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 shrink-0 rounded-md bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 flex items-center justify-center">
+              <Wand2 className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.lessonCopilot.title', 'AI-помощник урока')}</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('ai.lessonCopilot.title', 'AI-помощник урока')}</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {hasSelection ? t('ai.lessonCopilot.scopeSelection', 'Работаю с выделенным фрагментом') : t('ai.lessonCopilot.scopeAll', 'Работаю со всем текстом урока')}
               </p>
             </div>
           </div>
-          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="-mt-1 -mr-1 w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="px-4 pt-2 pb-4 space-y-3 overflow-y-auto">
           <div className="flex flex-wrap gap-2">
             {ACTIONS.map((a) => (
               <button
                 key={a.id}
                 onClick={() => run(a.instruction)}
                 disabled={loading}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors disabled:opacity-50"
+                className="h-7 px-2 rounded-md text-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-700/50 dark:hover:text-slate-100 transition-colors disabled:opacity-50"
               >
                 {t(a.labelKey, a.label)}
               </button>
@@ -109,29 +109,29 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
               placeholder={t('ai.lessonCopilot.customPh', 'Или своя инструкция: «добавь раздел про…», «сделай таблицу…»')}
               className="input flex-1"
             />
-            <button type="submit" disabled={loading} className="btn-primary flex items-center gap-1.5 shrink-0">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            <button type="submit" disabled={loading} className="btn-primary inline-flex items-center gap-1.5 shrink-0">
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{t('common.create', 'Создать')}</span>
             </button>
           </form>
 
           {loading && (
             <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> {t('ai.generating', 'Генерирую…')}
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('ai.generating', 'Генерирую…')}
             </div>
           )}
 
           {resultHtml && !loading && (
             <div className="space-y-3">
-              <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 max-h-[260px] overflow-y-auto bg-slate-50 dark:bg-slate-900/40">
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 max-h-[260px] overflow-y-auto bg-slate-50 dark:bg-slate-900/40">
                 <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: resultHtml }} />
               </div>
               <div className="flex items-center justify-end gap-2">
                 {hasSelection && (
-                  <button onClick={() => insert(true)} className="btn-secondary text-sm">{t('ai.lessonCopilot.replaceSelection', 'Заменить выделенное')}</button>
+                  <button onClick={() => insert(true)} className="btn-secondary">{t('ai.lessonCopilot.replaceSelection', 'Заменить выделенное')}</button>
                 )}
-                <button onClick={() => insert(false)} className="btn-primary text-sm flex items-center gap-1.5">
-                  {inserted ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                <button onClick={() => insert(false)} className="btn-primary inline-flex items-center gap-1.5">
+                  {inserted ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                   {t('ai.lessonCopilot.insert', 'Вставить в урок')}
                 </button>
               </div>

@@ -35,8 +35,8 @@ const NetworkStatusBar: React.FC = () => {
   // Offline banner
   if (!isOnline) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold shadow-lg animate-in slide-in-from-top duration-200">
-        <WifiOff className="w-4 h-4 shrink-0" />
+      <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium animate-in slide-in-from-top duration-200">
+        <WifiOff className="w-3.5 h-3.5 shrink-0" />
         <span>{t('network.offline', 'Нет подключения к интернету. Данные могут быть неактуальны.')}</span>
       </div>
     );
@@ -45,8 +45,8 @@ const NetworkStatusBar: React.FC = () => {
   // Brief "back online" confirmation
   if (showReconnected) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[9999] bg-emerald-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold shadow-lg animate-in slide-in-from-top duration-200">
-        <Wifi className="w-4 h-4 shrink-0" />
+      <div className="fixed top-0 left-0 right-0 z-[9999] bg-emerald-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium animate-in slide-in-from-top duration-200">
+        <Wifi className="w-3.5 h-3.5 shrink-0" />
         <span>{t('network.online', 'Подключение восстановлено!')}</span>
       </div>
     );

@@ -11,13 +11,11 @@ const AccessDenied: React.FC<{ title?: string; description?: string }> = ({ titl
   const { t } = useTranslation();
   return (
     <div className="max-w-md mx-auto text-center py-20 px-4">
-      <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-        <ShieldAlert className="w-7 h-7 text-red-500" />
-      </div>
-      <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+      <ShieldAlert className="w-6 h-6 text-slate-400 mx-auto mb-3" />
+      <h2 className="text-sm font-medium text-slate-900 dark:text-slate-100">
         {title || t('access.deniedTitle', 'Доступ ограничен')}
       </h2>
-      <p className="text-sm text-slate-500 mt-1">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
         {description || t('access.deniedDesc', 'У вашей роли нет прав на этот раздел. Обратитесь к администратору организации.')}
       </p>
     </div>

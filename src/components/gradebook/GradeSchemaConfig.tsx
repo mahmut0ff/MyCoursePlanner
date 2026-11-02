@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GradeSchema, GradingType } from '../../types';
-import { X, Settings, Check, Plus, Trash2, Info, AlertCircle } from 'lucide-react';
+import { X, Check, Plus, Trash2, Info, AlertCircle } from 'lucide-react';
 import { orgSaveGradeSchema } from '../../lib/api';
 import { GRADE_PRESETS, detectPreset, schemaChoices, choiceNumericValue, type GradePreset } from '../../lib/gradePresets';
 import toast from 'react-hot-toast';
@@ -115,15 +115,12 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-              <Settings className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {t('gradebook.schemaTitle', 'Шкала оценивания')}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -131,16 +128,16 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="px-4 py-2 overflow-y-auto flex-1 space-y-4">
 
           {/* Куда именно распространяется шкала: курс + оба журнала */}
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/40">
-            <Info className="w-4 h-4 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {courseTitle
                 ? t('gradebook.ui.schema.scopeCourse', 'Шкала действует для курса «{{course}}» — и в «Оценках», и в журнале у преподавателя: там будут тот же максимум и те же допустимые значения.', { course: courseTitle })
@@ -148,13 +145,13 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* ── Quick presets ── */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="label">
                 {t('gradebook.presets', 'Готовые шкалы')}
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1">
                 {GRADE_PRESETS.map((p) => {
                   const isActive = p.id === activePresetId;
                   return (
@@ -163,10 +160,10 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                       type="button"
                       aria-pressed={isActive}
                       onClick={() => applyPreset(p)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                      className={`flex items-center gap-1 h-7 px-2 text-sm rounded-md transition-colors ${
                         isActive
-                          ? 'border-primary-500 bg-primary-500 text-white shadow-sm'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400'
+                          ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       {isActive && <Check className="w-3 h-3" />}
@@ -175,7 +172,7 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                   );
                 })}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {activePresetId
                   ? t('gradebook.presetsActiveHint', 'Выбранная шкала подсвечена. Значения ниже можно подправить вручную — тогда подсветка снимется.')
                   : t('gradebook.presetsHint', 'Нажмите, чтобы заполнить настройки одним кликом. Затем можно подправить вручную.')}
@@ -183,11 +180,11 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="label">
                 {t('gradebook.typeLabel', 'Тип оценивания')}
               </label>
               <select
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500 transition-colors"
+                className="input w-full"
                 value={gradingType}
                 onChange={(e) => setGradingType(e.target.value as GradingType)}
               >
@@ -200,31 +197,31 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
             </div>
 
             {(gradingType === 'points' || gradingType === 'percent') && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="label">
                     {t('gradebook.minLabel', 'Минимум')}
                   </label>
                   <input
                     type="number"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                    className="input w-full"
                     value={minVal}
                     onChange={(e) => setMinVal(Number(e.target.value))}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="label">
                     {t('gradebook.maxLabel', 'Максимум')}
                   </label>
                   <input
                     type="number"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                    className="input w-full"
                     value={maxVal}
                     onChange={(e) => setMaxVal(Number(e.target.value))}
                   />
                 </div>
                 {rangeError && (
-                  <p className="col-span-2 flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                  <p className="col-span-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {t('gradebook.ui.schema.rangeError', 'Максимум должен быть больше минимума.')}
                   </p>
@@ -234,22 +231,22 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
 
             {gradingType !== 'pass_fail' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="label">
                   {t('gradebook.passThreshold', 'Порог прохождения')}
                 </label>
                 <input
                   type="number"
-                  className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500 ${thresholdError ? 'border-red-400 dark:border-red-500' : 'border-slate-200 dark:border-slate-700'}`}
+                  className={`input w-full ${thresholdError ? '!border-red-400 dark:!border-red-500' : ''}`}
                   value={passThreshold}
                   onChange={(e) => setPassThreshold(Number(e.target.value))}
                 />
                 {thresholdError ? (
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400 mt-1">
+                  <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 mt-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {t('gradebook.ui.schema.thresholdError', 'Порог должен быть между {{min}} и {{max}}.', { min: minVal, max: maxVal })}
                   </p>
                 ) : (
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {t('gradebook.ui.schema.thresholdHint', 'Для баллов и процентов — минимальное значение. Для букв — индекс успешности.')}
                   </p>
                 )}
@@ -258,29 +255,29 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
 
             {!numeric && (
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="label">
                   {gradingType === 'pass_fail'
                     ? t('gradebook.choicesPassFail', 'Варианты отметок')
                     : t('gradebook.labels', 'Символы и диапазоны')}
                 </label>
-                <p className="text-[10px] text-slate-500 mb-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
                   {t('gradebook.ui.schema.choicesHint', 'Именно из этого списка преподаватель выбирает отметку в журнале.')}
                 </p>
                 {Object.keys(labels).length === 0 ? (
-                  <p className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900 p-3 rounded-lg text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 p-3 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-center">
                     {gradingType === 'pass_fail'
                       ? t('gradebook.ui.schema.noCustomPassFail', 'Свои варианты не заданы — используются «Зачёт» и «Незачёт».')
                       : t('gradebook.ui.schema.noSymbols', 'Нет заданных символов.')}
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                     {Object.entries(labels).map(([key, desc]) => (
-                      <div key={key} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700/50">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-sm bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">{key}</span>
-                          <span className="text-sm text-slate-600 dark:text-slate-400">{desc}</span>
+                      <div key={key} className="flex items-center justify-between min-h-[40px] px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">{key}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{desc}</span>
                         </div>
-                        <button onClick={() => handleRemoveLabel(key)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg">
+                        <button onClick={() => handleRemoveLabel(key)} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-500/10">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -289,28 +286,28 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                 )}
 
                 {/* Inline add row */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-2">
                   <input
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
                     placeholder={t('gradebook.labelSymbolPh', 'Символ')}
-                    className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                    className="input w-24"
                   />
                   <input
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLabel(); } }}
                     placeholder={t('gradebook.labelDescPh', 'Диапазон или описание (90–100)')}
-                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                    className="input flex-1 min-w-0"
                   />
                   <button
                     type="button"
                     onClick={handleAddLabel}
                     disabled={!newKey.trim()}
-                    className="shrink-0 p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="btn-secondary shrink-0 w-8 !px-0 inline-flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                     title={t('common.add', 'Добавить')}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -318,13 +315,13 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
           </div>
 
           {/* ── Предпросмотр: чем настройка оборачивается в журнале ── */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="h-8 px-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {t('gradebook.previewTitle', 'Так это увидит преподаватель в журнале')}
               </span>
               {numeric && !rangeError && (
-                <span className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 shrink-0">
                   {t('journal.ui.maxShort', 'М: {{max}}', { max: maxVal })}
                 </span>
               )}
@@ -341,40 +338,40 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                     return (
                       <span
                         key={v}
-                        className="min-w-[2.5rem] px-2 py-1 flex flex-col items-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                        className="min-w-[2.5rem] px-2 py-1 flex flex-col items-center rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                       >
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{v}</span>
+                        <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">{v}</span>
                         {asNumber !== null && (
-                          <span className="text-[10px] text-slate-400 leading-none">= {asNumber}</span>
+                          <span className="text-[11px] text-slate-400 tabular-nums leading-none">= {asNumber}</span>
                         )}
                       </span>
                     );
                   })
                 ) : (
-                  <span className="text-xs text-slate-400 italic">{t('gradebook.ui.schema.noValues', 'Нет допустимых значений')}</span>
+                  <span className="text-xs text-slate-400">{t('gradebook.ui.schema.noValues', 'Нет допустимых значений')}</span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">{previewHint()}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{previewHint()}</p>
             </div>
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0 bg-slate-50 dark:bg-slate-800/50">
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+            className="btn-ghost"
           >
             {t('common.cancel', 'Отмена')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving || rangeError || thresholdError}
-            className="flex items-center gap-2 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
             )}
             {t('common.save', 'Сохранить')}
           </button>

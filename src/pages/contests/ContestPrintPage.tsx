@@ -48,8 +48,8 @@ const ContestPrintPage: React.FC = () => {
         .print-table th { background: #f1f5f9; font-weight: 600; }
       `}</style>
 
-      <div className="no-print sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center gap-3">
-        <Link to={`/contests/${contest.id}`} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" />{t('contests.print.back', 'К конкурсу')}</Link>
+      <div className="no-print sticky top-0 bg-slate-50 border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2">
+        <Link to={`/contests/${contest.id}`} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900"><ArrowLeft className="w-3.5 h-3.5" />{t('contests.print.back', 'К конкурсу')}</Link>
         <select value={what} onChange={(e) => set('what', e.target.value)} className="input w-auto">
           <option value="participants">{t('contests.print.participants', 'Список участников')}</option>
           <option value="placards">{t('contests.print.placards', 'Таблички на столы')}</option>
@@ -59,7 +59,7 @@ const ContestPrintPage: React.FC = () => {
           <option value="">{t('contests.allCategories', 'Все категории')}</option>
           {contest.categories.map((c) => <option key={c.id} value={c.id}>{t('contests.categoryCode', 'Категория {{code}}', { code: c.code })}</option>)}
         </select>
-        <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold"><Printer className="w-4 h-4" />{t('contests.print.printPdf', 'Печать / PDF')}</button>
+        <button onClick={() => window.print()} className="btn-primary ml-auto inline-flex items-center gap-1.5"><Printer className="w-3.5 h-3.5" />{t('contests.print.printPdf', 'Печать / PDF')}</button>
       </div>
 
       <div className="max-w-[900px] mx-auto px-6 py-6 print:p-0">

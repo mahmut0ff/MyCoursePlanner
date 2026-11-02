@@ -121,8 +121,8 @@ function tabMark(id: TabId, d: ContestBundle): Mark {
 
 const MarkDot: React.FC<{ mark: Mark }> = ({ mark }) => {
   if (!mark) return null;
-  const base = 'inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold leading-none';
-  if (mark.kind === 'live') return <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title={mark.title} aria-label={mark.title} role="img" />;
+  const base = 'inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded text-[10px] font-medium tabular-nums leading-none';
+  if (mark.kind === 'live') return <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title={mark.title} aria-label={mark.title} role="img" />;
   if (mark.kind === 'done') return <span className={`${base} bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300`} title={mark.title} aria-label={mark.title} role="img">✓</span>;
   if (mark.kind === 'warn') return <span className={`${base} bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300`} title={mark.title} aria-label={mark.title} role="img">{mark.text || '!'}</span>;
   return <span className={`${base} bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300`} title={mark.title} aria-label={mark.title} role="img">{mark.text}</span>;
@@ -220,7 +220,7 @@ const ContestDetailPage: React.FC = () => {
   if (!data || !contest) {
     return (
       <div className="space-y-4">
-        <Link to="/contests" className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"><ArrowLeft className="w-4 h-4" />{t('nav.contests', 'Конкурсы')}</Link>
+        <Link to="/contests" className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"><ArrowLeft className="w-3.5 h-3.5" />{t('nav.contests', 'Конкурсы')}</Link>
         {error ? <ErrorNote>{error}</ErrorNote> : <CardSkeleton />}
       </div>
     );
@@ -242,32 +242,32 @@ const ContestDetailPage: React.FC = () => {
     headerActions = (
       <div className="flex items-center gap-2">
         {tab !== 'monitor' && tab !== 'results' && (
-          <button onClick={() => goTab('monitor')} className={primaryBtn}><Activity className="w-4 h-4" />{t('contests.tabs.monitor', 'Мониторинг')}</button>
+          <button onClick={() => goTab('monitor')} className={primaryBtn}><Activity className="w-3.5 h-3.5" />{t('contests.tabs.monitor', 'Мониторинг')}</button>
         )}
-        {step && <button onClick={() => setConfirmStatus(step.next)} className={secondaryBtn} title={step.hint}><Flag className="w-4 h-4" />{step.label}</button>}
+        {step && <button onClick={() => setConfirmStatus(step.next)} className={secondaryBtn} title={step.hint}><Flag className="w-3.5 h-3.5" />{step.label}</button>}
       </div>
     );
   } else if (canEdit && step) {
-    headerActions = <button onClick={() => setConfirmStatus(step.next)} className={primaryBtn}>{step.label}<ChevronRight className="w-4 h-4" /></button>;
+    headerActions = <button onClick={() => setConfirmStatus(step.next)} className={primaryBtn}>{step.label}<ChevronRight className="w-3.5 h-3.5" /></button>;
   } else if (contest.status === 'finished' && tab !== 'results') {
-    headerActions = <button onClick={() => goTab('results')} className={secondaryBtn}><Trophy className="w-4 h-4" />{t('contests.tabs.results', 'Итоги')}</button>;
+    headerActions = <button onClick={() => goTab('results')} className={secondaryBtn}><Trophy className="w-3.5 h-3.5" />{t('contests.tabs.results', 'Итоги')}</button>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <Link to="/contests" className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white mb-3"><ArrowLeft className="w-4 h-4" />{t('nav.contests', 'Конкурсы')}</Link>
+        <Link to="/contests" className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3"><ArrowLeft className="w-3.5 h-3.5" />{t('nav.contests', 'Конкурсы')}</Link>
         <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400">
               <span>{kindLabel(contest.kind)}{contest.season ? ` · ${contest.season}` : ''}</span>
               <StatusBadge status={contest.status} />
               {dayOfContest && mode === 'live' && (
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 normal-case tracking-normal"><Radio className="w-3 h-3" />{t('contests.liveNow', 'в реальном времени')}</span>
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><Radio className="w-3 h-3" />{t('contests.liveNow', 'в реальном времени')}</span>
               )}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">{contest.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{contest.title}</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {[formatContestDate(contest.eventDate), contest.venue, contest.theme].filter(Boolean).join(' · ')}
             </p>
           </div>
@@ -276,19 +276,19 @@ const ContestDetailPage: React.FC = () => {
       </div>
 
       <div ref={tablistRef} role="tablist" aria-label={t('contests.sections', 'Разделы конкурса')} onKeyDown={onTabKey}
-        className="flex items-stretch gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto">
+        className="flex items-stretch gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
         {TAB_GROUPS.map((g, gi) => (
           <React.Fragment key={g.id}>
-            {gi > 0 && <span aria-hidden className="w-px my-1.5 bg-slate-300 dark:bg-slate-600 shrink-0" />}
+            {gi > 0 && <span aria-hidden className="w-px my-2 bg-slate-200 dark:bg-slate-700 shrink-0" />}
             <div className="flex items-center gap-0.5">
-              <span className="hidden md:block px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap select-none" aria-hidden>{t(`contests.tabs.${g.id}`, g.label)}</span>
+              <span className="hidden md:block px-2 text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap select-none" aria-hidden>{t(`contests.tabs.${g.id}`, g.label)}</span>
               {g.tabs.map((x) => {
                 const active = tab === x.id;
                 return (
                   <button
                     key={x.id} role="tab" aria-selected={active} tabIndex={active ? 0 : -1} data-tab={x.id}
                     onClick={() => goTab(x.id)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap transition-colors ${active ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    className={`inline-flex items-center gap-1.5 h-8 px-2 -mb-px border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${active ? 'border-primary-600 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}`}
                   >
                     {t(`contests.tabs.${x.id}`, x.label)}<MarkDot mark={tabMark(x.id, data)} />
                   </button>

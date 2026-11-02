@@ -186,15 +186,15 @@ const StudentRatingPage: React.FC = () => {
       : t('rating.allCoursesScope', 'все курсы');
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-4 pb-10">
       {/* ─── Шапка ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-amber-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
             {t('rating.title', 'Рейтинг студентов')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('rating.subtitle', 'Средний балл и посещаемость каждого ученика — по филиалам, курсам и группам.')}
           </p>
         </div>
@@ -202,15 +202,15 @@ const StudentRatingPage: React.FC = () => {
           {/* Мост к недопуску: счётчик — живой повод туда зайти, а не украшение */}
           <Link
             to="/rating/no-admission"
-            className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border transition-colors ${
+            className={`inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium rounded-md border transition-colors ${
               notAdmittedCount > 0
                 ? 'border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20'
-                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                : 'border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <Ban className="w-4 h-4" /> {t('nav.noAdmission', 'Недопуск')}
+            <Ban className="w-3.5 h-3.5" /> {t('nav.noAdmission', 'Недопуск')}
             {notAdmittedCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-rose-500 text-white tabular-nums">
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 tabular-nums">
                 {notAdmittedCount}
               </span>
             )}
@@ -218,24 +218,20 @@ const StudentRatingPage: React.FC = () => {
           <button
             onClick={exportCsv}
             disabled={!filtered.length}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" /> {t('rating.export', 'Экспорт CSV')}
+            <Download className="w-3.5 h-3.5" /> {t('rating.export', 'Экспорт CSV')}
           </button>
         </div>
       </div>
 
       {/* ─── Период ─── */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-0.5">
         {RATING_PERIODS.map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              period === p
-                ? 'bg-primary-500 text-white'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-            }`}
+            className={`h-7 px-2 text-sm rounded-md transition-colors ${period === p ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
           >
             {t(`rating.period.${p}`, RATING_PERIOD_FALLBACK[p])}
           </button>
@@ -246,14 +242,14 @@ const StudentRatingPage: React.FC = () => {
           Это НЕ собственный фильтр страницы: чипы двигают тот же глобальный
           выбор, что и переключатель в боковом меню, — один источник правды. */}
       {canSwitch && branches.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Building2 className="w-4 h-4 text-slate-400" />
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+            <h2 className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {t('rating.byBranch', 'По филиалам')}
             </h2>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-0.5">
             <BranchChip
               label={t('branch.allBranches', 'Все филиалы')}
               count={activeBranchId === null ? students.length : undefined}
@@ -274,7 +270,7 @@ const StudentRatingPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-100 dark:border-rose-900/40 flex items-center justify-between gap-3">
+        <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-200 dark:border-rose-900/40 flex items-center justify-between gap-3">
           <span>{error}</span>
           <button
             onClick={reload}
@@ -286,8 +282,8 @@ const StudentRatingPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[0, 1, 2, 3].map(i => <CardSkeleton key={i} />)}
           </div>
           <ListSkeleton rows={6} />
@@ -295,17 +291,17 @@ const StudentRatingPage: React.FC = () => {
       ) : (
         <>
           {/* ─── Сводка ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <SummaryCard
               icon={Users}
-              iconClass="text-blue-500 bg-blue-50 dark:bg-blue-900/30"
+              iconClass="text-slate-400"
               label={t('rating.inRating', 'В рейтинге')}
               value={`${withData.length}${emptyCount ? ` / ${rows.length}` : ''}`}
               sub={emptyCount ? t('rating.withoutData', { count: emptyCount, defaultValue: '{{count}} без данных' }) : scopeLabel}
             />
             <SummaryCard
               icon={CalendarCheck}
-              iconClass="text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"
+              iconClass="text-slate-400"
               label={t('rating.avgAttendance', 'Средняя посещаемость')}
               value={totals.metrics.hasAttendance ? `${totals.metrics.attendancePct}%` : '—'}
               sub={totals.metrics.hasAttendance
@@ -314,7 +310,7 @@ const StudentRatingPage: React.FC = () => {
             />
             <SummaryCard
               icon={GraduationCap}
-              iconClass="text-violet-500 bg-violet-50 dark:bg-violet-900/30"
+              iconClass="text-slate-400"
               label={t('rating.avgGrade', 'Средний балл')}
               value={gradeLabel(totals.metrics)}
               sub={totals.metrics.hasGrades
@@ -323,7 +319,7 @@ const StudentRatingPage: React.FC = () => {
             />
             <SummaryCard
               icon={Trophy}
-              iconClass="text-amber-500 bg-amber-50 dark:bg-amber-900/30"
+              iconClass="text-slate-400"
               label={t('rating.leader', 'Лидер')}
               value={totals.leader ? totals.leader.student.name : '—'}
               sub={totals.leader ? t('rating.points', { count: totals.leader.metrics.score }) : undefined}
@@ -331,27 +327,27 @@ const StudentRatingPage: React.FC = () => {
           </div>
 
           {/* ─── Фильтры и поиск ─── */}
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex-1 relative min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <div className="relative min-w-0 md:w-72">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={t('rating.searchPlaceholder', 'Поиск по имени студента...')}
                 aria-label={t('rating.searchPlaceholder', 'Поиск по имени студента...')}
-                className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20"
+                className="input pl-8"
               />
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 shrink-0">
-                <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <BookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select
                   value={courseId}
                   onChange={e => { setCourseId(e.target.value); setGroupId('all'); }}
                   aria-label={t('rating.filterByCourse', 'Фильтр по курсу')}
-                  className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  className="input"
                 >
                   <option value="all">{t('rating.allCourses', 'Все курсы')}</option>
                   {courses.map(c => (
@@ -360,13 +356,13 @@ const StudentRatingPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select
                   value={groupId}
                   onChange={e => setGroupId(e.target.value)}
                   aria-label={t('rating.filterByGroup', 'Фильтр по группе')}
-                  className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  className="input"
                 >
                   <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                   {visibleGroups.map(g => (
@@ -382,21 +378,17 @@ const StudentRatingPage: React.FC = () => {
                   onClick={() => setShowEmpty(v => !v)}
                   aria-pressed={showEmpty}
                   title={t('rating.showEmptyHint', 'Студенты, которым в этом срезе ещё не ставили оценок и не отмечали посещаемость')}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                    showEmpty
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
+                  className={`shrink-0 flex items-center gap-1.5 h-7 px-2 rounded-md text-sm transition-colors ${showEmpty ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
                 >
                   {t('rating.showEmpty', 'Без данных')}
-                  <span className={showEmpty ? 'opacity-70' : 'text-slate-400'}>{emptyCount}</span>
+                  <span className={showEmpty ? 'text-xs text-slate-500 dark:text-slate-400' : 'text-xs text-slate-400'}>{emptyCount}</span>
                 </button>
               )}
 
               {filtersActive && (
                 <button
                   onClick={resetFilters}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-sm text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" /> {t('rating.reset', 'Сбросить')}
                 </button>
@@ -405,7 +397,7 @@ const StudentRatingPage: React.FC = () => {
           </div>
 
           {filtersActive && (
-            <p className="-mt-2 text-sm text-slate-500 dark:text-slate-400">
+            <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
               {t('rating.found', 'Найдено')}:{' '}
               <span className="font-semibold text-slate-700 dark:text-slate-300">{filtered.length}</span>
               {' '}{t('rating.ofTotal', 'из')} {showEmpty ? rows.length : withData.length}
@@ -414,7 +406,7 @@ const StudentRatingPage: React.FC = () => {
 
           {/* ─── Таблица ─── */}
           {filtered.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
               <EmptyState
                 icon={Trophy}
                 title={
@@ -437,23 +429,23 @@ const StudentRatingPage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                       <tr>
                         <Th label="#" sortKey="rank" sort={sort} onSort={toggleSort} className="w-14" />
                         <Th label={t('rating.col.student', 'Студент')} sortKey="name" sort={sort} onSort={toggleSort} />
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap hidden lg:table-cell">
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap hidden lg:table-cell">
                           {t('rating.col.groupCourse', 'Группа и курс')}
                         </th>
                         <Th label={t('rating.col.lessons', 'Занятий')} sortKey="lessons" sort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
                         <Th label={t('rating.col.attendance', 'Посещаемость')} sortKey="attendance" sort={sort} onSort={toggleSort} />
                         <Th label={t('rating.col.grade', 'Средний балл')} sortKey="grade" sort={sort} onSort={toggleSort} />
-                        <th className="px-4 py-3.5 font-medium whitespace-nowrap">{t('rating.col.score', 'Балл')}</th>
+                        <th className="px-3 py-1.5 font-medium whitespace-nowrap">{t('rating.col.score', 'Балл')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {lazy.visible.map(r => {
                         const m = r.metrics;
                         const tone = TONE[toneOf(m.score)];
@@ -464,68 +456,68 @@ const StudentRatingPage: React.FC = () => {
                             onClick={() => setSelected(r)}
                             tabIndex={0}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r); } }}
-                            className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-700/30 ${m.hasData ? '' : 'opacity-60'}`}
+                            className={`hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800 ${m.hasData ? '' : 'opacity-60'}`}
                           >
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               <RankBadge rank={r.rank} />
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <Avatar name={r.student.name} url={r.student.avatarUrl} />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <p className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{r.student.name}</p>
+                                    <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px]">{r.student.name}</p>
                                     {blocked && <NotAdmittedBadge label={t('noAdmission.badge', 'Не допуск')} title={t('noAdmission.badgeHint', { threshold: NO_ADMISSION_THRESHOLD, defaultValue: 'Рейтинг ниже {{threshold}} баллов' })} />}
                                   </div>
                                   {r.branchNames.length > 0 && (
-                                    <p className="text-xs text-slate-400 truncate max-w-[200px]">{r.branchNames.join(', ')}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{r.branchNames.join(', ')}</p>
                                   )}
                                 </div>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5 hidden lg:table-cell">
+                            <td className="px-3 py-1.5 hidden lg:table-cell">
                               <div className="min-w-0 max-w-[220px]">
                                 <p className="text-slate-700 dark:text-slate-200 truncate">
                                   {r.groupNames.length ? r.groupNames.join(', ') : <span className="text-slate-300 dark:text-slate-600">—</span>}
                                 </p>
-                                <p className="text-xs text-slate-400 truncate">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                   {r.byCourse.map(s => courseTitle.get(s.courseId) || s.courseId).join(', ')}
                                 </p>
                               </div>
                             </td>
 
-                            <td className="px-4 py-3.5 tabular-nums hidden sm:table-cell">
+                            <td className="px-3 py-1.5 tabular-nums hidden sm:table-cell">
                               {m.hasAttendance
                                 ? <span className="text-slate-700 dark:text-slate-200">{m.lessons}</span>
                                 : <span className="text-slate-300 dark:text-slate-600">—</span>}
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               {m.hasAttendance ? (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold tabular-nums ${TONE[toneOf(m.attendancePct)].chip}`}>
+                                <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums ${TONE[toneOf(m.attendancePct)].chip}`}>
                                   {m.attendancePct}%
                                 </span>
                               ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               {m.hasGrades ? (
                                 <div className="flex items-baseline gap-1.5">
-                                  <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{gradeLabel(m)}</span>
+                                  <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{gradeLabel(m)}</span>
                                   <span className="text-xs text-slate-400 tabular-nums">{m.gradeCount}</span>
                                 </div>
                               ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                             </td>
 
-                            <td className="px-4 py-3.5">
+                            <td className="px-3 py-1.5">
                               {m.hasData ? (
                                 <div className="flex items-center gap-2">
                                   <div className="w-14 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0">
                                     <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${m.score}%` }} />
                                   </div>
-                                  <span className={`font-bold tabular-nums ${tone.text}`}>{m.score}</span>
+                                  <span className={`font-semibold tabular-nums ${tone.text}`}>{m.score}</span>
                                 </div>
                               ) : (
                                 <span className="text-xs text-slate-400">{t('rating.noData', 'нет данных')}</span>
@@ -550,7 +542,7 @@ const StudentRatingPage: React.FC = () => {
           )}
 
           {/* ─── Формула ─── */}
-          <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+          <div className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
             <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               <p>
@@ -594,7 +586,7 @@ const Th: React.FC<{
 }> = ({ label, sortKey, sort, onSort, className = '' }) => {
   const active = sort.key === sortKey;
   return (
-    <th className={`px-4 py-3.5 font-medium whitespace-nowrap text-left ${className}`}>
+    <th className={`px-3 py-1.5 font-medium whitespace-nowrap text-left ${className}`}>
       <button
         onClick={() => onSort(sortKey)}
         className={`inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ${active ? 'text-slate-700 dark:text-slate-200' : ''}`}

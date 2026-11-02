@@ -129,17 +129,17 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
     }
   };
 
-  const selectCls = 'input text-sm !py-1.5 max-w-[180px]';
+  const selectCls = 'input max-w-[180px]';
   // The destination name alone can't tell you which migration you're about to run —
   // in a real org a group and a branch are both called «Махмутов А» / «Зайнабетдинов».
   // So the button carries the destination TYPE, not a bare arrow.
   const goCls =
-    'inline-flex items-center gap-1 pl-2 pr-2.5 py-1.5 rounded-lg text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0';
+    'btn-primary inline-flex items-center gap-1 shrink-0';
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-500/30">
-        <span className="text-sm font-semibold text-primary-700 dark:text-primary-300 shrink-0">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-500/30">
+        <span className="text-sm font-medium text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
           {t('roster.bulk.selected', 'Выбрано')}: {uids.length}
         </span>
 
@@ -147,7 +147,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
           {/* Migrate to a group */}
           {mayMigrate && groups.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-primary-600/70 dark:text-primary-400/70 shrink-0" />
+              <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select value={groupId} onChange={e => setGroupId(e.target.value)} className={selectCls} disabled={busy !== null} aria-label={t('roster.bulk.toGroup', 'В группу')}>
                 <option value="">{t('roster.bulk.toGroup', 'В группу')}…</option>
                 {groups.map(g => (
@@ -160,7 +160,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
                 className={goCls}
                 title={t('roster.bulk.migrateToGroup', 'Перевести в группу')}
               >
-                {busy === 'group' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                {busy === 'group' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 {t('roster.bulk.toGroup', 'В группу')}
               </button>
             </div>
@@ -169,7 +169,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
           {/* Migrate to a branch — orgs without branches never see this */}
           {mayMigrate && branches.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-primary-600/70 dark:text-primary-400/70 shrink-0" />
+              <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select value={branchId} onChange={e => setBranchId(e.target.value)} className={selectCls} disabled={busy !== null} aria-label={t('roster.bulk.toBranch', 'В филиал')}>
                 <option value="">{t('roster.bulk.toBranch', 'В филиал')}…</option>
                 {branches.map(b => (
@@ -182,7 +182,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
                 className={goCls}
                 title={t('roster.bulk.migrateToBranch', 'Перевести в филиал')}
               >
-                {busy === 'branch' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                {busy === 'branch' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 {t('roster.bulk.toBranch', 'В филиал')}
               </button>
             </div>
@@ -192,9 +192,9 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
             <button
               onClick={() => setShowTuition(true)}
               disabled={busy !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 disabled:opacity-40 transition-colors shrink-0"
+              className="btn-secondary inline-flex items-center gap-1.5 disabled:opacity-40 shrink-0"
             >
-              <BadgePercent className="w-4 h-4" />
+              <BadgePercent className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               {t('roster.bulk.setTuition', 'Сумма оплаты')}
             </button>
           )}
@@ -203,19 +203,19 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
             <button
               onClick={() => setConfirmDelete(true)}
               disabled={busy !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/30 disabled:opacity-40 transition-colors shrink-0"
+              className="btn-secondary inline-flex items-center gap-1.5 !text-red-600 dark:!text-red-400 disabled:opacity-40 shrink-0"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               {t('common.delete', 'Удалить')}
             </button>
           )}
 
           <button
             onClick={onClear}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 shrink-0"
             title={t('common.cancel', 'Отмена')}
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -232,42 +232,42 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
 
       {confirmDelete && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4"
           onClick={() => { if (busy !== 'delete') setConfirmDelete(false); }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-pop border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
+            <div className="w-8 h-8 rounded-md bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-3">
+              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">
               {kind === 'student'
                 ? t('roster.bulk.deleteStudentsTitle', 'Удалить учеников?')
                 : t('roster.bulk.deleteTeachersTitle', 'Удалить преподавателей?')}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
               {t('roster.bulk.deleteCount', 'Будет удалено')}:{' '}
-              <span className="font-bold text-slate-900 dark:text-white">{uids.length}</span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">{uids.length}</span>
             </p>
-            <p className="text-xs text-slate-500 mb-6">
+            <p className="text-xs text-slate-500 mb-4">
               {t(
                 'roster.bulk.deleteDesc',
                 'Они будут исключены из организации и из всех групп. У кого есть вход в систему — аккаунт сохранится, удалится только связь с организацией. Действие необратимо.',
               )}
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => setConfirmDelete(false)}
                 disabled={busy === 'delete'}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 transition-colors"
+                className="btn-secondary flex-1 disabled:opacity-40"
               >
                 {t('common.cancel', 'Отмена')}
               </button>
               <button
                 onClick={remove}
                 disabled={busy === 'delete'}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 transition-colors"
+                className="btn-danger flex-1 inline-flex items-center justify-center gap-1.5 disabled:opacity-40"
               >
-                {busy === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {busy === 'delete' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 {t('common.delete', 'Удалить')}
               </button>
             </div>

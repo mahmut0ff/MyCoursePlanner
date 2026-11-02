@@ -15,7 +15,7 @@ import {
   CheckCircle2, Loader2, ExternalLink, X, Unlink, Bell,
   ClipboardList, CalendarX2, FileCheck2, GraduationCap, DoorOpen, BookOpen,
   Receipt, Wallet, Users, CalendarClock, CalendarSync,
-  UserPlus, Inbox, PhoneCall, AlertTriangle, TimerReset, Sunrise, BarChart3, UserMinus, Lightbulb,
+  UserPlus, PhoneCall, AlertTriangle, TimerReset, Sunrise, BarChart3, UserMinus, Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,14 +64,13 @@ const getRoleNotifications = (role: string): NotificationItem[] => {
       return [
         { Icon: Wallet, key: 'paymentReceived', text: 'Получение оплаты', tone: 'text-emerald-600' },
         { Icon: AlertTriangle, key: 'overdue', text: 'Просроченные платежи и должники', tone: 'text-rose-500' },
-        { Icon: Inbox, key: 'joinRequests', text: 'Заявки на вступление', tone: 'text-blue-500' },
         { Icon: UserPlus, key: 'newStudents', text: 'Новые студенты', tone: 'text-indigo-500' },
         { Icon: Users, key: 'groupEnrollments', text: 'Записи в группы', tone: 'text-sky-500' },
         { Icon: FileCheck2, key: 'hwSubmitted', text: 'Сдача домашних заданий', tone: 'text-emerald-500' },
         { Icon: PhoneCall, key: 'newLeads', text: 'Новые заявки и лиды', tone: 'text-fuchsia-500' },
         { Icon: Sunrise, key: 'morningDigest', text: 'Утренняя сводка по школе', tone: 'text-amber-500' },
         { Icon: BarChart3, key: 'weeklyDigest', text: 'Сводка за неделю', tone: 'text-violet-500' },
-        { Icon: AlertTriangle, key: 'atRisk', text: 'Ученики в зоне риска', tone: 'text-orange-500' },
+        { Icon: AlertTriangle, key: 'atRisk', text: 'Студенты в зоне риска', tone: 'text-orange-500' },
         { Icon: UserMinus, key: 'teamChanges', text: 'Изменения в команде', tone: 'text-slate-500' },
         { Icon: TimerReset, key: 'trialReminders', text: 'Напоминания о триале', tone: 'text-cyan-500' },
       ];
@@ -166,44 +165,46 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
         <button
           onClick={openModal}
           className={`
-            flex items-center w-full rounded-lg transition-all duration-200
-            bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/15
+            flex items-center w-full h-8 rounded-md transition-colors
+            text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50
             ${isCollapsed
-              ? 'gap-3 px-3 py-2 lg:justify-center lg:px-0 lg:w-12 lg:mx-auto'
-              : 'gap-2.5 px-3 py-2'
+              ? 'gap-2 px-1.5 lg:justify-center lg:px-0 lg:w-8 lg:mx-auto'
+              : 'gap-2 px-1.5'
             }
           `}
           title={t('telegram.connectedTitle', 'Telegram подключён')}
         >
-          <div className="relative shrink-0">
-            <TelegramIcon className="w-4 h-4" />
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full" />
-          </div>
-          <span className={`text-[12px] font-medium truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
+          {/* Brand colour lives only in the icon square, as with Dolboor's channel rows. */}
+          <span className="relative flex items-center justify-center w-5 h-5 shrink-0 rounded-md bg-[#229ED9] text-white">
+            <TelegramIcon className="w-3 h-3" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-slate-50 dark:ring-slate-800" />
+          </span>
+          <span className={`text-xs font-medium truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
             {t('telegram.connectedBadge', 'Подключено')}
           </span>
         </button>
       ) : (
-        /* ─── Not connected: glowing Telegram-blue CTA ─── */
+        /* ─── Not connected: a bordered row so it still reads as an invitation ─── */
         <button
           onClick={openModal}
           className={`
-            group flex items-center w-full rounded-xl transition-all duration-300
-            bg-[#229ED9] hover:bg-[#1e8ec4] text-white
-            shadow-[0_0_15px_rgba(34,158,217,0.4)] hover:shadow-[0_0_25px_rgba(34,158,217,0.6)]
-            telegram-glow-btn
+            group flex items-center w-full h-8 rounded-md transition-colors
+            border border-slate-200 bg-white text-slate-900 hover:bg-slate-100
+            dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-700/50
             ${isCollapsed
-              ? 'gap-3 px-3 py-2.5 lg:justify-center lg:px-0 lg:w-12 lg:mx-auto'
-              : 'gap-2.5 px-3 py-2.5'
+              ? 'gap-2 px-1.5 lg:justify-center lg:px-0 lg:w-8 lg:mx-auto'
+              : 'gap-2 px-1.5'
             }
           `}
           title={t('telegram.connectNotifications', 'Подключить Telegram-уведомления')}
         >
-          <TelegramIcon className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" />
-          <span className={`text-[12px] font-semibold truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
+          <span className="flex items-center justify-center w-5 h-5 shrink-0 rounded-md bg-[#229ED9] text-white">
+            <TelegramIcon className="w-3 h-3" />
+          </span>
+          <span className={`text-xs font-medium truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
             {t('telegram.notificationsShort', 'Уведомления')}
           </span>
-          <Bell className={`w-3 h-3 ml-auto opacity-60 group-hover:opacity-100 transition-opacity ${isCollapsed ? 'lg:hidden' : ''}`} />
+          <Bell className={`w-3 h-3 ml-auto text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors ${isCollapsed ? 'lg:hidden' : ''}`} />
         </button>
       )}
 
@@ -211,43 +212,40 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
       {modalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setModalOpen(false)}>
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/30" />
 
           {/* Modal */}
           <div
-            className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-[480px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Header gradient */}
-            <div className="bg-gradient-to-br from-[#229ED9] to-[#1a7fb8] px-6 py-5 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
-
+            <div className="px-4 pt-4 pb-2 pr-12 relative">
               <button
                 onClick={() => setModalOpen(false)}
-                className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
                 aria-label={t('common.close', 'Закрыть')}
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
 
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-sm">
-                  <TelegramIcon className="w-6 h-6" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 flex items-center justify-center shrink-0 rounded-md bg-[#229ED9] text-white">
+                  <TelegramIcon className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">{t('telegram.title', 'Telegram-уведомления')}</h2>
-                  <p className="text-sm text-white/70">{t('telegram.instantSubtitle', 'Мгновенные уведомления в Telegram')}</p>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('telegram.title', 'Telegram-уведомления')}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('telegram.instantSubtitle', 'Мгновенные уведомления в Telegram')}</p>
                 </div>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5">
+            <div className="px-4 pt-2 pb-4">
               {/* Status badge */}
               {isLinked && (
-                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 mb-4">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md px-3 py-2 mb-3">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                     {t('telegram.connectedActive', 'Telegram подключён — уведомления активны')}
                   </p>
@@ -255,13 +253,13 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
               )}
 
               {/* Notification list */}
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
                 {isLinked ? t('telegram.youReceive', 'Вы получаете:') : t('telegram.youWillReceive', 'Вы будете получать:')}
               </p>
-              <div className="space-y-1.5 mb-5 max-h-[42vh] overflow-y-auto -mr-2 pr-2">
+              <div className="mb-4 max-h-[42vh] overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-200 dark:divide-slate-700">
                 {notifications.map((n, i) => (
-                  <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                    <n.Icon className={`w-4 h-4 shrink-0 ${n.tone}`} />
+                  <div key={i} className="flex items-center gap-2.5 px-3 min-h-[36px] py-1.5">
+                    <n.Icon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                     <span className="text-[13px] text-slate-700 dark:text-slate-300">{t(`telegram.notify.${n.key}`, n.text)}</span>
                   </div>
                 ))}
@@ -269,9 +267,9 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
 
               {/* Recommendation */}
               {!isLinked && !linkData && (
-                <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 mb-5">
-                  <Lightbulb className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
-                  <p className="text-[13px] text-blue-700 dark:text-blue-400">
+                <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 mb-4">
+                  <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+                  <p className="text-[13px] text-slate-600 dark:text-slate-300">
                     <strong>{t('telegram.recommendTitle', 'Рекомендуем включить')}</strong> — {t('telegram.recommendText', 'вы не пропустите важные события и сможете реагировать мгновенно.')}
                   </p>
                 </div>
@@ -282,12 +280,12 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="w-full bg-[#229ED9] hover:bg-[#1e8ec4] disabled:opacity-50 text-white px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#229ED9]/25"
+                  className="btn-primary w-full inline-flex items-center justify-center gap-1.5"
                 >
                   {generating ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> {t('telegram.generatingCode', 'Генерация кода...')}</>
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('telegram.generatingCode', 'Генерация кода...')}</>
                   ) : (
-                    <><TelegramIcon className="w-4 h-4" /> {t('telegram.connectAction', 'Подключить Telegram')}</>
+                    <><TelegramIcon className="w-3.5 h-3.5" /> {t('telegram.connectAction', 'Подключить Telegram')}</>
                   )}
                 </button>
               )}
@@ -302,14 +300,14 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
                     href={linkData.deepLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-[#229ED9] hover:bg-[#1e8ec4] text-white px-4 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-[#229ED9]/25"
+                    className="btn-primary w-full inline-flex items-center justify-center gap-1.5"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                     {t('telegram.openBotUser', 'Открыть @{{bot}}', { bot: linkData.botUsername })}
                   </a>
                   <div className="flex items-center gap-2 justify-center">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#229ED9]" />
-                    <p className="text-xs text-slate-500">{t('telegram.waiting', 'Ожидание привязки... Код действует 15 минут.')}</p>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('telegram.waiting', 'Ожидание привязки... Код действует 15 минут.')}</p>
                   </div>
                 </div>
               )}
@@ -318,7 +316,7 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
               {isLinked && (
                 <button
                   onClick={handleUnlink}
-                  className="flex items-center justify-center gap-1.5 w-full text-sm text-slate-400 hover:text-rose-500 py-2 transition-colors"
+                  className="btn-ghost w-full inline-flex items-center justify-center gap-1.5 hover:text-red-600 dark:hover:text-red-400"
                 >
                   <Unlink className="w-3.5 h-3.5" />
                   {t('telegram.unlink', 'Отвязать Telegram')}

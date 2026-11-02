@@ -161,11 +161,11 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* System roles */}
       <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">{t('team.systemRoles', 'Системные роли')}</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('team.systemRoles', 'Системные роли')}</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
           {SYSTEM_ROLES.map(role => (
             <RoleCard
               key={role.id}
@@ -181,24 +181,24 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
       {/* Custom roles */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('team.customRoles', 'Свои роли')}</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('team.customRoles', 'Свои роли')}</h3>
           {isAdmin && (
-            <button onClick={openCreate} className="btn-primary !py-2 !px-3.5 text-sm inline-flex items-center gap-1.5">
-              <Plus className="w-4 h-4" /> {t('team.addRole', 'Создать роль')}
+            <button onClick={openCreate} className="btn-primary inline-flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" /> {t('team.addRole', 'Создать роль')}
             </button>
           )}
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /></div>
+          <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
         ) : roles.length === 0 ? (
-          <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
-            <Shield className="w-9 h-9 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+          <div className="text-center py-12 px-4 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+            <Shield className="w-6 h-6 mx-auto mb-2 text-slate-400 dark:text-slate-500" />
             <p className="text-sm text-slate-500">{t('team.noRoles', 'Пока нет своих ролей. Создайте первую, чтобы тонко настроить доступы.')}</p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {roles.map(role => (
               <RoleCard
                 key={role.id}
@@ -217,44 +217,44 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       {/* Editor drawer */}
       {open && (
         <>
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={close} />
-          <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-white dark:bg-slate-900 z-50 shadow-2xl flex flex-col animate-[slideIn_.2s_ease]">
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={close} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-pop z-50 flex flex-col animate-[slideIn_.2s_ease]">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${roleAccent(editing || { id: form.name, name: form.name })}1a` }}>
+                <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `${roleAccent(editing || { id: form.name, name: form.name })}1a` }}>
                   <Shield className="w-4 h-4" style={{ color: roleAccent(editing || { id: form.name, name: form.name }) }} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                     {viewOnly ? (editing?.name || t('team.viewRole', 'Просмотр роли')) : editing ? t('team.editRole', 'Изменить роль') : t('team.newRole', 'Новая роль')}
                   </h3>
-                  {viewOnly && <p className="text-[11px] text-slate-400">{t('team.readOnly', 'Только просмотр')}</p>}
+                  {viewOnly && <p className="text-xs text-slate-400">{t('team.readOnly', 'Только просмотр')}</p>}
                 </div>
               </div>
-              <button onClick={close} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"><X className="w-5 h-5" /></button>
+              <button onClick={close} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
               {/* Name + description */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="label text-xs">{t('team.roleName', 'Название')} <span className="text-red-500">*</span></label>
-                  <input className="input text-sm" value={form.name} disabled={viewOnly}
+                  <label className="label">{t('team.roleName', 'Название')} <span className="text-red-500">*</span></label>
+                  <input className="input" value={form.name} disabled={viewOnly}
                     onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('team.roleNamePh', 'напр. Администратор ресепшн')} />
                 </div>
                 <div>
-                  <label className="label text-xs">{t('team.roleDesc', 'Описание')}</label>
-                  <input className="input text-sm" value={form.description} disabled={viewOnly}
+                  <label className="label">{t('team.roleDesc', 'Описание')}</label>
+                  <input className="input" value={form.description} disabled={viewOnly}
                     onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('team.roleDescPh', 'Что может эта роль?')} />
                 </div>
               </div>
 
               {editing?.full ? (
-                <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/15 p-6 text-center">
-                  <ShieldCheck className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{t('team.fullAccess', 'Полный доступ')}</p>
+                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/15 p-4 text-center">
+                  <ShieldCheck className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{t('team.fullAccess', 'Полный доступ')}</p>
                   <p className="text-xs text-slate-500 mt-1">{t('team.fullAccessDesc', 'Администратор имеет неограниченный доступ. Права изменить нельзя.')}</p>
                 </div>
               ) : (
@@ -276,10 +276,10 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
             {/* Footer */}
             {!viewOnly && (
-              <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-slate-200 dark:border-slate-700">
-                <button onClick={close} className="btn-secondary !py-2 text-sm">{t('common.cancel', 'Отмена')}</button>
-                <button onClick={handleSave} disabled={saving} className="btn-primary !py-2 text-sm inline-flex items-center gap-1.5">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+                <button onClick={close} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
+                <button onClick={handleSave} disabled={saving} className="btn-primary inline-flex items-center gap-1.5">
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                   {t('common.save', 'Сохранить')}
                 </button>
               </div>
@@ -304,30 +304,30 @@ const RoleCard: React.FC<{
   const { t } = useTranslation();
   const accent = roleAccent(role);
   return (
-    <button onClick={onClick} className="card text-left p-4 group relative hover:border-primary-400 dark:hover:border-primary-500/60 transition-colors">
+    <button onClick={onClick} className="card text-left p-3 group relative hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${accent}1a` }}>
+        <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style={{ background: `${accent}1a` }}>
           <Shield className="w-4 h-4" style={{ color: accent }} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-sm text-slate-900 dark:text-white truncate">{role.name}</span>
+            <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">{role.name}</span>
             {role.isSystem && <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
           </div>
-          {role.description && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{role.description}</p>}
+          {role.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{role.description}</p>}
         </div>
       </div>
       <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-2 min-w-0">
           {full ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               <ShieldCheck className="w-3.5 h-3.5" /> {t('team.fullAccess', 'Полный доступ')}
             </span>
           ) : (
-            <span className="text-[11px] text-slate-500"><strong className="text-slate-700 dark:text-slate-300">{count}</strong> {t('team.permissions', 'прав')}</span>
+            <span className="text-xs text-slate-500"><strong className="font-medium tabular-nums text-slate-700 dark:text-slate-300">{count}</strong> {t('team.permissions', 'прав')}</span>
           )}
           {memberCount !== undefined && memberCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 border-l border-slate-200 dark:border-slate-700 pl-2">
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500 border-l border-slate-200 dark:border-slate-700 pl-2">
               <Users className="w-3 h-3" /> {memberCount}
             </span>
           )}
@@ -340,7 +340,7 @@ const RoleCard: React.FC<{
               onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDuplicate(); } }}
               title={t('team.duplicate', 'Дублировать')}
-              className="p-1 rounded-md text-slate-300 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
             >
               <Copy className="w-3.5 h-3.5" />
             </span>
@@ -352,7 +352,7 @@ const RoleCard: React.FC<{
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(); } }}
               title={t('common.delete', 'Удалить')}
-              className="p-1 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </span>

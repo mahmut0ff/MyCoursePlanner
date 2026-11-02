@@ -35,15 +35,15 @@ const AdminUsersPage: React.FC = () => {
   return (
     <div>
       <div>
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.users.title')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{data.total} {t('admin.users.subtitle')}</p>
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('admin.users.title')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs">{data.total} {t('admin.users.subtitle')}</p>
         </div>
 
         <div className="flex flex-wrap gap-3 mb-4">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder={t('admin.users.search')} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-8" placeholder={t('admin.users.search')} />
           </div>
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.users.allRoles')}</option>
@@ -54,24 +54,24 @@ const AdminUsersPage: React.FC = () => {
           </select>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-700/50 border-b"><tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.user')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.role')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.organization')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.status')}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.created')}</th>
+            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><tr>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.users.user')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.users.role')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.users.organization')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.users.status')}</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.users.created')}</th>
             </tr></thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {data.users.map((u) => (
-                <tr key={u.uid} className="hover:bg-slate-50 dark:bg-slate-700/50 cursor-pointer" onClick={() => navigate(`/admin/users/${u.uid}`)}>
-                  <td className="px-4 py-3">
+                <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer" onClick={() => navigate(`/admin/users/${u.uid}`)}>
+                  <td className="px-3 py-2">
                     <div className="flex items-center gap-3">
                       {u.avatarUrl ? (
-                         <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 shrink-0" />
+                         <img src={u.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-100 dark:bg-slate-700 shrink-0" />
                       ) : (
-                         <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-xs font-bold text-primary-700 dark:text-primary-400 shrink-0">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
+                         <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
                       )}
                       <div>
                         <p className="text-sm font-medium text-slate-900 dark:text-white">{u.displayName}</p>
@@ -79,10 +79,10 @@ const AdminUsersPage: React.FC = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[u.role] || ''}`}>{u.role}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{u.organizationName || '—'}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${u.disabled ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{u.disabled ? t('common.disabled') : t('common.active')}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${ROLE_COLORS[u.role] || ''}`}>{u.role}</span></td>
+                  <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{u.organizationName || '—'}</td>
+                  <td className="px-3 py-2"><span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${u.disabled ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{u.disabled ? t('common.disabled') : t('common.active')}</span></td>
+                  <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
               {data.users.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">{loading ? t('common.loading') : t('admin.users.noUsers')}</td></tr>}

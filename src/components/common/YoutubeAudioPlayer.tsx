@@ -22,7 +22,7 @@ const YoutubeAudioPlayer: React.FC<Props> = ({ youtubeUrl }) => {
   if (!videoId) return null;
 
   return (
-    <div className="bg-slate-100 border border-slate-300 w-full overflow-hidden aspect-video relative flex-shrink-0">
+    <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg w-full overflow-hidden aspect-video relative flex-shrink-0">
       <iframe
         className="absolute top-0 left-0 w-full h-full"
         src={`https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1`}

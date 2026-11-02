@@ -832,14 +832,14 @@ const SchedulePage: React.FC = () => {
     return (
       <div
         key={lesson.id}
-        className={`group/card relative flex-1 min-h-0 rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
+        className={`group/card relative flex-1 min-h-0 rounded-md p-2 border transition-colors overflow-hidden ${
           canEdit ? 'cursor-grab active:cursor-grabbing' : ''
-        } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
+        } ${isBeingDragged ? 'opacity-30 scale-95' : ''} ${
           ongoing
-            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
+            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-300 dark:border-rose-800/60'
             : isSelected
-              ? 'bg-slate-100 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 ring-2 ring-slate-400/30'
-              : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600'
+              ? 'bg-slate-50 dark:bg-slate-700/40 border-primary-500 ring-2 ring-primary-500/20'
+              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
         }`}
         draggable={canEdit}
         onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
@@ -849,14 +849,14 @@ const SchedulePage: React.FC = () => {
         onContextMenu={(e) => handleContextMenu(e, lesson, true)}
       >
         {/* Left accent bar */}
-        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-slate-900 dark:bg-white/80" />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary-500" />
 
         {/* Action buttons */}
         <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
           {canEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+              className="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors"
               title={t('schedule.copy', 'Копировать')}
             >
               <Copy className="w-3 h-3" />
@@ -866,7 +866,7 @@ const SchedulePage: React.FC = () => {
             onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
             title={t('common.delete', 'Удалить')}
             aria-label={t('common.delete', 'Удалить')}
-            className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
+            className="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -874,20 +874,20 @@ const SchedulePage: React.FC = () => {
 
         {/* Content */}
         <div className="pl-2 min-w-0 overflow-hidden">
-          <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
-          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug truncate pr-8">{lesson.title}</p>
+          <span className={`text-[11px] font-medium tabular-nums inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
             <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
           </span>
           {/* Кабинет назван в шапке таблицы — в плитке он был бы повтором,
               кроме случая единственной таблицы «без кабинета». */}
           {bare && roomLabel(lesson) && (
-            <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
+            <span className="text-[11px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
               <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
               <span className="truncate">{roomLabel(lesson)}</span>
             </span>
           )}
           {lesson.teacherName && (
-            <span className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+            <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
               {lesson.teacherName}
             </span>
           )}
@@ -938,33 +938,33 @@ const SchedulePage: React.FC = () => {
       : null;
 
     return (
-      <div key={section.key} className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm">
+      <div key={section.key} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
         {!bare && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); toggleRoom(section.key, open); }}
             aria-expanded={open}
-            className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+            className="w-full flex items-center gap-2 h-10 px-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
           >
-            <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${open ? '' : '-rotate-90'}`} />
-            <MapPin className="w-4 h-4 shrink-0 text-slate-400" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{sectionTitle(section)}</span>
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{sectionTitle(section)}</span>
             {section.classroom?.capacity ? (
-              <span className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
                 {section.classroom.capacity} {t('classrooms.seatsShort', 'мест')}
               </span>
             ) : null}
             {branchName && (
-              <span className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">· {branchName}</span>
+              <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 truncate">· {branchName}</span>
             )}
             {section.kind === 'legacy' && (
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <span className="shrink-0 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                 {t('classrooms.notInCatalog', 'не из справочника')}
               </span>
             )}
-            <span className={`ml-auto shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+            <span className={`ml-auto shrink-0 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium tabular-nums ${
               section.events.length
-                ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300'
+                ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 : 'text-slate-500 dark:text-slate-400'
             }`}>
               {section.events.length || t('classrooms.noLessons', 'нет занятий')}
@@ -975,9 +975,9 @@ const SchedulePage: React.FC = () => {
         {open && (
           <>
             {/* ── Шапка таблицы: дни недели ── */}
-            <div className={`grid ${GRID_COLS} ${bare ? 'border-b' : 'border-y'} border-slate-200 dark:border-slate-700/60`}>
+            <div className={`grid ${GRID_COLS} ${bare ? 'border-b' : 'border-y'} border-slate-200 dark:border-slate-700`}>
               {/* Колонка времени */}
-              <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-center">
+              <div className="px-1 py-1.5 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
               </div>
               {dayNames.map((dayName, dayIdx) => {
@@ -986,15 +986,15 @@ const SchedulePage: React.FC = () => {
                 return (
                   <div
                     key={dayIdx}
-                    className={`px-2 py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 transition-colors
-                      ${isDropTarget ? 'bg-slate-100 dark:bg-slate-700/30' : isToday ? 'bg-slate-100 dark:bg-slate-700/30' : 'bg-slate-50/50 dark:bg-slate-800/40'}`}
+                    className={`px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-700 last:border-r-0 transition-colors
+                      ${isDropTarget ? 'bg-slate-100 dark:bg-slate-700/40' : isToday ? 'bg-primary-50 dark:bg-primary-950/40' : 'bg-slate-50 dark:bg-slate-800'}`}
                     onDragOver={(e) => handleDragOverDay(e, dayIdx, section.key)}
                     onDragLeave={handleDragLeaveDay}
                     onDrop={(e) => handleDropOnDay(e, dayIdx, section)}
                   >
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{dayNamesFull[dayIdx]}</p>
-                    <p className={`text-sm font-black mt-0.5 ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{dayName}</p>
-                    {isToday && <span className="inline-block mt-1 text-[8px] font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 px-1.5 py-px rounded-full">{t('schedule.today', 'Сегодня')}</span>}
+                    <p className={`text-[11px] font-medium ${isToday ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}>{dayNamesFull[dayIdx]}</p>
+                    <p className={`text-xs font-medium ${isToday ? 'text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>{dayName}</p>
+                    {isToday && <span className="inline-flex items-center mt-0.5 h-4 px-1 rounded text-[10px] font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">{t('schedule.today', 'Сегодня')}</span>}
                   </div>
                 );
               })}
@@ -1003,17 +1003,17 @@ const SchedulePage: React.FC = () => {
             {/* ── Тело таблицы: строка = время начала ── */}
             <div>
               {gridRows.map((row, rowIdx) => (
-                <div key={row.startMins ?? 'untimed'} className={`grid ${GRID_COLS} border-b border-slate-100 dark:border-slate-700/30 last:border-b-0`}>
+                <div key={row.startMins ?? 'untimed'} className={`grid ${GRID_COLS} border-b border-slate-200 dark:border-slate-700 last:border-b-0`}>
                   {/* Время строки. Конец подписан, только когда он общий у всех
                       занятий этого звонка — иначе строка врала бы про длительность. */}
-                  <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col items-center justify-center leading-none gap-0.5">
+                  <div className="border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex flex-col items-center justify-center leading-none gap-0.5">
                     {row.startMins === null ? (
-                      <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600">—</span>
+                      <span className="text-[11px] font-semibold text-slate-300 dark:text-slate-600">—</span>
                     ) : (
                       <>
-                        <span className="text-[11px] font-black tabular-nums text-slate-600 dark:text-slate-300">{minsToTime(row.startMins)}</span>
+                        <span className="text-[11px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">{minsToTime(row.startMins)}</span>
                         {row.endMins !== null && (
-                          <span className="text-[9px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">{minsToTime(row.endMins)}</span>
+                          <span className="text-[10px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">{minsToTime(row.endMins)}</span>
                         )}
                       </>
                     )}
@@ -1030,7 +1030,7 @@ const SchedulePage: React.FC = () => {
                     return (
                       <div
                         key={dayIdx}
-                        className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
+                        className={`relative border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
                           ${isDropTarget ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}
                           ${addHere ? 'group/cell cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/20' : ''}`}
                         onDragOver={(e) => handleDragOverDay(e, dayIdx, section.key)}
@@ -1044,7 +1044,7 @@ const SchedulePage: React.FC = () => {
                           </div>
                         ) : isDropTarget ? (
                           <div className="h-full flex items-center justify-center">
-                            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
+                            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
                               <Plus className="w-3.5 h-3.5" />{t('schedule.dropHere', 'Сюда')}
                             </div>
                           </div>
@@ -1064,9 +1064,9 @@ const SchedulePage: React.FC = () => {
 
             {/* ── Paste / Add strip: новое время, которого в оси ещё нет ── */}
             {canEdit && !isDragging && (
-              <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
                 <div className={`grid ${GRID_COLS}`}>
-                  <div className="border-r border-slate-100 dark:border-slate-700/50" />
+                  <div className="border-r border-slate-200 dark:border-slate-700" />
                   {dayNames.map((_, dayIdx) => (
                     <button
                       key={dayIdx}
@@ -1080,7 +1080,7 @@ const SchedulePage: React.FC = () => {
                           clipboard?.event.startTime || nextFreeStart(dayIdx, undefined, section),
                         );
                       }}
-                      className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
+                      className={`border-r border-slate-200 dark:border-slate-700 last:border-r-0 h-8 flex items-center justify-center gap-1 text-xs font-medium transition-colors ${
                         clipboard
                           ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/30'
@@ -1105,14 +1105,14 @@ const SchedulePage: React.FC = () => {
     const ongoing = isEventOngoing(ev, false);
     return (
       <div key={ev.id} style={{ top: `${top}px`, minHeight: '30px', left: styleProps?.left || '2px', width: styleProps?.width || 'calc(100% - 4px)' }}
-        className={`absolute rounded-md px-1.5 py-0.5 text-[9px] leading-tight group shadow-sm transition-all ${
+        className={`absolute rounded-md px-1.5 py-0.5 text-[10px] leading-tight group transition-all ${
           canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-        } ${isSelected ? 'ring-2 ring-slate-400 ring-offset-1 dark:ring-offset-slate-800' : ''} ${
-          ongoing 
-            ? 'bg-rose-500 dark:bg-rose-600 text-white border border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-[pulse_3s_ease-in-out_infinite]' 
+        } ${isSelected ? 'ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-slate-800' : ''} ${
+          ongoing
+            ? 'bg-rose-500 dark:bg-rose-600 text-white border border-rose-500'
             : isExam
-            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30'
-            : 'bg-slate-100 dark:bg-slate-700/40 text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-slate-600/30'
+            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50'
+            : 'bg-slate-100 dark:bg-slate-700/40 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600/50'
         }`}
         draggable={canEdit}
         onDragStart={(e) => handleEventDragStart(e, ev)}
@@ -1123,7 +1123,7 @@ const SchedulePage: React.FC = () => {
       >
         <div className="flex items-center justify-between">
           {canEdit && <GripVertical className="w-2 h-2 opacity-0 group-hover:opacity-40 mr-0.5 flex-shrink-0" />}
-          <span className="font-bold truncate flex-1">{ev.title}</span>
+          <span className="font-semibold truncate flex-1">{ev.title}</span>
           <button onClick={(e) => { e.stopPropagation(); handleDelete(ev.id, false); }} title={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
         </div>
         <div className="flex items-center gap-1.5 text-[8px] opacity-80 min-w-0">
@@ -1137,17 +1137,17 @@ const SchedulePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" onClick={() => setSelectedEvent(null)}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    <div className="space-y-4" onClick={() => setSelectedEvent(null)}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             {t('nav.schedule')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mt-1">{t('org.schedule.subtitle', 'Расписание занятий, экзаменов и мероприятий')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-lg">{t('org.schedule.subtitle', 'Расписание занятий, экзаменов и мероприятий')}</p>
           {/* Данные на экране из прошлого ответа — говорим, что сверяемся с сервером.
               Спиннер во весь экран здесь был бы обманом: показывать уже есть что. */}
           {refreshing && !loading && (
-            <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <RefreshCw className="w-3 h-3 animate-spin" />
               {t('schedule.refreshing', 'Обновляем…')}
             </span>
@@ -1155,19 +1155,19 @@ const SchedulePage: React.FC = () => {
         </div>
 
         {/* Modern Tabs */}
-        <div className="flex shrink-0 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="flex shrink-0 gap-1">
           <button
             onClick={() => setActiveTab('timetable')}
-            className={`px-3.5 py-1.5 text-[13px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'timetable' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+            className={`h-7 px-2 text-sm rounded-md transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'timetable' ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
           >
-            <Repeat className="w-4 h-4 shrink-0" />
+            <Repeat className="w-3.5 h-3.5 shrink-0" />
             {t('schedule.timetableTab', 'Расписание уроков')}
           </button>
           <button
             onClick={() => setActiveTab('events')}
-            className={`px-3.5 py-1.5 text-[13px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'events' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+            className={`h-7 px-2 text-sm rounded-md transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'events' ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
           >
-            <Calendar className="w-4 h-4 shrink-0" />
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
             {t('schedule.eventsTab', 'События и экзамены')}
           </button>
         </div>
@@ -1178,14 +1178,14 @@ const SchedulePage: React.FC = () => {
           {roomSections.length > 1 && (
             <label className="flex items-center gap-1.5 shrink-0">
               <span className="sr-only">{t('schedule.filterByClassroom', 'Фильтр по кабинету')}</span>
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select
                 value={classroomFilter}
                 onChange={(e) => setClassroomFilter(e.target.value)}
-                className={`text-[13px] font-semibold rounded-xl border px-2.5 py-1.5 bg-white dark:bg-slate-800 transition-colors ${
+                className={`input w-auto transition-colors ${
                   classroomFilter
-                    ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                    ? '!border-primary-500 text-slate-900 dark:text-slate-100'
+                    : 'text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <option value="">{t('classrooms.all', 'Все кабинеты')}</option>
@@ -1199,12 +1199,12 @@ const SchedulePage: React.FC = () => {
           {canEdit && clipboard && (
             <button
               onClick={() => setShowPasteModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-bold rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all shadow-sm group"
+              className="btn-secondary inline-flex items-center gap-1.5 group"
               title={t('schedule.pasteHint', 'Ctrl+V — Вставить')}
             >
-              <Clipboard className="w-4 h-4 shrink-0" />
+              <Clipboard className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="truncate max-w-[110px]">{clipboard.event.title}</span>
-              <kbd className="hidden sm:inline text-[9px] px-1.5 py-0.5 bg-emerald-200/50 dark:bg-emerald-800/50 rounded font-mono">Ctrl+V</kbd>
+              <kbd className="hidden sm:inline-flex items-center h-5 text-[11px] px-1 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded font-mono">Ctrl+V</kbd>
               <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setClipboard(null); }} />
             </button>
           )}
@@ -1222,14 +1222,14 @@ const SchedulePage: React.FC = () => {
                 })));
                 setAiReviewOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm shrink-0"
+              className="btn-secondary inline-flex items-center gap-1.5 shrink-0"
               title={t('schedule.aiReviewTitle', 'AI-анализ расписания')}
             >
-              <Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">{t('schedule.aiReview', 'AI-анализ')}</span>
+              <Sparkles className="w-3.5 h-3.5 shrink-0" /><span className="hidden sm:inline">{t('schedule.aiReview', 'AI-анализ')}</span>
             </button>
           )}
-          <button onClick={() => openCreate()} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[13px] font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0 justify-center">
-            <Plus className="w-4 h-4 shrink-0" />{t('org.schedule.addEvent', 'Добавить')}
+          <button onClick={() => openCreate()} className="btn-primary inline-flex items-center gap-1.5 shrink-0 justify-center">
+            <Plus className="w-3.5 h-3.5 shrink-0" />{t('org.schedule.addEvent', 'Добавить')}
           </button>
         </div>
       </div>
@@ -1237,13 +1237,13 @@ const SchedulePage: React.FC = () => {
       <ScheduleReviewModal open={aiReviewOpen} onClose={() => setAiReviewOpen(false)} events={aiEvents} />
 
       {error && (
-        <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 flex flex-wrap items-center justify-between gap-3">
+        <div className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400 flex flex-wrap items-center justify-between gap-3">
           <span>{error}</span>
           {conflictRetry && canEdit && (
             <button
               onClick={() => (conflictRetry === 'paste' ? handlePaste(true) : handleCreate(true))}
               disabled={saving}
-              className="shrink-0 px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+              className="btn-danger shrink-0"
             >
               {t('schedule.forceCreate', 'Поставить всё равно')}
             </button>
@@ -1253,31 +1253,31 @@ const SchedulePage: React.FC = () => {
 
       {/* Week Navigator — only for Events tab */}
       {activeTab === 'events' && (
-        <div className="flex items-center gap-3">
-          <button onClick={prevWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
-          <button onClick={() => setCurrent(new Date())} className="px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors">{t('org.schedule.today', 'Сегодня')}</button>
-          <button onClick={nextWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
-          <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString(numericDateLocale())} — {weekDays[6].toLocaleDateString(numericDateLocale())}</span>
+        <div className="flex items-center gap-1">
+          <button onClick={prevWeek} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronLeft className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setCurrent(new Date())} className="btn-secondary">{t('org.schedule.today', 'Сегодня')}</button>
+          <button onClick={nextWeek} className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronRight className="w-3.5 h-3.5" /></button>
+          <span className="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-300 ml-2">{weekDays[0].toLocaleDateString(numericDateLocale())} — {weekDays[6].toLocaleDateString(numericDateLocale())}</span>
         </div>
       )}
 
-      {loading ? <div className="flex justify-center py-32"><div className="w-8 h-8 border-2 border-slate-300 dark:border-slate-600 rounded-full animate-spin border-t-slate-900 dark:border-t-white" /></div> : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {loading ? <div className="flex justify-center py-24"><div className="w-6 h-6 border-2 border-slate-300 dark:border-slate-600 rounded-full animate-spin border-t-slate-900 dark:border-t-white" /></div> : (
+        <div className="animate-in fade-in duration-300">
           
           {/* ============================================== */}
           {/* TAB 1: TIMETABLE VIEW — BY DAY OF WEEK         */}
           {/* ============================================== */}
           {activeTab === 'timetable' && (roomSections.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl py-16 flex flex-col items-center justify-center text-center shadow-sm">
-              <Calendar className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-3" />
-              <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-12 flex flex-col items-center justify-center text-center">
+              <Calendar className="w-6 h-6 text-slate-400 mb-2" />
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t('schedule.noLessons', 'Нет занятий')}</p>
             </div>
           ) : (
             <div className="space-y-3">
               {visibleSections.map((section) => renderRoomSection(section, bareTimetable, timeRows))}
               {visibleSections.length === 0 && (
-                <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl py-12 text-center shadow-sm">
-                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-10 text-center">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('schedule.noLessons', 'Нет занятий')}</p>
                 </div>
               )}
             </div>
@@ -1294,31 +1294,31 @@ const SchedulePage: React.FC = () => {
                   const isToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr;
                   return (
                     <button key={i} onClick={() => { setMobileView('day'); setSelectedDay(i); }}
-                      className={`flex flex-col items-center px-4 py-2.5 rounded-2xl text-xs font-medium shrink-0 transition-all ${selectedDay === i && mobileView === 'day' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : isToday ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-white ring-1 ring-slate-300 dark:ring-slate-600' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}>
-                      <span className="text-[10px] uppercase font-bold">{dayNames[i]}</span>
-                      <span className="text-lg font-black mt-0.5">{d.getDate()}</span>
+                      className={`flex flex-col items-center px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-colors ${selectedDay === i && mobileView === 'day' ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100' : isToday ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-primary-500' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                      <span className="text-[11px] font-medium">{dayNames[i]}</span>
+                      <span className="text-base font-semibold tabular-nums">{d.getDate()}</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Desktop Grid View */}
-              <div className="hidden sm:block bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm">
-                <div className="grid grid-cols-8 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
-                  <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50" />
+              <div className="hidden sm:block bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                  <div className="px-1 py-1.5 border-r border-slate-200 dark:border-slate-700" />
                   {weekDays.map((d, i) => {
                     const isToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr;
                     return (
-                      <div key={i} className={`px-1 py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-0 ${isToday ? 'bg-amber-50/50 dark:bg-amber-900/10 shadow-inner' : ''}`}>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{dayNames[i]}</p>
-                        <p className={`text-sm font-black mt-0.5 ${isToday ? 'text-amber-600 dark:text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>{d.getDate()}</p>
+                      <div key={i} className={`px-1 py-1.5 text-center border-r border-slate-200 dark:border-slate-700 last:border-0 ${isToday ? 'bg-primary-50 dark:bg-primary-950/40' : ''}`}>
+                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{dayNames[i]}</p>
+                        <p className={`text-sm font-semibold tabular-nums ${isToday ? 'text-primary-700 dark:text-primary-300' : 'text-slate-700 dark:text-slate-200'}`}>{d.getDate()}</p>
                       </div>
                     );
                   })}
                 </div>
                 <div className="grid grid-cols-8 relative" style={{ minHeight: '480px' }}>
-                  <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/30">
-                    {HOURS.map((h) => <div key={h} className="h-12 flex items-start justify-end pr-2 pt-1"><span className="text-[10px] font-medium text-slate-400">{h}:00</span></div>)}
+                  <div className="border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+                    {HOURS.map((h) => <div key={h} className="h-12 flex items-start justify-end pr-2 pt-1"><span className="text-[11px] font-medium tabular-nums text-slate-400">{h}:00</span></div>)}
                   </div>
                   {weekDays.map((day, di) => {
                     const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -1327,7 +1327,7 @@ const SchedulePage: React.FC = () => {
                     return (
                       <div
                         key={di}
-                        className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors ${isDropCol ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}`}
+                        className={`relative border-r border-slate-200 dark:border-slate-700 last:border-0 transition-colors ${isDropCol ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}`}
                         onDragOver={(e) => handleEventDragOverCell(e, di)}
                         onDragLeave={handleEventDragLeaveCell}
                         onDrop={(e) => handleDropOnCell(e, di)}
@@ -1337,7 +1337,7 @@ const SchedulePage: React.FC = () => {
                           return (
                             <div
                               key={h}
-                              className={`h-12 border-b border-slate-50 dark:border-slate-700/30 transition-colors ${isDropHourTarget ? 'bg-slate-200/50 dark:bg-slate-600/20' : ''}`}
+                              className={`h-12 border-b border-slate-100 dark:border-slate-700/40 transition-colors ${isDropHourTarget ? 'bg-slate-200/50 dark:bg-slate-600/20' : ''}`}
                               onDragOver={(e) => handleEventDragOverCell(e, di, h)}
                               onDrop={(e) => handleDropOnCell(e, di, h)}
                             />
@@ -1407,9 +1407,9 @@ const SchedulePage: React.FC = () => {
 
                 {/* ── Paste / Add strip ── */}
                 {canEdit && !isDragging && (
-                  <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                  <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
                     <div className="grid grid-cols-8">
-                      <div className="border-r border-slate-100 dark:border-slate-700/50" />
+                      <div className="border-r border-slate-200 dark:border-slate-700" />
                       {weekDays.map((d, di) => {
                         const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         return (
@@ -1430,7 +1430,7 @@ const SchedulePage: React.FC = () => {
                                 openCreate({ date: dayStr, startTime: nextFreeStart(appDayOfWeek(dayStr), dayStr) });
                               }
                             }}
-                            className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
+                            className={`border-r border-slate-200 dark:border-slate-700 last:border-r-0 h-8 flex items-center justify-center gap-1 text-xs font-medium transition-colors ${
                               clipboard
                                 ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/30'
@@ -1447,36 +1447,36 @@ const SchedulePage: React.FC = () => {
               </div>
 
               {/* Mobile List View */}
-              <div className="sm:hidden space-y-3 mt-4">
+              <div className="sm:hidden space-y-2 mt-3">
                 {(() => {
                   const dDay = weekDays[selectedDay];
                   const dayStr = dDay ? `${dDay.getFullYear()}-${String(dDay.getMonth() + 1).padStart(2, '0')}-${String(dDay.getDate()).padStart(2, '0')}` : '';
                   const dayEvents = visibleCalendar.filter((e) => e.date === dayStr && !(e as any).recurring);
                   
                   if (dayEvents.length === 0) return (
-                    <div className="bg-white/50 dark:bg-slate-800/30 border border-amber-200/50 dark:border-slate-700/50 rounded-3xl p-10 text-center backdrop-blur-sm">
-                      <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                      <p className="text-sm font-bold text-slate-500">{t('org.schedule.noEvents', 'Нет событий на этот день')}</p>
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-8 text-center">
+                      <Calendar className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('org.schedule.noEvents', 'Нет событий на этот день')}</p>
                     </div>
                   );
                   
                   return dayEvents.map((ev) => (
                     <div
                       key={ev.id}
-                      className={`bg-white dark:bg-slate-800 border rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm ${ev.type === 'exam' ? 'border-amber-200 dark:border-amber-800/40 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700'}`}
+                      className={`bg-white dark:bg-slate-800 border rounded-lg p-3 flex items-center justify-between gap-3 ${ev.type === 'exam' ? 'border-amber-200 dark:border-amber-800/40' : 'border-slate-200 dark:border-slate-700'}`}
                       onContextMenu={(e) => handleContextMenu(e, ev, false)}
                     >
-                      <div className="flex items-center gap-3 w-full">
-                        <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 ${ev.type === 'exam' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                          <Calendar className="w-5 h-5" />
+                      <div className="flex items-center gap-2 w-full">
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${ev.type === 'exam' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                          <Calendar className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-white text-[13px] truncate">{ev.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{ev.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400 flex items-center gap-1">
                               <Clock className="w-3 h-3"/> {ev.startTime}
                             </span>
-                            <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${ev.type === 'exam' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                            <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${ev.type === 'exam' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>
                               {ev.type === 'exam' ? t('org.schedule.typeExam', 'Экзамен') : t('org.schedule.typeOther', 'Другое')}
                             </span>
                           </div>
@@ -1486,13 +1486,13 @@ const SchedulePage: React.FC = () => {
                         {canEdit && (
                           <button
                             onClick={() => handleCopy(ev)}
-                            className="p-2 bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-white dark:hover:text-slate-900 rounded-xl transition-all shadow-sm"
+                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
                           >
-                            <Copy className="w-4 h-4" />
+                            <Copy className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(ev.id, false)} title={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
-                          <Trash2 className="w-4 h-4" />
+                        <button onClick={() => handleDelete(ev.id, false)} title={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 rounded-md transition-colors shrink-0">
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1509,23 +1509,23 @@ const SchedulePage: React.FC = () => {
       {contextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed z-[100] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/50 py-2 px-1 min-w-[180px] animate-in zoom-in-95 fade-in duration-150"
+          className="fixed z-[100] bg-white dark:bg-slate-800 rounded-lg shadow-pop border border-slate-200 dark:border-slate-700 p-1 min-w-[180px] animate-in fade-in duration-150"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button
             onClick={() => openEdit(contextMenu.event, contextMenu.isTimetable)}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+            className="flex items-center gap-2 w-full h-8 px-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-md transition-colors"
           >
-            <Pencil className="w-4 h-4 text-slate-500" />
+            <Pencil className="w-3.5 h-3.5 text-slate-500" />
             {t('common.edit', 'Изменить')}
           </button>
           <button
             onClick={() => handleCopy(contextMenu.event)}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+            className="flex items-center gap-2 w-full h-8 px-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-md transition-colors"
           >
-            <Copy className="w-4 h-4 text-slate-500" />
+            <Copy className="w-3.5 h-3.5 text-slate-500" />
             {t('schedule.copy', 'Копировать')}
-            <kbd className="ml-auto text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono text-slate-400">Ctrl+C</kbd>
+            <kbd className="ml-auto inline-flex items-center h-5 text-[11px] px-1 border border-slate-200 dark:border-slate-700 rounded font-mono text-slate-400">Ctrl+C</kbd>
           </button>
           {clipboard && (
             <button
@@ -1550,22 +1550,22 @@ const SchedulePage: React.FC = () => {
                 }
                 setShowPasteModal(true);
               }}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+              className="flex items-center gap-2 w-full h-8 px-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-md transition-colors"
             >
-              <Clipboard className="w-4 h-4 text-emerald-500" />
+              <Clipboard className="w-3.5 h-3.5 text-emerald-500" />
               {t('schedule.paste', 'Вставить')}
-              <kbd className="ml-auto text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono text-slate-400">Ctrl+V</kbd>
+              <kbd className="ml-auto inline-flex items-center h-5 text-[11px] px-1 border border-slate-200 dark:border-slate-700 rounded font-mono text-slate-400">Ctrl+V</kbd>
             </button>
           )}
-          <div className="my-1 border-t border-slate-100 dark:border-slate-700/50" />
+          <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
           <button
             onClick={() => {
               handleDelete(contextMenu.event.id, contextMenu.isTimetable);
               setContextMenu(null);
             }}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+            className="flex items-center gap-2 w-full h-8 px-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
             {t('common.delete', 'Удалить')}
           </button>
         </div>
@@ -1573,23 +1573,23 @@ const SchedulePage: React.FC = () => {
 
       {/* ═══ Paste Modal ═══ */}
       {showPasteModal && clipboard && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowPasteModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <Clipboard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowPasteModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-[480px] shadow-pop border border-slate-200 dark:border-slate-700 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center justify-center">
+                <Clipboard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {t('schedule.pasteTitle', 'Вставить занятие')}
                 </h2>
-                <p className="text-sm text-slate-500 truncate max-w-[250px]">{clipboard.event.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[250px]">{clipboard.event.title}</p>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                {branches.length > 1 && <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>}
+                {branches.length > 1 && <label className="label">{t('common.branch', 'Филиал')}</label>}
                 <BranchFilter 
                   value={pasteForm.branchId || null} 
                   onChange={(val) => setPasteForm(f => ({ ...f, branchId: val || undefined }))} 
@@ -1599,16 +1599,16 @@ const SchedulePage: React.FC = () => {
 
               {activeTab === 'timetable' ? (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <label className="label">{t('schedule.dayOfWeek', 'День недели')}</label>
+                  <div className="grid grid-cols-7 gap-1">
                     {dayNames.map((name, i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => setPasteForm(f => ({ ...f, dayOfWeek: i }))}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${pasteForm.dayOfWeek === i
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-500/20 scale-105'
-                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'
+                        className={`h-7 rounded-md text-sm transition-colors ${pasteForm.dayOfWeek === i
+                          ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                         }`}
                       >
                         {name}
@@ -1618,31 +1618,31 @@ const SchedulePage: React.FC = () => {
                 </div>
               ) : (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.date', 'Дата')}</label>
-                  <input type="date" value={pasteForm.date} onChange={(e) => setPasteForm(f => ({ ...f, date: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  <label className="label">{t('common.date', 'Дата')}</label>
+                  <input type="date" value={pasteForm.date} onChange={(e) => setPasteForm(f => ({ ...f, date: e.target.value }))} className="input" />
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.startTime', 'Начало')}</label>
-                  <input type="time" value={pasteForm.startTime} onChange={(e) => setPasteForm(f => ({ ...f, startTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  <label className="label">{t('org.schedule.startTime', 'Начало')}</label>
+                  <input type="time" value={pasteForm.startTime} onChange={(e) => setPasteForm(f => ({ ...f, startTime: e.target.value }))} className="input" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.endTime', 'Конец')}</label>
-                  <input type="time" value={pasteForm.endTime} onChange={(e) => setPasteForm(f => ({ ...f, endTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  <label className="label">{t('org.schedule.endTime', 'Конец')}</label>
+                  <input type="time" value={pasteForm.endTime} onChange={(e) => setPasteForm(f => ({ ...f, endTime: e.target.value }))} className="input" />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowPasteModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowPasteModal(false)} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
               <button
                 onClick={() => handlePaste()}
                 disabled={saving || (activeTab === 'events' && !pasteForm.date)}
-                className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
+                className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Clipboard className="w-4 h-4" />
+                <Clipboard className="w-3.5 h-3.5" />
                 {saving ? '...' : t('schedule.paste', 'Вставить')}
               </button>
             </div>
@@ -1652,9 +1652,9 @@ const SchedulePage: React.FC = () => {
 
       {/* ═══ Create Modal ═══ */}
       {showCreate && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowCreate(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowCreate(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-[480px] shadow-pop border border-slate-200 dark:border-slate-700 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
               {form.editingId
                 ? (form.editingRecurring
                   ? t('schedule.editTimetableLesson', 'Изменить урок в расписании')
@@ -1663,9 +1663,9 @@ const SchedulePage: React.FC = () => {
                   ? t('schedule.newTimetableLesson', 'Новый урок в расписании')
                   : t('schedule.newEvent', 'Новое событие'))}
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                {branches.length > 1 && <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>}
+                {branches.length > 1 && <label className="label">{t('common.branch', 'Филиал')}</label>}
                 <BranchFilter
                   value={form.branchId || null}
                   // The group list below is filtered by branch, so a group from the old
@@ -1681,7 +1681,7 @@ const SchedulePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                <label className="label">
                   {t('common.group', 'Группа')} / {t('org.schedule.eventTitle', 'Название')}
                 </label>
                 
@@ -1696,7 +1696,7 @@ const SchedulePage: React.FC = () => {
                          setForm(f => ({ ...f, groupId: undefined, title: '' }));
                       }
                     }}
-                    className="input bg-slate-50 dark:bg-slate-900/50 mb-3"
+                    className="input mb-2"
                   >
                     <option value="">{t('schedule.selectGroup', 'Выберите группу...')}</option>
                     {groups
@@ -1714,7 +1714,7 @@ const SchedulePage: React.FC = () => {
                   placeholder={form.groupId ? t('schedule.titleAutoPh', 'Название подставилось автоматически') : t('schedule.titlePh', 'Например: Математика, 11-А')} 
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="input bg-slate-50 dark:bg-slate-900/50" 
+                  className="input" 
                   autoFocus={!form.groupId} 
                 />
               </div>
@@ -1722,15 +1722,15 @@ const SchedulePage: React.FC = () => {
               {/* Timetable: Day of Week selector */}
               {modalIsRecurring ? (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  <label className="label">
                     {t('schedule.dayOfWeek', 'День недели')}
                     {!form.editingId && (
-                      <span className="ml-1.5 font-semibold normal-case tracking-normal text-slate-400">
+                      <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">
                         {t('schedule.severalDaysHint', '— можно выбрать несколько')}
                       </span>
                     )}
                   </label>
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1">
                     {dayNames.map((name, i) => {
                       const on = form.days.includes(i);
                       return (
@@ -1740,9 +1740,9 @@ const SchedulePage: React.FC = () => {
                           aria-pressed={on}
                           aria-label={dayNamesFull[i]}
                           onClick={() => toggleDay(i)}
-                          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${on
-                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm scale-105'
-                            : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'
+                          className={`h-7 rounded-md text-sm transition-colors ${on
+                            ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
                           {name}
@@ -1750,7 +1750,7 @@ const SchedulePage: React.FC = () => {
                       );
                     })}
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Repeat className="w-3 h-3 shrink-0" />
                     {form.days.length > 1
                       ? `${t('schedule.willRepeatEveryWeek', 'Уроки будут повторяться каждую неделю:')} ${[...form.days].sort((a, b) => a - b).map(d => dayNamesFull[d]?.toLowerCase()).join(', ')}`
@@ -1759,14 +1759,14 @@ const SchedulePage: React.FC = () => {
                 </div>
               ) : (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.date', 'Дата')}</label>
-                  <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  <label className="label">{t('common.date', 'Дата')}</label>
+                  <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input" />
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.startTime', 'Начало')}</label>
+                  <label className="label">{t('org.schedule.startTime', 'Начало')}</label>
                   {/* Moving the start drags the end with it, keeping the span the user chose. */}
                   <input type="time" value={form.startTime} onChange={(e) => setForm((f) => {
                     const prevStart = timeToMins(f.startTime);
@@ -1778,17 +1778,17 @@ const SchedulePage: React.FC = () => {
                     return nextStart === null
                       ? { ...f, startTime: e.target.value }
                       : { ...f, startTime: e.target.value, endTime: minsToTime(nextStart + span) };
-                  })} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  })} className="input" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.endTime', 'Конец')}</label>
-                  <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  <label className="label">{t('org.schedule.endTime', 'Конец')}</label>
+                  <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="input" />
                 </div>
               </div>
 
               {/* Classroom */}
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.classroom', 'Аудитория / Кабинет')}</label>
+                <label className="label">{t('schedule.classroom', 'Аудитория / Кабинет')}</label>
                 <ClassroomSelect
                   branchId={form.branchId || null}
                   value={{ classroomId: form.classroomId || null, location: form.location }}
@@ -1799,8 +1799,8 @@ const SchedulePage: React.FC = () => {
               {/* Event type — only for dated events */}
               {!modalIsRecurring && (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.eventType', 'Тип')}</label>
-                  <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))} className="input bg-slate-50 dark:bg-slate-900/50">
+                  <label className="label">{t('org.schedule.eventType', 'Тип')}</label>
+                  <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))} className="input">
                     <option value="exam">{t('org.schedule.typeExam', 'Экзамен')}</option>
                     <option value="other">{t('org.schedule.typeOther', 'Другое')}</option>
                   </select>
@@ -1810,14 +1810,14 @@ const SchedulePage: React.FC = () => {
 
             {/* The page-level banner sits behind the overlay, so the modal states its own error. */}
             {error && (
-              <div className="mt-5 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 space-y-2.5">
+              <div className="mt-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400 space-y-2">
                 {/* Накладок может быть по одной на день — каждая со своей строки. */}
                 <p className="whitespace-pre-line">{error}</p>
                 {conflictRetry === 'create' && (
                   <button
                     onClick={() => handleCreate(true)}
                     disabled={saving}
-                    className="px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    className="btn-danger"
                   >
                     {t('schedule.forceCreate', 'Поставить всё равно')}
                   </button>
@@ -1826,11 +1826,11 @@ const SchedulePage: React.FC = () => {
             )}
 
             <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowCreate(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
               <button
                 onClick={() => handleCreate()}
                 disabled={saving || !form.title.trim() || (modalIsRecurring ? !form.days.length : !form.date)}
-                className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
+                className="btn-primary disabled:opacity-50"
               >
                 {saving ? '...' : t('common.save', 'Сохранить')}
               </button>
@@ -1842,8 +1842,8 @@ const SchedulePage: React.FC = () => {
       {/* ═══ Toast Notification ═══ */}
       {clipboardToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className="flex items-center gap-2 px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl shadow-2xl text-sm font-bold">
-            <Clipboard className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg shadow-pop text-sm font-medium">
+            <Clipboard className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
             {clipboardToast}
           </div>
         </div>

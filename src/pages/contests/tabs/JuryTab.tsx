@@ -84,7 +84,7 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
         </p>
         {editable && (
           <button onClick={() => setForm({ name: '', email: '', title: '', password: genPassword(), all: true, categoryIds: [] })} className={primaryBtn}>
-            <Plus className="w-4 h-4" />{t('contests.jury.member', 'Член жюри')}
+            <Plus className="w-3.5 h-3.5" />{t('contests.jury.member', 'Член жюри')}
           </button>
         )}
       </div>
@@ -97,26 +97,26 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
             const pr = progress(j);
             const pct = pr.total ? Math.round((pr.done / pr.total) * 100) : 0;
             return (
-              <div key={j.id} className={`${cardCls} p-5`}>
+              <div key={j.id} className={`${cardCls} p-4`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-bold text-slate-900 dark:text-white truncate">{j.name}</div>
-                    {j.title && <div className="text-[13px] text-slate-500 dark:text-slate-400">{j.title}</div>}
-                    <div className="text-[13px] text-slate-500 dark:text-slate-400 truncate">{j.email}</div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{j.name}</div>
+                    {j.title && <div className="text-sm text-slate-500 dark:text-slate-400">{j.title}</div>}
+                    <div className="text-sm text-slate-500 dark:text-slate-400 truncate">{j.email}</div>
                   </div>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 whitespace-nowrap">{t(`contests.jury.account.${j.accountType}`, ACCOUNT_LABEL[j.accountType])}</span>
+                  <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 whitespace-nowrap">{t(`contests.jury.account.${j.accountType}`, ACCOUNT_LABEL[j.accountType])}</span>
                 </div>
-                <div className="mt-3 text-[13px] text-slate-600 dark:text-slate-300">
+                <div className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                   {t('contests.jury.categories', 'Категории')}: <b>{j.categoryIds?.length ? pr.cats.map((c) => c.code).join(', ') : t('contests.jury.allLower', 'все')}</b>
                 </div>
                 <div className="mt-3">
-                  <div className="flex justify-between text-[12px] text-slate-600 dark:text-slate-300 mb-1"><span>{pr.cats.length === contest.categories.length ? t('contests.jury.scoredAll', 'Оценено по всем категориям') : t('contests.jury.scoredCats', { count: pr.cats.length, defaultValue: 'Оценено по {{count}} кат.' })}</span><span className="font-semibold">{t('contests.xOfY', '{{x}} из {{y}}', { x: pr.done, y: pr.total })}</span></div>
-                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                    <div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${pct}%` }} />
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300 mb-1"><span>{pr.cats.length === contest.categories.length ? t('contests.jury.scoredAll', 'Оценено по всем категориям') : t('contests.jury.scoredCats', { count: pr.cats.length, defaultValue: 'Оценено по {{count}} кат.' })}</span><span className="font-medium tabular-nums">{t('contests.xOfY', '{{x}} из {{y}}', { x: pr.done, y: pr.total })}</span></div>
+                  <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                    <div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-primary-600'}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
                 {editable && (
-                  <div className="flex items-center gap-1 mt-4 -ml-2">
+                  <div className="flex items-center gap-1 mt-3 -ml-2">
                     <button onClick={() => setForm({ juryId: j.id, name: j.name, email: j.email, title: j.title, password: '', all: !j.categoryIds?.length, categoryIds: j.categoryIds || [] })} className={ghostBtn}><Pencil className="w-3.5 h-3.5" />{t('contests.edit', 'Изменить')}</button>
                     {j.accountType === 'jury' && <button onClick={() => { setPwFor(j); setNewPw(genPassword()); }} className={ghostBtn}><KeyRound className="w-3.5 h-3.5" />{t('contests.jury.password', 'Пароль')}</button>}
                     <button onClick={() => setPendingRemove(j)} className={`${ghostBtn} text-rose-600 ml-auto`} aria-label={t('contests.jury.removeAria', 'Убрать из жюри')}><Trash2 className="w-3.5 h-3.5" /></button>
@@ -142,20 +142,20 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
               <Field label={t('contests.jury.password', 'Пароль')} hint={t('contests.jury.passwordHint', 'Если email уже есть в системе (например, это ваш сотрудник), пароль не меняется — человек входит своим.')}>
                 <div className="flex gap-2">
                   <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={`${inputCls} font-mono`} />
-                  <button onClick={() => setForm({ ...form, password: genPassword() })} className={ghostBtn} aria-label={t('contests.jury.generate', 'Сгенерировать')}><RefreshCw className="w-4 h-4" /></button>
+                  <button onClick={() => setForm({ ...form, password: genPassword() })} className={ghostBtn} aria-label={t('contests.jury.generate', 'Сгенерировать')}><RefreshCw className="w-3.5 h-3.5" /></button>
                 </div>
               </Field>
             )}
             <div>
               <Label>{t('contests.jury.judgesCategories', 'Оценивает категории')}</Label>
-              <label className="flex items-center gap-2 text-sm mb-2"><input type="checkbox" checked={form.all} onChange={(e) => setForm({ ...form, all: e.target.checked })} className="w-4 h-4 accent-slate-900 dark:accent-white" />{t('contests.allCategories', 'Все категории')}</label>
+              <label className="flex items-center gap-2 text-sm mb-2"><input type="checkbox" checked={form.all} onChange={(e) => setForm({ ...form, all: e.target.checked })} className="w-3.5 h-3.5 accent-primary-600" />{t('contests.allCategories', 'Все категории')}</label>
               {!form.all && (
                 <div className="flex flex-wrap gap-2">
                   {contest.categories.map((c) => {
                     const on = form.categoryIds.includes(c.id);
                     return (
                       <button key={c.id} onClick={() => setForm({ ...form, categoryIds: on ? form.categoryIds.filter((x) => x !== c.id) : [...form.categoryIds, c.id] })}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${on ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                        className={`h-7 px-2 rounded-md text-sm border transition-colors ${on ? 'bg-primary-100 dark:bg-primary-950 border-primary-200 dark:border-primary-800 text-slate-900 dark:text-slate-100 font-medium' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                         {c.code} · {c.ageFrom}–{c.ageTo}
                       </button>
                     );
@@ -168,17 +168,17 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
       </Modal>
 
       <Modal open={!!creds} title={t('contests.jury.credsTitle', 'Данные для входа')} onClose={() => setCreds(null)}
-        footer={<><button onClick={copyCreds} className={primaryBtn}><Copy className="w-4 h-4" />{t('common.copy', 'Копировать')}</button></>}>
+        footer={<><button onClick={copyCreds} className={primaryBtn}><Copy className="w-3.5 h-3.5" />{t('common.copy', 'Копировать')}</button></>}>
         {creds && (
           <>
-            <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-4 font-mono text-sm space-y-1">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3 font-mono text-sm space-y-1">
               <div>{creds.name}</div>
               <div>{t('contests.jury.login', 'Логин')}: <b>{creds.email}</b></div>
               {creds.password && <div>{t('contests.jury.password', 'Пароль')}: <b>{creds.password}</b></div>}
             </div>
             {creds.note
               ? <WarnNote>{creds.note}</WarnNote>
-              : <p className="text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2"><Smartphone className="w-4 h-4 mt-0.5 shrink-0" />{t('contests.jury.handOver', 'Передайте эти данные члену жюри. С телефона он откроет {{url}} и сразу попадёт на экран оценивания. Пароль больше не показывается — при необходимости задайте новый.', { url: `${window.location.host}/login` })}</p>}
+              : <p className="text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2"><Smartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" />{t('contests.jury.handOver', 'Передайте эти данные члену жюри. С телефона он откроет {{url}} и сразу попадёт на экран оценивания. Пароль больше не показывается — при необходимости задайте новый.', { url: `${window.location.host}/login` })}</p>}
           </>
         )}
       </Modal>
@@ -194,7 +194,7 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
           }} />}>
         <div className="flex gap-2">
           <input value={newPw} onChange={(e) => setNewPw(e.target.value)} className={`${inputCls} font-mono`} />
-          <button onClick={() => setNewPw(genPassword())} className={ghostBtn} aria-label={t('contests.jury.generate', 'Сгенерировать')}><RefreshCw className="w-4 h-4" /></button>
+          <button onClick={() => setNewPw(genPassword())} className={ghostBtn} aria-label={t('contests.jury.generate', 'Сгенерировать')}><RefreshCw className="w-3.5 h-3.5" /></button>
         </div>
       </Modal>
 

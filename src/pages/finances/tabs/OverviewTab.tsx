@@ -248,13 +248,13 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
   }, [metrics, categories, courses, range, t]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <PeriodFilter value={range} onChange={onRangeChange} />
         <button
           onClick={handleExport}
           disabled={!metrics}
-          className="shrink-0 flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-secondary shrink-0 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-3.5 h-3.5" />
           {t('finances.exportCsv', 'Выгрузить CSV')}
@@ -262,90 +262,81 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-600 dark:text-red-400">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <Skeleton className="h-5 w-40 mb-6" />
-            <Skeleton className="h-72 w-full rounded-xl" />
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <Skeleton className="h-5 w-40 mb-4" />
+            <Skeleton className="h-72 w-full rounded-lg" />
           </div>
         </div>
       ) : (
         <>
           {/* KPI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-slate-500">{t('finances.revenue', 'Выручка')}</p>
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 rounded-lg">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('finances.revenue', 'Выручка')}</p>
+                <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMoney(metrics?.totalIncome)}
               </h3>
               <Delta value={incomeDelta} polarity="normal" comparable={comparable} label={t('finances.revenue', 'Выручка')} />
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-slate-500">{t('finances.expenses', 'Расходы')}</p>
-                <div className="p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-500 rounded-lg">
-                  <TrendingDown className="w-4 h-4" />
-                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('finances.expenses', 'Расходы')}</p>
+                <TrendingDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMoney(metrics?.totalExpense)}
               </h3>
               {/* polarity inverse: рост расходов — не хорошая новость. */}
               <Delta value={expenseDelta} polarity="inverse" comparable={comparable} label={t('finances.expenses', 'Расходы')} />
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-slate-500">{t('finances.profit', 'Чистая прибыль')}</p>
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-lg">
-                  <Wallet className="w-4 h-4" />
-                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('finances.profit', 'Чистая прибыль')}</p>
+                <Wallet className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMoney(metrics?.netProfit)}
               </h3>
               <Delta value={profitDelta} polarity="normal" comparable={comparable} label={t('finances.profit', 'Чистая прибыль')} />
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-400/20 to-orange-500/0 rounded-bl-full" />
-              <div className="flex items-center justify-between mb-2 relative z-10">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-start justify-between mb-2">
                 {/* «На сегодня» — не украшение. Соседние три плитки считаются
                     за ВЫБРАННЫЙ период, а долг — это состояние на сейчас: он не
                     меняется при переключении на «Прошлый месяц», и без подписи
                     это читается как поломка фильтра. */}
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-500">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-500">
                   {t('finances.debt', 'Дебиторская задолженность')}
-                  <span className="block text-[11px] font-normal text-amber-600/70 dark:text-amber-500/70">
+                  <span className="block text-xs font-normal text-amber-600/70 dark:text-amber-500/70">
                     {t('finances.debtAsOfToday', 'на сегодня, независимо от периода')}
                   </span>
                 </p>
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-600 rounded-lg">
-                  <DollarSign className="w-4 h-4" />
-                </div>
+                <DollarSign className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white relative z-10">
+              <h3 className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMoney(metrics?.outstandingDebt)}
               </h3>
               {/* Единицы обязательны: «Просрочено: 7 · Должников: 4» без них
                   читается как два счётчика одного и того же, хотя первое — это
                   СЧЕТА, а второе — ЛЮДИ (у одного человека может быть несколько
                   просроченных счетов). */}
-              <p className="text-xs text-amber-600/70 dark:text-amber-500/70 mt-2 relative z-10">
+              <p className="text-xs text-amber-600/70 dark:text-amber-500/70 mt-2 tabular-nums">
                 {t('finances.overdueCountUnits', 'Просрочено счетов')}: {formatNumber(metrics?.overdueCount)} · {t('finances.debtorCountUnits', 'Должников (человек)')}: {formatNumber(metrics?.debtorCount)}
               </p>
             </div>
@@ -354,13 +345,13 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
           {/* Деньги вне филиалов. Без этой плашки директор в разрезе филиала
               молча недосчитывается денег: они есть, но в цифры выше не входят. */}
           {showUnassigned && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 flex gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 dark:text-amber-300 space-y-1">
                 <p className="font-medium">
                   {t('finances.unassignedTitle', 'Есть деньги без филиала — они не входят в цифры выше')}
                 </p>
-                <p className="text-amber-700/90 dark:text-amber-400/90">
+                <p className="text-amber-700/90 dark:text-amber-400/90 tabular-nums">
                   {t('finances.revenue', 'Выручка')}: {formatMoney(unassignedIncome)} · {t('finances.expenses', 'Расходы')}: {formatMoney(unassignedExpense)} · {t('finances.debt', 'Дебиторская задолженность')}: {formatMoney(unassignedDebt)}
                 </p>
                 <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
@@ -370,13 +361,15 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
             </div>
           )}
 
+          {/* График шире, короткий список категорий — справа от него */}
+          <div className="grid gap-4 xl:grid-cols-3 items-start">
           {/* Движение средств */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 xl:col-span-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
               {t('finances.cashFlow', 'Движение средств')}
             </h3>
             {chartData.length === 0 ? (
-              <div className="h-60 flex items-center justify-center text-slate-400 text-sm">
+              <div className="h-60 flex items-center justify-center text-slate-500 dark:text-slate-400 text-xs">
                 {t('finances.noData', 'Нет данных за выбранный период')}
               </div>
             ) : (
@@ -424,11 +417,11 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
 
           {/* Расходы по категориям. Горизонтальные полосы, а не круг: длину
               соседних строк глаз сравнивает точнее, чем площадь секторов. */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-0.5">
               {t('finances.expenseByCategory', 'Расходы по категориям')}
             </h3>
-            <p className="text-xs text-slate-400 mb-5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               {t('finances.expenseByCategoryHint', 'Куда ушли деньги за выбранный период')}
             </p>
             {categories.length === 0 ? (
@@ -452,12 +445,12 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
                             {getCategoryLabel(c.categoryId, t)}
                           </span>
                         </span>
-                        <span className="shrink-0 text-slate-900 dark:text-white font-medium tabular-nums">
+                        <span className="shrink-0 text-slate-900 dark:text-slate-100 font-medium tabular-nums">
                           {formatMoney(amount)}
                           <span className="text-slate-400 font-normal ml-2">{Math.round(share)}%</span>
                         </span>
                       </div>
-                      <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${share}%`, background: color }} />
                       </div>
                     </li>
@@ -466,22 +459,23 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
               </ul>
             )}
           </div>
+          </div>
 
           {/* Прибыльность курсов */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 pb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="p-4 pb-3">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-0.5">
                 {t('finances.courseProfit', 'Прибыльность курсов')}
               </h3>
               {/* Честность важнее красивой цифры: зарплаты преподавателей в
                   продукте не разносятся по курсам, значит это валовая маржа. */}
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('finances.courseProfitCaveat', 'Валовая маржа: учтены только расходы, привязанные к курсу. Зарплаты преподавателей по курсам не распределяются — они целиком в строке «Расходы без курса» ниже.')}
               </p>
             </div>
 
             {courses.length === 0 ? (
-              <div className="px-6 pb-6">
+              <div className="px-4 pb-4">
                 <EmptyState
                   icon={BookOpen}
                   title={t('finances.noCourseData', 'Нет данных по курсам')}
@@ -491,35 +485,35 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 border-y border-slate-200 dark:border-slate-700">
+                  <thead className="bg-slate-50 dark:bg-slate-800 border-y border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.course', 'Курс')}</th>
-                      <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.revenue', 'Доход')}</th>
-                      <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.expenses', 'Расход')}</th>
-                      <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.net', 'Чистыми')}</th>
-                      <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('finances.students', 'Студентов')}</th>
+                      <th className="h-8 px-3 font-medium">{t('finances.course', 'Курс')}</th>
+                      <th className="h-8 px-3 font-medium">{t('finances.revenue', 'Доход')}</th>
+                      <th className="h-8 px-3 font-medium">{t('finances.expenses', 'Расход')}</th>
+                      <th className="h-8 px-3 font-medium">{t('finances.net', 'Чистыми')}</th>
+                      <th className="h-8 px-3 font-medium text-right">{t('finances.students', 'Студентов')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {courses.map(c => (
-                      <tr key={c.courseId} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                      <tr key={c.courseId} className="h-10 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                        <td className="px-3 py-1.5 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                           {c.courseName || c.courseId}
                         </td>
-                        <td className="px-5 py-3.5 text-emerald-600 font-medium whitespace-nowrap tabular-nums">
+                        <td className="px-3 py-1.5 text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap tabular-nums">
                           {formatMoney(c.income)}
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap tabular-nums">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                           {formatMoney(c.expense)}
                         </td>
                         <td
-                          className={`px-5 py-3.5 font-semibold whitespace-nowrap tabular-nums ${
+                          className={`px-3 py-1.5 font-medium whitespace-nowrap tabular-nums ${
                             Number(c.net || 0) < 0 ? 'text-rose-600 dark:text-rose-500' : 'text-emerald-600 dark:text-emerald-500'
                           }`}
                         >
                           {formatMoneySigned(c.net)}
                         </td>
-                        <td className="px-5 py-3.5 text-right text-slate-500 whitespace-nowrap tabular-nums">
+                        <td className="px-3 py-1.5 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                           {formatNumber(c.studentCount)}
                         </td>
                       </tr>
@@ -530,10 +524,10 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
             )}
 
             {unattributed > 0 && (
-              <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+              <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <p className="text-sm text-slate-700 dark:text-slate-200">
                   {t('finances.unattributedExpense', 'Расходы без курса')}:{' '}
-                  <span className="font-semibold">{formatMoney(unattributed)}</span>
+                  <span className="font-semibold tabular-nums">{formatMoney(unattributed)}</span>
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   {t('finances.unattributedHint', 'Эти расходы не вычтены ни из одного курса. Привязать расход к курсу можно на вкладке «Расходы».')}

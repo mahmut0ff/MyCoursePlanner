@@ -77,8 +77,8 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
 
   if (!groups.length) {
     return (
-      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 p-4 flex items-start gap-3">
-        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+      <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 p-4 flex items-start gap-3">
+        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             {t('payroll.diagnosticsClean', 'Пропущенных записей нет')}
@@ -92,9 +92,9 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
   }
 
   return (
-    <div className="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 p-4">
+    <div className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 p-4">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">
             {t('payroll.diagnosticsTitle', 'Пропущенные записи')}
@@ -113,12 +113,12 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
               const teacherIds = teacherSample ? [...group.teachers, ...group.sample] : [...group.teachers];
               const teachers = [...new Set(teacherIds)].map(teacherName).filter(Boolean);
               return (
-                <li key={group.code} className="rounded-xl bg-white/70 dark:bg-slate-900/40 p-3">
+                <li key={group.code} className="rounded-lg bg-white/70 dark:bg-slate-900/40 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
                       {title ? t(title.key, title.fallback) : group.code}
                     </p>
-                    <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-xs font-bold">
+                    <span className="shrink-0 inline-flex items-center h-5 px-1.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-medium">
                       {group.count}
                     </span>
                   </div>

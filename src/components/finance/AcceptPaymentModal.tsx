@@ -236,20 +236,20 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   if (!plan) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('finances.acceptPayment', 'Принять оплату')}</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[480px] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('finances.acceptPayment', 'Принять оплату')}</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
+        <div className="px-4 py-2 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
             <p className="font-medium text-slate-900 dark:text-white">{name}</p>
             {plans.length > 1 ? (
               <select
                 value={planId}
                 onChange={e => selectPlan(e.target.value)}
-                className="w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm"
+                className="input mt-2"
               >
                 {plans.map(p => (
                   <option key={p.id} value={p.id}>
@@ -265,11 +265,11 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
             )}
             <div className="flex justify-between mt-3 text-sm">
               <span className="text-slate-500">{t('finances.remainderLabel', 'Остаток')}:</span>
-              <span className="font-bold text-amber-600">{formatMoney(debt)}</span>
+              <span className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">{formatMoney(debt)}</span>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {t('finances.amount', 'Сумма')} ({CURRENCY_SUFFIX})
             </label>
             <input
@@ -279,8 +279,8 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
               type="number" autoFocus min="1"
               value={amount} onChange={e => setAmount(e.target.value)}
               aria-invalid={blockedByOverpay}
-              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-lg font-bold dark:text-white ${
-                blockedByOverpay ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              className={`input font-medium tabular-nums ${
+                blockedByOverpay ? 'border-rose-400 dark:border-rose-500' : ''
               }`}
               placeholder="0"
             />
@@ -296,12 +296,12 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
           {/* Договорная цена: студент платит БОЛЬШЕ прайса курса. Поднимаем сумму
               счёта до внесённой — зеркало «оплачено полностью» на другую сторону. */}
           {isOverpay && canRaiseTotal && (
-            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-amber-50 dark:bg-amber-900/15 rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-800/40">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-amber-50 dark:bg-amber-900/15 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-800/40">
               <input
                 type="checkbox"
                 checked={raiseTotal}
                 onChange={e => setRaiseTotal(e.target.checked)}
-                className="mt-0.5 w-4 h-4 shrink-0 accent-amber-500"
+                className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-primary-600"
               />
               <span className="text-xs text-amber-900 dark:text-amber-200 leading-snug">
                 {t('finances.raiseTotalToPaid', 'Индивидуальная цена — поднять сумму счёта до внесённой')}
@@ -314,17 +314,17 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
           {/* Скидка: студент платит меньше остатка, и это НЕ долг. Отметка
               закрывает счёт по факту оплаты, остаток уходит в скидку. */}
           {debt > 0 && !isOverpay && (
-            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-slate-50 dark:bg-slate-900/40 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
               <input
                 type="checkbox"
                 checked={settle}
                 onChange={e => setSettle(e.target.checked)}
-                className="mt-0.5 w-4 h-4 shrink-0 accent-emerald-500"
+                className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-primary-600"
               />
               <span className="text-xs text-slate-600 dark:text-slate-300 leading-snug">
                 {t('finances.settleInFull', 'Оплачено полностью — остаток списать как скидку')}
                 {discountPreview > 0 && (
-                  <span className="block text-[11px] font-bold text-emerald-600 mt-0.5">
+                  <span className="block text-[11px] font-medium tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
                     {t('finances.discount', 'Скидка')}: {formatMoney(discountPreview)}
                   </span>
                 )}
@@ -332,7 +332,7 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
             </label>
           )}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="label">
               {t('finances.paymentDate', 'Дата оплаты')}
             </label>
             <input
@@ -342,8 +342,8 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
               max={today}
               onChange={e => { setDate(e.target.value); if (dateError) setDateError(''); }}
               aria-invalid={!!dateError}
-              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2.5 text-sm dark:text-white ${
-                dateError ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              className={`input ${
+                dateError ? 'border-rose-400 dark:border-rose-500' : ''
               }`}
             />
             {dateError
@@ -354,18 +354,18 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.paymentMethod', 'Способ оплаты')}</label>
+              <label className="label">{t('finances.paymentMethod', 'Способ оплаты')}</label>
               <select value={method} onChange={e => setMethod(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white">
+                className="input">
                 {PAYMENT_METHODS.map(m => (
                   <option key={m.id} value={m.id}>{m.icon} {t(m.labelKey, m.fallback)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.comment', 'Комментарий')}</label>
+              <label className="label">{t('finances.comment', 'Комментарий')}</label>
               <input type="text" value={comment} onChange={e => setComment(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
+                className="input"
                 placeholder={t('finances.commentPlaceholder', 'Например: оплата за март')}
               />
             </div>
@@ -376,11 +376,11 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
             </p>
           )}
         </div>
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
+        <div className="px-4 pt-2 pb-4 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost">{t('finances.cancel', 'Отмена')}</button>
           <button onClick={handlePay} disabled={saving || !amount || Number(amount) <= 0 || blockedByOverpay}
-            className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
+            className="btn-primary inline-flex items-center gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" />
             {saving ? t('finances.saving', 'Сохранение...') : t('finances.confirmPayment', 'Подтвердить оплату')}
           </button>
         </div>

@@ -75,7 +75,7 @@ export default function SupportChatPane({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-slate-50 dark:bg-slate-900/50">
+    <div className="flex flex-col h-full min-h-0 bg-white dark:bg-slate-900">
       {header}
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-3">
@@ -83,17 +83,17 @@ export default function SupportChatPane({
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className={`flex ${i % 2 ? 'justify-end' : 'justify-start'}`}>
-                <div className="h-14 w-52 rounded-2xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <div className="h-12 w-52 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
               </div>
             ))}
           </div>
         ) : messages.length === 0 ? (
           emptyState ?? (
-            <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
-              <div className="p-3 rounded-full bg-primary-50 dark:bg-primary-900/30">
-                <LifeBuoy className="w-7 h-7 text-primary-500" />
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-2">
+              <div>
+                <LifeBuoy className="w-6 h-6 text-slate-400" />
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
                 {t('support.noMessages', 'Здесь пока нет сообщений.')}
               </p>
             </div>
@@ -114,8 +114,7 @@ export default function SupportChatPane({
 
         {typingNames.length > 0 && (
           <div className="flex items-center gap-2 px-1">
-            <div className="flex gap-1 px-3 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-slate-800
-              border border-slate-200 dark:border-slate-700">
+            <div className="flex gap-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800">
               <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
               <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
               <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />

@@ -215,12 +215,12 @@ export default function StudentDiaryPage() {
     const days = getDaysForMonth(currentDate);
     
     return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
         {/* Days of week header */}
-        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30">
+        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
           {([['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'], ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс']] as const).map(([code, fb]) => (
-            <div key={code} className="py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0">
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`schedule.${code}`, fb)}</span>
+            <div key={code} className="h-8 flex items-center justify-center border-r border-slate-200 dark:border-slate-700 last:border-r-0">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t(`schedule.${code}`, fb)}</span>
             </div>
           ))}
         </div>
@@ -228,7 +228,7 @@ export default function StudentDiaryPage() {
         {/* Grid body */}
         <div className="grid grid-cols-7 auto-rows-[minmax(120px,1fr)]">
           {days.map((item, idx) => {
-            if (!item.date) return <div key={`empty-${idx}`} className="border-r border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-900/10"></div>;
+            if (!item.date) return <div key={`empty-${idx}`} className="border-r border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30"></div>;
             
             const yyyy = item.date.getFullYear();
             const mm = String(item.date.getMonth() + 1).padStart(2, '0');
@@ -241,29 +241,29 @@ export default function StudentDiaryPage() {
             const dayRecords = eventsByDate[dateKey] ? Object.values(eventsByDate[dateKey]) : [];
 
             return (
-              <div key={dateKey} className={`relative p-1.5 sm:p-2 border-r border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/20 flex flex-col ${isToday ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''}`}>
+              <div key={dateKey} className={`relative p-1.5 border-r border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 flex flex-col ${isToday ? 'bg-primary-50/40 dark:bg-primary-950/30' : ''}`}>
                  
                  {/* DATE CORNER */}
-                 <div className="flex justify-between items-start mb-2">
-                   <div className={`text-[13px] sm:text-sm font-bold w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-primary-600 text-white' : 'text-slate-900 dark:text-slate-200'}`}>
+                 <div className="flex justify-between items-start mb-1">
+                   <div className={`text-xs font-medium tabular-nums w-6 h-6 flex items-center justify-center rounded-md ${isToday ? 'bg-primary-600 text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                      {item.date.getDate()}
                    </div>
                  </div>
 
                  {/* RECORDS */}
-                 <div className="flex-1 overflow-y-auto space-y-1.5 hide-scrollbar">
+                 <div className="flex-1 overflow-y-auto space-y-1 hide-scrollbar">
                     {dayRecords.map(rec => {
                       const theme = getRecordTheme(rec.grade, rec.journal);
                       
                       return (
-                        <div key={rec.courseId} className={`flex flex-col border-l-[3px] border-y border-r border-y-transparent border-r-transparent ${theme} rounded-r-md px-2 py-1.5`}>
+                        <div key={rec.courseId} className={`flex flex-col border-l-2 border-y border-r border-y-transparent border-r-transparent ${theme} rounded-r px-1.5 py-1`}>
                           <div className="flex items-center justify-between gap-1 w-full">
-                            <span className="font-semibold text-[10px] sm:text-[11px] truncate">{rec.courseTitle}</span>
+                            <span className="font-medium text-[11px] truncate">{rec.courseTitle}</span>
                             <div className="flex items-center shrink-0">
                                {rec.grade ? (
-                                  <span className="font-black text-[12px] ml-1.5 tracking-tight">{rec.grade.displayValue || rec.grade.value}</span>
+                                  <span className="font-semibold text-xs ml-1.5 tabular-nums">{rec.grade.displayValue || rec.grade.value}</span>
                                ) : rec.journal ? (
-                                  <span className="font-black text-[11px] ml-1.5 opacity-80">{rec.journal.attendance === 'absent' ? t('student.diary.absentShort', 'Н') : rec.journal.attendance === 'late' ? t('student.diary.lateShort', 'ОПОЗД') : ''}</span>
+                                  <span className="font-semibold text-[11px] ml-1.5 opacity-80">{rec.journal.attendance === 'absent' ? t('student.diary.absentShort', 'Н') : rec.journal.attendance === 'late' ? t('student.diary.lateShort', 'ОПОЗД') : ''}</span>
                                ) : null}
                             </div>
                           </div>
@@ -291,28 +291,28 @@ export default function StudentDiaryPage() {
   }, [currentDate, t]);
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-20 font-sans space-y-6 px-4 xl:px-0">
+    <div className="pb-20 font-sans space-y-4 px-4 xl:px-0">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             {t('student.diary.title', 'Дневник')}
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('student.diary.subtitle', 'Календарь оценок и посещаемости')}
           </p>
         </div>
 
         {/* Toolbar: Filters and Nav */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-2">
           
-          <div className="flex items-center w-full sm:w-auto overflow-hidden border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm relative">
-             <Search className="w-4 h-4 text-slate-400 absolute left-3" />
+          <div className="flex items-center w-full sm:w-auto relative">
+             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
              <select 
                value={selectedCourseId}
                onChange={(e) => setSelectedCourseId(e.target.value)}
-               className="bg-transparent pl-10 pr-8 py-2 text-sm font-bold text-slate-900 dark:text-white appearance-none outline-none w-full sm:w-[220px]"
+               className="input pl-8 w-full sm:w-[220px]"
              >
                <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('student.diary.allSubjects', 'Все предметы')}</option>
                {courses.map(c => (
@@ -321,15 +321,15 @@ export default function StudentDiaryPage() {
              </select>
           </div>
 
-          <div className="flex items-center w-full sm:w-auto p-1 bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
-             <button onClick={handlePrevMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300">
-               <ChevronLeft className="w-5 h-5" />
+          <div className="flex items-center w-full sm:w-auto h-8 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
+             <button onClick={handlePrevMonth} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+               <ChevronLeft className="w-3.5 h-3.5" />
              </button>
-             <button onClick={handleToday} className="px-4 text-sm font-bold capitalize text-slate-800 dark:text-slate-100 pointer-events-none min-w-[140px] text-center">
+             <button onClick={handleToday} className="px-3 text-sm font-medium capitalize text-slate-900 dark:text-slate-100 pointer-events-none min-w-[140px] text-center">
                {currentMonthLabel}
              </button>
-             <button onClick={handleNextMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300">
-               <ChevronRight className="w-5 h-5" />
+             <button onClick={handleNextMonth} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors">
+               <ChevronRight className="w-3.5 h-3.5" />
              </button>
           </div>
 
@@ -339,14 +339,14 @@ export default function StudentDiaryPage() {
       {/* CONTENT */}
       {loading ? (
         <div className="py-32 flex justify-center">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
         </div>
       ) : error ? (
-        <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 font-medium rounded-xl text-sm">
+        <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 rounded-lg text-sm">
           {error}
         </div>
       ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div>
           {renderMonthGrid()}
         </div>
       )}

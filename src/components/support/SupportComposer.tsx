@@ -157,17 +157,17 @@ export default function SupportComposer({
           {/* Click-away target; the panel below sits above it. */}
           <div className="fixed inset-0 z-10" onClick={() => { setPickerOpen(false); setSlashQuery(null); }} />
           <div className="absolute bottom-full left-3 right-3 mb-2 z-20 max-h-72 overflow-y-auto
-            rounded-xl border border-slate-200 dark:border-slate-700
-            bg-white dark:bg-slate-800 shadow-lg">
-            <div className="px-3 py-2 text-[11px] font-medium uppercase tracking-wide
-              text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700">
+            rounded-lg border border-slate-200 dark:border-slate-700
+            bg-white dark:bg-slate-800 shadow-pop p-1">
+            <div className="px-2 h-7 flex items-center text-xs font-medium
+              text-slate-500 dark:text-slate-400">
               {t('support.quickReplies', 'Быстрые ответы')}
-              <span className="ml-1.5 normal-case tracking-normal text-slate-400">
+              <span className="ml-1.5 text-slate-400">
                 {t('support.quickRepliesHint', '↑↓ выбрать · Enter вставить')}
               </span>
             </div>
             {visible.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-slate-400">
+              <div className="px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
                 {t('support.quickRepliesEmpty', 'Ничего не найдено')}
               </div>
             ) : visible.map((q, i) => (
@@ -176,15 +176,14 @@ export default function SupportComposer({
                 type="button"
                 onMouseEnter={() => setHighlight(i)}
                 onClick={() => applyQuickReply(q.body)}
-                className={`w-full text-left px-3 py-2 border-b border-slate-100 dark:border-slate-700/50
-                  last:border-b-0 transition-colors ${i === highlight
-                    ? 'bg-primary-50 dark:bg-primary-900/30'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                className={`w-full text-left px-2 py-1.5 rounded-md transition-colors ${i === highlight
+                    ? 'bg-slate-100 dark:bg-slate-700/50'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{q.title}</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded
-                    bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{q.title}</span>
+                  <span className="inline-flex items-center h-5 text-xs font-mono px-1.5 rounded
+                    border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                     /{q.shortcut}
                   </span>
                 </div>
@@ -196,8 +195,8 @@ export default function SupportComposer({
       )}
 
       {replyTo && (
-        <div className="flex items-start gap-2 mb-2 px-2.5 py-1.5 rounded-lg
-          bg-slate-100 dark:bg-slate-800 text-xs">
+        <div className="flex items-start gap-2 mb-2 px-2.5 py-1.5 rounded-md
+          border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
           <div className="min-w-0 flex-1">
             <div className="font-medium text-primary-600 dark:text-primary-400">
               {t('support.replyingTo', 'Ответ для {{name}}', { name: replyTo.senderName })}
@@ -209,7 +208,7 @@ export default function SupportComposer({
           <button
             type="button"
             onClick={onCancelReply}
-            className="p-0.5 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700"
             title={t('common.cancel', 'Отмена')}
           >
             <X className="w-3.5 h-3.5" />
@@ -267,11 +266,11 @@ export default function SupportComposer({
           disabled={disabled}
           onClick={() => fileRef.current?.click()}
           title={t('support.attach', 'Прикрепить файл')}
-          className="p-2.5 rounded-lg text-slate-400 hover:text-primary-600
-            hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors
+          className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900
+            hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Paperclip className="w-5 h-5" />
+          <Paperclip className="w-4 h-4" />
         </button>
 
         {enableQuickReplies && (
@@ -280,12 +279,12 @@ export default function SupportComposer({
             disabled={disabled}
             onClick={() => setPickerOpen((v) => !v)}
             title={t('support.quickRepliesTitle', 'Быстрые ответы (или введите «/»)')}
-            className={`p-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               pickerOpen
-                ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/40'
-                : 'text-slate-400 hover:text-primary-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                ? 'text-slate-900 bg-primary-100 dark:text-slate-100 dark:bg-primary-950'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800'}`}
           >
-            <Zap className="w-5 h-5" />
+            <Zap className="w-4 h-4" />
           </button>
         )}
 
@@ -297,11 +296,11 @@ export default function SupportComposer({
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || t('support.placeholder', 'Напишите сообщение…')}
-          className="flex-1 resize-none rounded-xl border border-slate-300 dark:border-slate-600
-            bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm leading-5
+          className="flex-1 resize-none rounded-md border border-slate-300 dark:border-slate-600
+            bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm leading-5
             text-slate-900 dark:text-slate-100 placeholder:text-slate-400
-            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-            disabled:opacity-50 transition-all"
+            focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+            disabled:opacity-50 transition-colors"
         />
 
         <button
@@ -309,11 +308,11 @@ export default function SupportComposer({
           onClick={submit}
           disabled={!canSend || disabled}
           title={t('support.send', 'Отправить')}
-          className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700
-            active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed
+          className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-primary-600 text-white hover:bg-primary-700
+            transition-colors disabled:opacity-40 disabled:cursor-not-allowed
             disabled:hover:bg-primary-600"
         >
-          {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
     </div>

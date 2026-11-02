@@ -88,44 +88,44 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 animate-[fadeIn_0.2s_ease-out]">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
         <button
           onClick={handleDismiss}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors z-10"
+          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors z-10"
         >
-          <X className="w-5 h-5" />
+          <X className="w-3.5 h-3.5" />
         </button>
         
-        <div className="p-6 md:p-10 flex flex-col lg:flex-row gap-8 lg:gap-16">
+        <div className="p-4 md:p-6 flex flex-col lg:flex-row gap-6 lg:gap-8">
         
         {/* Left Column: Intro & Setup Progress */}
         <div className="xl:w-5/12 flex flex-col justify-between">
           <div>
-            <div className="w-fit inline-flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold mb-5">
-              <span className="text-sm">🚀</span>
+            <div className="w-fit inline-flex items-center gap-1.5 h-5 px-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-medium mb-3">
+              <span className="text-xs">🚀</span>
               {t('onboarding.admin.badge', 'Быстрый старт')}
             </div>
             
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
               {t('onboarding.admin.title', 'Добро пожаловать в рабочее пространство')}
             </h2>
-            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4">
               {t('onboarding.admin.subtitle', 'Для успешного запуска платформы необходимо выполнить ряд базовых шагов. Мы подготовили для вас простой чек-лист.')}
             </p>
           </div>
 
           <div>
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-5 border border-slate-200 dark:border-slate-700/50">
-              <div className="flex items-end justify-between mb-3">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-end justify-between mb-2">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                     {progress}%
                   </span>
                 </div>
-                <span className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">{t('onboarding.admin.completed', 'завершено')}</span>
+                <span className="text-slate-500 dark:text-slate-400 text-xs mb-1">{t('onboarding.admin.completed', 'завершено')}</span>
               </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                 <div 
                   className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                   style={{ width: `${progress}%` }}
@@ -135,9 +135,9 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
 
             <button
               onClick={handleDismiss}
-              className="mt-6 text-sm font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
+              className="btn-ghost mt-3 -ml-3 inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
             >
-              {t('onboarding.admin.skip', 'Пропустить пока')} <ChevronRight className="w-4 h-4" />
+              {t('onboarding.admin.skip', 'Пропустить пока')} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -148,24 +148,24 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
             <Link
               key={step.key}
               to={step.done ? '#' : step.link}
-              className={`group flex flex-col p-5 rounded-xl border transition-all ${
+              className={`group flex flex-col p-4 rounded-lg border transition-colors ${
                 step.done
-                  ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30 cursor-default'
+                  ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 cursor-default'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50'
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              <div className="flex items-start justify-between mb-2">
+                <div className={`w-7 h-7 rounded-md flex items-center justify-center ${
                   step.done 
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' 
-                    : 'bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                    ? 'text-emerald-600 dark:text-emerald-400' 
+                    : 'text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                 }`}>
-                  {step.done ? <CheckCircle2 className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
+                  {step.done ? <CheckCircle2 className="w-3.5 h-3.5" /> : <step.icon className="w-3.5 h-3.5" />}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">{t('onboarding.admin.step', 'Шаг {{n}}', { n: i + 1 })}</span>
+                  <span className="text-xs text-slate-400">{t('onboarding.admin.step', 'Шаг {{n}}', { n: i + 1 })}</span>
                   {step.done && (
-                    <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">
+                    <span className="inline-flex items-center h-5 px-1.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                       {t('onboarding.admin.stepDone', 'Выполнено')}
                     </span>
                   )}
@@ -173,21 +173,21 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
               </div>
               
               <div>
-                <h3 className={`text-sm font-semibold mb-1.5 ${step.done ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
+                <h3 className={`text-sm font-semibold mb-1 ${step.done ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-slate-100'}`}>
                   {step.title}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
                   {step.desc}
                 </p>
               </div>
 
               <div className="mt-auto">
                 {!step.done ? (
-                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                  <div className="text-xs font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
                     {t('onboarding.admin.start', 'Приступить')} <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 ) : (
-                  <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 flex items-center gap-1">
+                  <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     {t('onboarding.admin.ready', 'Готово')} <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                 )}

@@ -247,14 +247,14 @@ export default function ChatPage() {
 
   return (
     <div className="h-[calc(100vh-7rem)] min-h-[30rem] flex flex-col">
-      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-primary-500" />
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-slate-400" />
             {t('chat.title', 'Чат')}
             {unreadIds.size > 0 && <span className="badge-red">{unreadIds.size}</span>}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {t('chat.subtitle', 'Переписка внутри учебного центра — с коллегами и студентами')}
           </p>
         </div>
@@ -263,15 +263,15 @@ export default function ChatPage() {
             что в один клик не помещается: у группы есть имя и состав. */}
         {canStartChat && canCreateGroup && (
           <button type="button" onClick={() => setNewGroupOpen(true)}
-            className="btn-primary text-sm flex items-center gap-2">
-            <Plus className="w-4 h-4" />
+            className="btn-primary inline-flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" />
             {t('chat.newGroup', 'Новая группа')}
           </button>
         )}
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[20rem_1fr]
-        rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm
+        rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700
         bg-white dark:bg-slate-900">
 
         {/* ─────────── СЛЕВА: список комнат ─────────── */}
@@ -282,9 +282,9 @@ export default function ChatPage() {
         >
           <div className="p-3 border-b border-slate-200 dark:border-slate-700 space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('chat.searchRooms', 'Поиск по чатам…')} className="input pl-9" />
+                placeholder={t('chat.searchRooms', 'Поиск по чатам…')} className="input pl-8" />
             </div>
             {/* Категории собеседников. Группа — своя категория: у неё собеседник
                 не один, и приписывать её к персоналу по создателю было бы враньём. */}
@@ -294,15 +294,15 @@ export default function ChatPage() {
                   key={c}
                   type="button"
                   onClick={() => setCategory(c)}
-                  className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${category === c
-                    ? 'bg-primary-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  className={`h-7 px-2 inline-flex items-center rounded-md text-sm transition-colors ${category === c
+                    ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 >
                   {c === 'all'
                     ? t('chat.cat.all', 'Все')
                     : t(`chat.cat.${c}`, CATEGORY_LABELS_RU[c] || c)}
                   {!!categoryCounts[c] && (
-                    <span className={category === c ? 'ml-1 text-white/70' : 'ml-1 text-slate-400'}>
+                    <span className="ml-1 text-xs text-slate-400 tabular-nums">
                       {categoryCounts[c]}
                     </span>
                   )}
@@ -313,7 +313,7 @@ export default function ChatPage() {
             <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-0.5">
               <input type="checkbox" checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
-                className="rounded border-slate-300 dark:border-slate-600" />
+                className="w-3.5 h-3.5 accent-primary-600" />
               {t('chat.showArchived', 'Показывать архив')}
             </label>
           </div>
@@ -322,11 +322,11 @@ export default function ChatPage() {
             {loading ? (
               <div className="p-3 space-y-2">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div key={i} className="h-12 rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse" />
                 ))}
               </div>
             ) : filtered.length === 0 && strangers.length === 0 ? (
-              <div className="p-8 text-center text-sm text-slate-400">
+              <div className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
                 {search
                   ? t('chat.noMatches', 'Никого не нашли')
                   : category !== 'all'
@@ -353,11 +353,11 @@ export default function ChatPage() {
                     ничего, и вперемешку список читался бы как «эти вам писали». */}
                 {strangers.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide
-                      text-slate-400 bg-slate-50 dark:bg-slate-800/50
-                      border-y border-slate-100 dark:border-slate-800">
+                    <div className="h-7 flex items-center px-3 text-xs font-medium
+                      text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800
+                      border-y border-slate-200 dark:border-slate-700">
                       {t('chat.startConversation', 'Начать переписку')}
-                      <span className="ml-1.5 normal-case tracking-normal">{strangers.length}</span>
+                      <span className="ml-1.5 tabular-nums">{strangers.length}</span>
                     </div>
                     {strangers.map((p) => (
                       <PersonRow
@@ -365,8 +365,8 @@ export default function ChatPage() {
                         person={p}
                         onClick={() => startChat(p.uid)}
                         trailing={startingUid === p.uid
-                          ? <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
-                          : <MessageSquarePlus className="w-4 h-4 text-slate-300 dark:text-slate-600" />}
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                          : <MessageSquarePlus className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />}
                       />
                     ))}
                   </>
@@ -375,7 +375,7 @@ export default function ChatPage() {
                 {peopleLoading && canStartChat && (
                   <div className="p-3 space-y-2">
                     {[0, 1].map((i) => (
-                      <div key={i} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                      <div key={i} className="h-10 rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse" />
                     ))}
                   </div>
                 )}
@@ -390,23 +390,23 @@ export default function ChatPage() {
           className={`min-h-0 flex flex-col ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}
         >
           {!selected || !headerLabel ? (
-            <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6
-              bg-slate-50 dark:bg-slate-900/50">
-              <div className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-800">
-                <MessageSquarePlus className="w-8 h-8 text-slate-400" />
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-6
+              bg-white dark:bg-slate-900">
+              <div>
+                <MessageSquarePlus className="w-6 h-6 text-slate-400" />
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
                 {t('chat.selectRoom', 'Выберите чат слева или начните новый.')}
               </p>
             </div>
           ) : (
-            <div className="flex flex-col h-full min-h-0 bg-slate-50 dark:bg-slate-900/50">
+            <div className="flex flex-col h-full min-h-0 bg-white dark:bg-slate-900">
               {/* Шапка комнаты */}
-              <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-200
+              <div className="flex items-center gap-2.5 h-12 px-3 border-b border-slate-200
                 dark:border-slate-700 bg-white dark:bg-slate-900">
                 <button type="button" onClick={() => setMobileView('list')}
-                  className="lg:hidden p-1.5 -ml-1 rounded-lg text-slate-500
-                    hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="lg:hidden w-7 h-7 -ml-1 flex items-center justify-center rounded-md text-slate-500
+                    hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                   title={t('common.back', 'Назад')}>
                   <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -414,7 +414,7 @@ export default function ChatPage() {
                 <ChatAvatar name={headerLabel.title} url={headerLabel.avatarUrl} size="sm" />
 
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                     {headerLabel.title}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
@@ -427,16 +427,16 @@ export default function ChatPage() {
 
                 <button type="button" onClick={handleMute}
                   title={isMuted ? t('chat.unmute', 'Включить уведомления') : t('chat.mute', 'Отключить уведомления')}
-                  className="p-2 rounded-lg text-slate-500 hover:text-primary-600
-                    hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900
+                    hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
                   {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </button>
 
                 {selected.type === 'group' && (
                   <button type="button" onClick={() => setMembersOpen(true)}
                     title={t('chat.members', 'Участники')}
-                    className="p-2 rounded-lg text-slate-500 hover:text-primary-600
-                      hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900
+                      hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <Users className="w-4 h-4" />
                   </button>
                 )}
@@ -445,8 +445,8 @@ export default function ChatPage() {
                   title={selected.isArchived
                     ? t('chat.unarchive', 'Вернуть из архива')
                     : t('chat.archive', 'В архив')}
-                  className="p-2 rounded-lg text-slate-500 hover:text-amber-600
-                    hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900
+                    hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors">
                   <Archive className="w-4 h-4" />
                 </button>
               </div>
@@ -457,16 +457,16 @@ export default function ChatPage() {
                   <div className="space-y-3">
                     {[0, 1, 2].map((i) => (
                       <div key={i} className={`flex ${i % 2 ? 'justify-end' : 'justify-start'}`}>
-                        <div className="h-14 w-52 rounded-2xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                        <div className="h-12 w-52 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
                       </div>
                     ))}
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
-                    <div className="p-3 rounded-full bg-primary-50 dark:bg-primary-900/30">
-                      <MessageSquare className="w-7 h-7 text-primary-500" />
+                  <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-2">
+                    <div>
+                      <MessageSquare className="w-6 h-6 text-slate-400" />
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
                       {t('chat.noMessages', 'Сообщений пока нет — напишите первым.')}
                     </p>
                   </div>
@@ -475,7 +475,7 @@ export default function ChatPage() {
                     {hasMore && (
                       <div className="flex justify-center">
                         <button type="button" onClick={loadMore}
-                          className="btn-ghost text-xs flex items-center gap-1.5">
+                          className="btn-ghost inline-flex items-center gap-1.5">
                           {messagesLoading
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             : <ChevronUp className="w-3.5 h-3.5" />}
@@ -490,8 +490,8 @@ export default function ChatPage() {
                         <div key={m.id} className="space-y-3">
                           {showDay && (
                             <div className="flex justify-center">
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-medium
-                                bg-slate-200/70 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300">
+                              <span className="inline-flex items-center h-5 px-2 rounded-full text-xs
+                                bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                                 {dayLabel(m.createdAt, t)}
                               </span>
                             </div>
@@ -513,8 +513,7 @@ export default function ChatPage() {
 
                 {typingNames.length > 0 && (
                   <div className="flex items-center gap-2 px-1">
-                    <div className="flex gap-1 px-3 py-2.5 rounded-2xl rounded-bl-md bg-white dark:bg-slate-800
-                      border border-slate-200 dark:border-slate-700">
+                    <div className="flex gap-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800">
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
@@ -580,20 +579,20 @@ function RoomRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors
-        border-b border-slate-100 dark:border-slate-800 ${active
-          ? 'bg-primary-50 dark:bg-primary-900/20'
-          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+      className={`w-full flex items-start gap-2.5 px-3 py-2 text-left transition-colors
+        border-b border-slate-200 dark:border-slate-700 ${active
+          ? 'bg-slate-100 dark:bg-slate-800'
+          : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
     >
       <ChatAvatar name={title} url={avatarUrl} size="sm" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className={`text-sm truncate flex-1 ${unread
-            ? 'font-semibold text-slate-900 dark:text-white'
+            ? 'font-semibold text-slate-900 dark:text-slate-100'
             : 'font-medium text-slate-700 dark:text-slate-200'}`}>
             {title}
           </span>
-          <span className="text-[10px] text-slate-400 shrink-0">
+          <span className="text-xs text-slate-400 shrink-0 tabular-nums">
             {relativeTime(room.lastMessageAt, t)}
           </span>
         </div>
@@ -604,7 +603,7 @@ function RoomRow({
               ? room.lastMessagePreview.replace(/📎( Вложение)?$/u, `📎 ${t('chat.attachment', 'Вложение')}`)
               : t('chat.noMessagesShort', 'Нет сообщений')}
           </span>
-          {unread && <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />}
+          {unread && <span className="w-1.5 h-1.5 rounded-full bg-primary-600 shrink-0" />}
           {room.isArchived && <Archive className="w-3 h-3 text-slate-400 shrink-0" />}
         </div>
       </div>

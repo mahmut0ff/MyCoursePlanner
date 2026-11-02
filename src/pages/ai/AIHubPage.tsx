@@ -47,7 +47,7 @@ const GROUPS: ToolGroup[] = [
     id: 'management',
     label: 'Управление центром',
     tools: [
-      { key: 'churn', title: 'Анализ оттока', where: 'Ученики → В зоне риска', icon: TrendingDown, action: 'navigate', to: '/students?risk=1', gated: true },
+      { key: 'churn', title: 'Анализ оттока', where: 'Студенты → В зоне риска', icon: TrendingDown, action: 'navigate', to: '/students?risk=1', gated: true },
       { key: 'marketing', title: 'Пост для соцсетей', where: 'Здесь, в AI-центре', icon: Megaphone, action: 'modal', gated: true },
       { key: 'translate', title: 'Перевод текста', where: 'Здесь, в AI-центре', icon: Languages, action: 'modal', gated: true },
       { key: 'ai-leads', title: 'Заявки от ИИ', where: 'Раздел «Заявки»', icon: Inbox, action: 'navigate', to: '/leads' },
@@ -125,16 +125,16 @@ const AIHubPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-4">
       {/* ── Page header ── */}
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{t('aiHub.title', 'AI-центр')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('aiHub.title', 'AI-центр')}</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
             {t('aiHub.subtitle', 'Спросите ИИ о своём центре, посмотрите, что он уже сделал, и настройте помощника для клиентов.')}
           </p>
         </div>
-        <span className="shrink-0 inline-flex items-center gap-2 h-8 px-3 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+        <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
           <span className={`w-1.5 h-1.5 rounded-full ${hasAI ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} aria-hidden="true" />
           {hasAI ? t('aiHub.aiOn', 'ИИ включён') : t('aiHub.aiOff', 'ИИ выключен')} · {t('aiHub.planLabel', 'тариф «{{plan}}»', { plan: planName })}
         </span>
@@ -142,26 +142,26 @@ const AIHubPage: React.FC = () => {
 
       {/* ── Upgrade prompt (locked plans) ── */}
       {!hasAI && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30">
-          <Lock className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30">
+          <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="flex-1">
-            <p className="font-semibold text-amber-900 dark:text-amber-200">{t('aiHub.lockedTitle', 'На тарифе «{{plan}}» ИИ отключён', { plan: planName })}</p>
-            <p className="text-sm text-amber-800 dark:text-amber-300/90">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{t('aiHub.lockedTitle', 'На тарифе «{{plan}}» ИИ отключён', { plan: planName })}</p>
+            <p className="text-xs text-amber-800 dark:text-amber-300/90">
               {t('aiHub.lockedDesc', 'Аналитик, генераторы, голосовые оценки и ассистент для клиентов откроются после смены тарифа.')}
             </p>
           </div>
           <button
             onClick={() => navigate('/billing')}
-            className="btn-primary shrink-0 inline-flex items-center gap-1.5 text-sm"
+            className="btn-primary shrink-0 inline-flex items-center gap-1.5"
           >
-            {t('aiHub.changePlan', 'Сменить тариф')} <ArrowRight className="w-4 h-4" />
+            {t('aiHub.changePlan', 'Сменить тариф')} <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {/* ── The job of this page: ask, and see what the AI has been doing ── */}
       {hasAI && (
-        <div id="ai-analyst" className="scroll-mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div id="ai-analyst" className="scroll-mt-6 grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
           <div className="lg:col-span-2">
             <AIAnalystPanel />
           </div>
@@ -172,15 +172,15 @@ const AIHubPage: React.FC = () => {
       {/* ── Where else the AI works: an index, not a card wall ── */}
       <section aria-labelledby="ai-tools-heading">
         <div className="flex items-baseline gap-2 mb-1">
-          <h2 id="ai-tools-heading" className="text-lg font-bold text-slate-900 dark:text-white">{t('aiHub.toolsHeading', 'Где ещё работает ИИ')}</h2>
+          <h2 id="ai-tools-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('aiHub.toolsHeading', 'Где ещё работает ИИ')}</h2>
           <span className="text-xs text-slate-500 dark:text-slate-400">{t('aiHub.toolCount', { count: TOOL_COUNT })}</span>
         </div>
 
-        <div className="space-y-6 mt-4">
+        <div className="space-y-4 mt-4">
           {GROUPS.map((group) => (
             <div key={group.id}>
               <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t(`aiHub.groups.${group.id}`, group.label)}</h3>
-              <ul className="mt-1 grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
+              <ul className="mt-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 md:gap-x-8">
                 {group.tools.map((tool) => {
                   const Icon = tool.icon;
                   const locked = !!tool.gated && !hasAI;
@@ -189,7 +189,7 @@ const AIHubPage: React.FC = () => {
                     <li key={tool.key} className="border-t border-slate-200 dark:border-slate-700/70">
                       <button
                         onClick={() => handleToolClick(tool)}
-                        className="group w-full flex items-center gap-3 py-2.5 text-left rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        className="group w-full flex items-center gap-3 min-h-[40px] py-1.5 px-1 text-left rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                       >
                         <Icon
                           className="w-4 h-4 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
@@ -199,7 +199,7 @@ const AIHubPage: React.FC = () => {
                           <span className="flex items-center gap-2">
                             <span className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{t(`aiHub.tools.${tool.key}.title`, tool.title)}</span>
                             {badge !== null && (
-                              <span className="shrink-0 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300 tabular-nums">
+                              <span className="shrink-0 inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 tabular-nums">
                                 {t('aiHub.newCount', { count: badge })}
                               </span>
                             )}
@@ -225,8 +225,8 @@ const AIHubPage: React.FC = () => {
       <section id="ai-assistant-manage" aria-labelledby="ai-assistant-heading" className="scroll-mt-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
           <div>
-            <h2 id="ai-assistant-heading" className="text-lg font-bold text-slate-900 dark:text-white">{t('aiHub.assistantHeading', 'Ассистент для клиентов')}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+            <h2 id="ai-assistant-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('aiHub.assistantHeading', 'Ассистент для клиентов')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
               {t('aiHub.assistantDesc', 'Что чат-бот знает о центре и как отвечает посетителям вашего публичного профиля и Telegram.')}
             </p>
           </div>
@@ -235,9 +235,9 @@ const AIHubPage: React.FC = () => {
               href={`/org/${slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              className="btn-secondary shrink-0 inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
-              <Globe className="w-4 h-4" aria-hidden="true" /> {t('aiHub.checkOnSite', 'Проверить на сайте')}
+              <Globe className="w-3.5 h-3.5" aria-hidden="true" /> {t('aiHub.checkOnSite', 'Проверить на сайте')}
               <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
             </a>
           )}

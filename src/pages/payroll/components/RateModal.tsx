@@ -328,40 +328,40 @@ const RateModal: React.FC<Props> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
       onClick={() => { if (!saving) onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[640px] tabular-nums overflow-hidden max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-start justify-between gap-3 shrink-0">
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3 shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {t('payroll.rateTitle', 'Ставка преподавателя')}
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">{teacherName || teacherId}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{teacherName || teacherId}</p>
           </div>
           <button
             onClick={onClose}
             disabled={saving}
-            className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
             aria-label={t('payroll.close', 'Закрыть')}
           >
-            <X className="w-5 h-5" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto">
+        <div className="px-4 py-2 space-y-4 overflow-y-auto">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>
+            <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-lg">{error}</div>
           )}
 
           {/* Виды оплаты — переключателем, а не списком: выбор ровно один. */}
           <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <p className="label">
               {t('payroll.rateKindLabel', 'Как платим')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -376,13 +376,13 @@ const RateModal: React.FC<Props> = ({
                     type="button"
                     onClick={() => setKind(option)}
                     aria-pressed={active}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-colors text-left ${
+                    className={`flex items-center gap-2 min-h-[32px] px-2.5 py-1.5 rounded-md border text-sm font-medium transition-colors text-left ${
                       active
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        ? 'bg-primary-100 dark:bg-primary-950 border-primary-300 dark:border-primary-800 text-slate-900 dark:text-slate-100'
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
                     {componentKindLabel(option, tr)}
                   </button>
                 );
@@ -392,7 +392,7 @@ const RateModal: React.FC<Props> = ({
 
           {kind === 'percent_revenue' ? (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('payroll.percentField', 'Процент')}
               </label>
               <div className="flex items-center gap-2">
@@ -403,7 +403,7 @@ const RateModal: React.FC<Props> = ({
                   value={percent}
                   onChange={e => setPercent(e.target.value)}
                   placeholder="20"
-                  className="w-32 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                  className="w-32 input"
                 />
                 <span className="text-sm text-slate-500">%</span>
               </div>
@@ -418,7 +418,7 @@ const RateModal: React.FC<Props> = ({
             </div>
           ) : kind === 'per_paying_student' ? (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('payroll.perStudentField', 'Сумма за одного ученика')}
               </label>
               <div className="flex items-center gap-2">
@@ -429,7 +429,7 @@ const RateModal: React.FC<Props> = ({
                   value={perStudent}
                   onChange={e => setPerStudent(e.target.value)}
                   placeholder="250"
-                  className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                  className="w-40 input"
                 />
                 <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
               </div>
@@ -444,7 +444,7 @@ const RateModal: React.FC<Props> = ({
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="label">
                 {t('payroll.amountField', 'Сумма за месяц')}
               </label>
               <div className="flex items-center gap-2">
@@ -455,7 +455,7 @@ const RateModal: React.FC<Props> = ({
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   placeholder="30000"
-                  className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                  className="w-40 input"
                 />
                 <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
               </div>
@@ -472,7 +472,7 @@ const RateModal: React.FC<Props> = ({
               Отдельный блок, а не четвёртый вид оплаты в переключателе: это
               исключение ПОВЕРХ ставки, и выбирать между «20% с групп» и «1500 с
               Тимура» не нужно — почти всегда есть и то, и другое. */}
-          <div className="border-t border-slate-100 dark:border-slate-700 pt-5">
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {t('payroll.individualTitle', 'Индивидуальные ученики')}
             </p>
@@ -493,7 +493,7 @@ const RateModal: React.FC<Props> = ({
                         i === index ? { ...r, studentId: e.target.value } : r
                       )))}
                       aria-label={t('payroll.individualPickStudent', 'Выберите ученика')}
-                      className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm dark:text-white"
+                      className="flex-1 min-w-0 input"
                     >
                       <option value="">{t('payroll.individualPickStudent', 'Выберите ученика')}</option>
                       {studentOptions(row.studentId).map(option => (
@@ -509,16 +509,16 @@ const RateModal: React.FC<Props> = ({
                       )))}
                       placeholder="1500"
                       aria-label={t('payroll.individualAmountField', 'Сумма за этого ученика')}
-                      className="w-24 shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm dark:text-white"
+                      className="w-24 shrink-0 input"
                     />
                     <span className="text-xs text-slate-500 shrink-0">{CURRENCY_SUFFIX}</span>
                     <button
                       type="button"
                       onClick={() => setIndividual(rows => rows.filter((_, i) => i !== index))}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 shrink-0"
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:text-rose-400 dark:hover:bg-slate-700 shrink-0"
                       aria-label={t('payroll.individualRemove', 'Убрать ученика')}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -538,9 +538,9 @@ const RateModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setIndividual(rows => [...rows, { studentId: '', amount: '' }])}
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 {t('payroll.individualAdd', 'Добавить ученика')}
               </button>
             )}
@@ -553,7 +553,7 @@ const RateModal: React.FC<Props> = ({
               читается как приговор ставке: директор видит маленькое число и не
               знает, дело в проценте или в том, что половина ещё не заплатила. */}
           {showPreviewBox && (
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-600 dark:text-slate-300 space-y-1.5">
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-600 dark:text-slate-300 space-y-1.5">
               {/* Общей ставки нет — это законный случай (человек ведёт только
                   индивидуальные), но он обязан быть сказан вслух: иначе забытое
                   поле процента прочитается как «ставка задана». */}
@@ -623,35 +623,35 @@ const RateModal: React.FC<Props> = ({
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3 shrink-0">
+        <div className="px-4 pt-2 pb-4 flex items-center justify-between gap-3 shrink-0">
           {rule ? (
             confirmDelete ? (
               <button
                 onClick={handleDelete}
                 disabled={saving}
-                className="text-sm font-bold text-rose-600 hover:text-rose-700 disabled:opacity-50 flex items-center gap-1.5"
+                className="btn-danger inline-flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" />{t('payroll.rateDeleteConfirm', 'Точно убрать?')}
+                <Trash2 className="w-3.5 h-3.5" />{t('payroll.rateDeleteConfirm', 'Точно убрать?')}
               </button>
             ) : (
               <button
                 onClick={() => setConfirmDelete(true)}
                 disabled={saving}
-                className="text-sm font-medium text-slate-500 hover:text-rose-600 disabled:opacity-50 flex items-center gap-1.5"
+                className="btn-ghost inline-flex items-center gap-1.5 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" />{t('payroll.rateDelete', 'Убрать ставку')}
+                <Trash2 className="w-3.5 h-3.5" />{t('payroll.rateDelete', 'Убрать ставку')}
               </button>
             )
           ) : <span />}
 
           <div className="flex items-center gap-3">
-            <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 disabled:opacity-50">
+            <button onClick={onClose} disabled={saving} className="btn-ghost disabled:opacity-50">
               {t('payroll.cancel', 'Отмена')}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+              className="btn-primary disabled:opacity-50"
             >
               {saving ? t('payroll.saving', 'Сохранение...') : t('payroll.save', 'Сохранить')}
             </button>

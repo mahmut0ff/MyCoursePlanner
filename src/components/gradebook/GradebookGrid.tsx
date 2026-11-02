@@ -97,30 +97,30 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
   }, [columns.length]);
 
   return (
-    <div className="w-full h-full overflow-auto border border-slate-200 dark:border-slate-700/80 rounded-2xl bg-white dark:bg-slate-900 custom-scrollbar shadow-sm" ref={gridRef}>
+    <div className="w-full h-full overflow-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 custom-scrollbar" ref={gridRef}>
       <table className="w-full border-collapse text-left text-sm whitespace-nowrap min-w-max">
         <thead className="sticky top-0 z-30">
           <tr>
-            <th className="sticky left-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-5 py-3 font-semibold text-slate-700 dark:text-slate-300 min-w-[240px] max-w-[280px] border-b border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)]">
+            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[240px] max-w-[280px] border-b border-r border-slate-200 dark:border-slate-700">
               {t('journal.ui.colStudent', 'Студент')}
             </th>
             {/* Average Score Column */}
-            <th className="bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-primary-600 dark:text-primary-400 min-w-[100px] border-b border-r border-slate-200 dark:border-slate-800 text-center">
+            <th className="bg-slate-50 dark:bg-slate-800 h-8 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[100px] border-b border-r border-slate-200 dark:border-slate-700 text-center">
               {t('gradebook.ui.avgScore', 'Ср. балл')}
             </th>
             {columns.map((col) => (
-              <th key={col.id} className="group relative bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 w-32 min-w-[128px] max-w-[160px] text-center border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0">
+              <th key={col.id} className="group relative bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 tabular-nums w-32 min-w-[128px] max-w-[160px] text-center border-b border-r border-slate-200 dark:border-slate-700 last:border-r-0">
                 <div className="truncate mx-auto pr-6" title={col.title}>
                   {col.title}
                 </div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mt-1">{col.type === 'date' ? t('gradebook.ui.colDate', 'Дата') : col.type === 'lesson' ? t('gradebook.ui.colLesson', 'Урок') : t('gradebook.ui.colAssignment', 'Задание')}</div>
+                <div className="text-[11px] font-normal text-slate-400 dark:text-slate-500">{col.type === 'date' ? t('gradebook.ui.colDate', 'Дата') : col.type === 'lesson' ? t('gradebook.ui.colLesson', 'Урок') : t('gradebook.ui.colAssignment', 'Задание')}</div>
                 {!readOnly && (
                   <button
                     onClick={() => setVoiceTarget(col)}
-                    className="absolute top-2 right-1.5 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all shadow-sm"
+                    className="absolute top-1/2 -translate-y-1/2 right-1 opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-colors"
                     title={t('gradebook.ui.voiceTitle', 'Голосовое выставление оценок')}
                   >
-                    <Mic className="w-4 h-4" />
+                    <Mic className="w-3.5 h-3.5" />
                   </button>
                 )}
               </th>
@@ -145,32 +145,32 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
             const avgPct = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : null;
 
             return (
-              <tr key={student.uid} className="border-b border-slate-200 dark:border-slate-800 last:border-b-0 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 group transition-colors">
-                <td className="sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/80 px-5 py-2.5 border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)] z-20 transition-colors">
-                  <div className="flex items-center gap-3">
+              <tr key={student.uid} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors">
+                <td className="sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 px-3 py-1.5 border-r border-slate-200 dark:border-slate-700 z-20 transition-colors">
+                  <div className="flex items-center gap-2">
                     {student.avatarUrl ? (
-                      <img src={student.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-slate-100 dark:ring-slate-800" />
+                      <img src={student.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/50 dark:to-indigo-800/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-sm shrink-0 ring-2 ring-slate-100 dark:ring-slate-800">
+                      <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 font-medium text-xs shrink-0">
                         {student.displayName?.charAt(0).toUpperCase() || '?'}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
-                      {!isIssuedLoginEmail(student.email) && <p className="text-[11px] font-medium text-slate-500 truncate" title={student.email}>{student.email}</p>}
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate" title={student.displayName}>{student.displayName}</p>
+                      {!isIssuedLoginEmail(student.email) && <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={student.email}>{student.email}</p>}
                     </div>
                   </div>
                 </td>
                 
                 {/* Average cell */}
-                <td className="p-0 border-r border-slate-200 dark:border-slate-800 text-center font-bold">
-                   <div className="flex items-center justify-center h-full min-h-[48px] px-2 bg-slate-50/30 dark:bg-slate-800/20">
+                <td className="p-0 border-r border-slate-200 dark:border-slate-700 text-center text-xs font-medium tabular-nums">
+                   <div className="flex items-center justify-center h-full min-h-[40px] px-2">
                      {avgPct !== null ? (
-                       <span className={`px-2 py-0.5 rounded ${avgPct >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : avgPct >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                       <span className={`inline-flex items-center h-5 px-1.5 rounded ${avgPct >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : avgPct >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                          {avgPct}%
                        </span>
                      ) : (
-                       <span className="text-slate-300 dark:text-slate-600">—</span>
+                       <span className="text-slate-400 dark:text-slate-500">—</span>
                      )}
                    </div>
                 </td>
@@ -179,7 +179,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
                   const key = `${student.uid}_${col.id}`;
                   const entry = grades[key];
                   return (
-                    <td key={col.id} className="p-0 border-r border-slate-200 dark:border-slate-800 last:border-r-0 relative min-w-[128px] w-32 bg-white dark:bg-slate-900 transition-colors">
+                    <td key={col.id} className="p-0 border-r border-slate-200 dark:border-slate-700 last:border-r-0 relative min-w-[128px] w-32 bg-white dark:bg-slate-900 transition-colors">
                       <div className="absolute inset-0 z-10">
                         <GradeCell
                           studentId={student.uid}
@@ -192,7 +192,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
                           onChange={(val, disp, status, comment) => onGradeChange(student.uid, col.id, val, disp, status, comment)}
                         />
                       </div>
-                      <div className="h-12 w-full invisible"></div> 
+                      <div className="h-10 w-full invisible"></div> 
                     </td>
                   );
                 })}
@@ -201,7 +201,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
           })}
           {students.length === 0 && (
             <tr>
-              <td colSpan={columns.length + 2} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+              <td colSpan={columns.length + 2} className="px-3 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 {t('gradebook.ui.noStudents', 'В этой группе или курсе нет студентов.')}
               </td>
             </tr>

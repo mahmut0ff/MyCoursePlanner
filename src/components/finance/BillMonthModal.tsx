@@ -126,45 +126,45 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-pop w-full max-w-[640px] overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('finances.billMonth', 'Начислить за месяц')}</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('finances.billMonth', 'Начислить за месяц')}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{periodLabel}</p>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5" /></button>
         </div>
 
         {rows.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-6 text-center text-sm text-slate-500">
             {t('finances.billMonthNone', 'За этот месяц все активные студенты уже начислены.')}
           </div>
         ) : (
           <>
-            <p className="px-5 pt-4 text-xs text-slate-500">
+            <p className="px-4 pt-1 text-xs text-slate-500">
               {t('finances.billMonthHint', 'Отметьте, кому начислить. Суммы перенесены из прошлого месяца — поправьте, где нужно.')}
             </p>
-            <div className="px-5 pt-3">
+            <div className="px-4 pt-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder={t('finances.billSearch', 'Поиск по имени или курсу...')}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm dark:text-white"
+                  className="input pl-8"
                 />
               </div>
             </div>
-            <div className="px-5 pt-3 flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+            <div className="px-4 pt-3 flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
                 <input
                   ref={masterRef}
                   type="checkbox"
                   checked={allOn}
                   onChange={() => setAll(!allOn)}
-                  className="w-4 h-4 accent-emerald-500"
+                  className="w-3.5 h-3.5 accent-primary-600"
                 />
                 {allOn
                   ? (hasQuery ? t('finances.billDeselectFound', 'Снять найденных') : t('finances.billDeselectAll', 'Снять все'))
@@ -174,7 +174,7 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                 {t('finances.billSelectedCount', 'Выбрано: {{n}} из {{m}}', { n: selected.length, m: rows.length })}
               </span>
             </div>
-            <div className="p-5 pt-3 space-y-2 overflow-y-auto">
+            <div className="px-4 pt-3 pb-3 space-y-1.5 overflow-y-auto">
               {visibleRows.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-400">{t('finances.billSearchNone', 'Никого не нашли')}</p>
               ) : visibleRows.map(r => {
@@ -182,13 +182,13 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                 // менеджер видел, что ставит меньше прайса осознанно, а не по ошибке.
                 const discount = r.listAmount != null ? Math.max(0, r.listAmount - Number(r.amountText || 0)) : 0;
                 return (
-                  <div key={r.key} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2">
+                  <div key={r.key} className="flex items-center gap-3 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <input
                       type="checkbox"
                       checked={r.include}
                       onChange={e => patch(r.key, { include: e.target.checked })}
                       aria-label={r.studentName}
-                      className="w-4 h-4 shrink-0 accent-emerald-500"
+                      className="w-3.5 h-3.5 shrink-0 accent-primary-600"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{r.studentName}</p>
@@ -204,7 +204,7 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                         )}
                       </p>
                       {discount > 0 && (
-                        <p className="text-[11px] text-emerald-600 font-medium">
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium tabular-nums">
                           {t('finances.discount', 'Скидка')}: {formatMoney(discount)}
                           <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(r.listAmount!)}</span>
                         </p>
@@ -219,7 +219,7 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                         // и показывала «Скидку» больше цены курса.
                         onChange={e => patch(r.key, { amountText: e.target.value.replace('-', '') })}
                         placeholder="0"
-                        className="w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-right font-medium dark:text-white"
+                        className="input w-24 text-right font-medium tabular-nums"
                       />
                       <span className="text-[11px] text-slate-400 w-6">{CURRENCY_SUFFIX}</span>
                     </div>
@@ -230,20 +230,20 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
           </>
         )}
 
-        <div className="p-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
           <div className="text-sm">
             <span className="text-slate-500">{t('finances.billMonthTotal', 'Итого')}: </span>
-            <span className="font-bold text-slate-900 dark:text-white">{formatMoney(total)}</span>
+            <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatMoney(total)}</span>
             <span className="text-slate-400"> · {selected.length}</span>
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
+            <button onClick={onClose} className="btn-ghost">{t('finances.cancel', 'Отмена')}</button>
             <button
               onClick={handleConfirm}
               disabled={saving || selected.length === 0}
-              className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+              className="btn-primary inline-flex items-center gap-1.5"
             >
-              <CalendarPlus className="w-4 h-4" />
+              <CalendarPlus className="w-3.5 h-3.5" />
               {saving ? t('finances.saving', 'Сохранение...') : t('finances.billMonthConfirm', 'Начислить')}
             </button>
           </div>

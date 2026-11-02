@@ -254,12 +254,10 @@ const PaymentsTab: React.FC<Props> = ({
       {/* Касса за период: общий итог + разбивка по способам. Это сводная цифра
           дохода, поэтому только для роли с правом «Финансы: сводка и прибыль». */}
       {canOverview && (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
-              <Wallet className="w-5 h-5 text-emerald-600" />
-            </div>
+            <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 self-start mt-0.5" />
             <div>
               {/* Итог считается по `filtered`, то есть по СРЕЗУ: поиск, способ
                   оплаты и ?student=<uid> из URL его урезают. Подпись обязана
@@ -267,7 +265,7 @@ const PaymentsTab: React.FC<Props> = ({
                   проверить одну оплату, большая зелёная цифра бесшумно падает
                   с 845 000 до 6 000, и она же уезжает в отчёт как касса за
                   месяц. Соседние «Расходы» ровно так и подписаны. */}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isFiltered
                   ? t('finances.receivedFiltered', 'Поступило по фильтру')
                   : t('finances.receivedTotal', 'Поступило за период')}
@@ -275,20 +273,20 @@ const PaymentsTab: React.FC<Props> = ({
                   <span className="text-amber-500"> · {t('finances.filteredSubtotal', 'отфильтровано')}</span>
                 )}
               </p>
-              <p className="text-2xl font-bold text-emerald-600">{formatMoney(totals.total)}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(totals.total)}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                 {t('finances.paymentsCount', 'платежей')}: {formatNumber(filtered.length)}
                 {isFiltered && <> {t('common.of', 'из')} {formatNumber(rows.length)}</>}
               </p>
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2">
             {totals.breakdown.map(m => (
-              <div key={m.id || 'unknown'} className="bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2.5">
-                <p className="text-[11px] text-slate-500 truncate">{getMethodLabel(m.id, t)}</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{formatMoney(m.amount)}</p>
-                <p className="text-[11px] text-slate-400">{formatNumber(m.count)}</p>
+              <div key={m.id || 'unknown'} className="border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{getMethodLabel(m.id, t)}</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatMoney(m.amount)}</p>
+                <p className="text-xs text-slate-400 tabular-nums">{formatNumber(m.count)}</p>
               </div>
             ))}
           </div>
@@ -297,7 +295,7 @@ const PaymentsTab: React.FC<Props> = ({
       )}
 
       {truncated && (
-        <div className="p-4 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl">
+        <div className="px-3 py-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
           {t(
             'finances.truncatedWindow',
             'Показаны не все платежи за этот период — сервер отдаёт максимум 5000 записей. Итоги ниже неполные, выберите период покороче.'
@@ -307,22 +305,22 @@ const PaymentsTab: React.FC<Props> = ({
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-none sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
               value={filters.search}
               onChange={e => setFilter({ search: e.target.value })}
               placeholder={t('finances.searchPayments', 'Поиск по студенту, курсу, комментарию...')}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm dark:text-white"
+              className="input pl-8"
             />
           </div>
           <select
             value={filters.method}
             onChange={e => setFilter({ method: e.target.value })}
             aria-label={t('finances.colMethod', 'Способ')}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
+            className="input w-auto"
           >
             <option value="">{t('finances.allMethods', 'Все способы')}</option>
             {PAYMENT_METHODS.map(m => (
@@ -333,7 +331,7 @@ const PaymentsTab: React.FC<Props> = ({
         {filtered.length > 0 && (
           <button
             onClick={handleExport}
-            className="text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0"
+            className="btn-secondary inline-flex items-center gap-1.5 shrink-0"
           >
             <Download className="w-3.5 h-3.5" />CSV
           </button>
@@ -343,7 +341,7 @@ const PaymentsTab: React.FC<Props> = ({
       {loading ? (
         <ListSkeleton />
       ) : error ? (
-        <div className="p-4 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>
+        <div className="px-3 py-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg">{error}</div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Banknote}
@@ -356,49 +354,49 @@ const PaymentsTab: React.FC<Props> = ({
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colDate', 'Дата')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colStudent', 'Студент')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colCourse', 'Курс')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colAmount', 'Сумма')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colMethod', 'Способ')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colAcceptedBy', 'Принял')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500 w-full">{t('finances.colComment', 'Комментарий')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('finances.colActions', 'Действия')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colDate', 'Дата')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colStudent', 'Студент')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colCourse', 'Курс')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colAmount', 'Сумма')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colMethod', 'Способ')}</th>
+                    <th className="h-8 px-3 font-medium">{t('finances.colAcceptedBy', 'Принял')}</th>
+                    <th className="h-8 px-3 font-medium w-full">{t('finances.colComment', 'Комментарий')}</th>
+                    <th className="h-8 px-3 font-medium text-right">{t('finances.colActions', 'Действия')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {pageRows.map(tx => {
                     const when = txDate(tx);
                     const menu = buildRowMenu(tx);
                     const recordedOn = lateEntryDate(tx);
                     const rowStudentId = String(tx.studentId || '');
                     return (
-                      <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                      <tr key={tx.id} className="h-10 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                           {/* Старые строки могут нести непарсящуюся дату — не рисуем
                               «Invalid Date», а показываем прочерк, как в сортировке. */}
                           {formatTxDate(when)}
                           {/* Дата — это когда деньги пришли. Если запись сделали заметно
                               позже, тихо говорим когда: иначе сверка кассы не сходится. */}
                           {recordedOn && (
-                            <span className="block text-[11px] text-slate-400 leading-tight mt-0.5">
+                            <span className="block text-xs text-slate-400 leading-tight mt-0.5">
                               {t('finances.recordedOn', 'внесено {{date}}', { date: recordedOn })}
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                        <td className="px-3 py-1.5 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                           {/* Старые записи приходят без имён — показываем прочерк, но никогда undefined.
                               Есть uid — имя ведёт в карточку студента. */}
                           {tx.studentName && rowStudentId ? (
                             <Link
                               to={`/students/${rowStudentId}`}
                               title={t('finances.openStudentCard', 'Открыть карточку студента')}
-                              className="hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors"
+                              className="hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
                             >
                               {tx.studentName}
                             </Link>
@@ -406,18 +404,18 @@ const PaymentsTab: React.FC<Props> = ({
                             tx.studentName || '—'
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{tx.courseName || '—'}</td>
-                        <td className="px-5 py-3.5 font-bold text-emerald-600 whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{tx.courseName || '—'}</td>
+                        <td className="px-3 py-1.5 font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap tabular-nums">
                           {formatMoney(tx.amount)}
                         </td>
-                        <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           {getMethodLabel(tx.paymentMethod, t)}
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{tx.createdByName || '—'}</td>
-                        <td className="px-5 py-3.5 text-slate-500 max-w-[220px] truncate">{tx.description || '—'}</td>
-                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{tx.createdByName || '—'}</td>
+                        <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400 max-w-[220px] truncate">{tx.description || '—'}</td>
+                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end">
-                            {menu.length > 0 ? <RowMenu items={menu} /> : <span className="text-slate-300">—</span>}
+                            {menu.length > 0 ? <RowMenu items={menu} /> : <span className="text-slate-300 dark:text-slate-600">—</span>}
                           </div>
                         </td>
                       </tr>

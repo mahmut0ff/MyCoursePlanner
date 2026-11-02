@@ -20,15 +20,15 @@ const STATUSES: ParticipantStatus[] = ['registered', 'arrived', 'withdrawn'];
 const STATUS_SHORT: Record<ParticipantStatus, string> = { registered: 'Ждём', arrived: 'Пришёл', withdrawn: 'Снят' };
 
 const STATUS_TONE: Record<ParticipantStatus, string> = {
-  registered: 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900', arrived: 'bg-emerald-600 text-white', withdrawn: 'bg-rose-600 text-white',
+  registered: 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100', arrived: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', withdrawn: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
 };
 
 /** Переключатель статуса прямо в строке: один контрол вместо трёх иконок. */
 const StatusSwitch: React.FC<{ value: ParticipantStatus; onChange: (s: ParticipantStatus) => void }> = ({ value, onChange }) => (
   <Segmented label={i18n.t('contests.part.statusLabel', 'Статус участника')} value={value} onChange={onChange}
     options={STATUSES.map((s) => ({ value: s, label: i18n.t(`contests.part.short.${s}`, STATUS_SHORT[s]), title: participantStatusLabel(s) }))}
-    className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-50 dark:bg-slate-900/40"
-    optionCls={(on, s) => `px-2.5 py-1 rounded-md text-[12px] font-semibold transition-colors ${on ? STATUS_TONE[s] : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`} />
+    className="inline-flex rounded-md border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-50 dark:bg-slate-900/40"
+    optionCls={(on, s) => `h-6 px-2 rounded text-xs font-medium transition-colors ${on ? STATUS_TONE[s] : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`} />
 );
 
 const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete, readOnly, categoryId }) => {
@@ -105,31 +105,31 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
   };
 
   const chip = (value: '' | ParticipantStatus, label: string, n: number) => ({
-    value, label: <>{label}<span className={`ml-1.5 ${status === value ? 'opacity-80' : 'text-slate-500 dark:text-slate-400'}`}>{n}</span></>,
+    value, label: <>{label}<span className={`ml-1.5 ${status === value ? 'opacity-80' : 'text-slate-400 dark:text-slate-500'} tabular-nums`}>{n}</span></>,
   });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-600 dark:text-slate-300 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('contests.part.searchPh', 'Номер, ФИО, проект, телефон')} aria-label={t('contests.part.searchAria', 'Поиск участника')} className={`${inputCls} pl-9`} />
+          <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('contests.part.searchPh', 'Номер, ФИО, проект, телефон')} aria-label={t('contests.part.searchAria', 'Поиск участника')} className={`${inputCls} pl-8`} />
         </div>
         <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t('contests.category', 'Категория')} className={`${inputCls} md:w-48`}>
           <option value="">{t('contests.allCategories', 'Все категории')}</option>
           {contest.categories.map((c) => <option key={c.id} value={c.id}>{categoryLabel(c)}</option>)}
         </select>
-        <Link to={`/contests/${contest.id}/print?what=participants${cat ? `&category=${cat}` : ''}`} target="_blank" className={secondaryBtn}><Printer className="w-4 h-4" />{t('contests.printBtn', 'Печать')}</Link>
-        {editable && <button onClick={openNew} disabled={!contest.categories.length} className={primaryBtn}><Plus className="w-4 h-4" />{t('contests.part.participant', 'Участник')}</button>}
+        <Link to={`/contests/${contest.id}/print?what=participants${cat ? `&category=${cat}` : ''}`} target="_blank" className={secondaryBtn}><Printer className="w-3.5 h-3.5" />{t('contests.printBtn', 'Печать')}</Link>
+        {editable && <button onClick={openNew} disabled={!contest.categories.length} className={primaryBtn}><Plus className="w-3.5 h-3.5" />{t('contests.part.participant', 'Участник')}</button>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Segmented label={t('common.status', 'Статус')} value={status} onChange={setStatus} className="flex flex-wrap gap-2"
+        <Segmented label={t('common.status', 'Статус')} value={status} onChange={setStatus} className="flex flex-wrap gap-1"
           options={[chip('', t('common.all', 'Все'), inScope.length), chip('registered', t('contests.part.notArrived', 'Не пришли'), counts.registered), chip('arrived', t('contests.part.arrived', 'Пришли'), counts.arrived), chip('withdrawn', t('contests.part.withdrawn', 'Сняты'), counts.withdrawn)]}
-          optionCls={(on) => `px-3 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'}`} />
+          optionCls={(on) => `h-7 px-2 rounded-md text-sm transition-colors ${on ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`} />
         {editable && markable.length > 0 && (
           <button onClick={() => setConfirmAll(true)} disabled={busy} className={`${secondaryBtn} ml-auto`}>
-            <UserCheck className="w-4 h-4" />{t('contests.part.markAll', 'Отметить всех пришедшими')}{cat ? ` (${catById.get(cat)?.code})` : ''} · {markable.length}
+            <UserCheck className="w-3.5 h-3.5" />{t('contests.part.markAll', 'Отметить всех пришедшими')}{cat ? ` (${catById.get(cat)?.code})` : ''} · {markable.length}
           </button>
         )}
       </div>
@@ -142,39 +142,39 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
         <div className={`${cardCls} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">№</th>
-                  <th className="px-4 py-3 font-semibold">{t('contests.part.participantProject', 'Участник / проект')}</th>
-                  <th className="px-4 py-3 font-semibold hidden md:table-cell">{t('contests.part.contacts', 'Контакты')}</th>
-                  <th className="px-4 py-3 font-semibold">{t('common.status', 'Статус')}</th>
-                  <th className="px-4 py-3 text-right font-semibold"><span className="sr-only">{t('common.actions', 'Действия')}</span></th>
+                  <th className="h-8 px-3 font-medium">№</th>
+                  <th className="h-8 px-3 font-medium">{t('contests.part.participantProject', 'Участник / проект')}</th>
+                  <th className="h-8 px-3 font-medium hidden md:table-cell">{t('contests.part.contacts', 'Контакты')}</th>
+                  <th className="h-8 px-3 font-medium">{t('common.status', 'Статус')}</th>
+                  <th className="h-8 px-3 text-right font-medium"><span className="sr-only">{t('common.actions', 'Действия')}</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {list.map((p) => {
                   const c = catById.get(p.categoryId);
                   const frozen = c?.judging === 'approved';
                   const canRemove = canDelete && !scored.has(p.id);
                   return (
-                    <tr key={p.id} className={p.status === 'withdrawn' ? 'opacity-60' : ''}>
-                      <td className="px-4 py-3 align-top"><NumberChip value={p.number} /></td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="font-semibold text-slate-900 dark:text-white">{p.projectTitle || <span className="text-slate-500 dark:text-slate-400 font-normal">{t('contests.part.untitled', 'без названия')}</span>}</div>
-                        <div className="text-slate-600 dark:text-slate-300 text-[13px]">
+                    <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 ${p.status === 'withdrawn' ? 'opacity-60' : ''}`}>
+                      <td className="px-3 py-2 align-top"><NumberChip value={p.number} /></td>
+                      <td className="px-3 py-2 align-top">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{p.projectTitle || <span className="text-slate-500 dark:text-slate-400 font-normal">{t('contests.part.untitled', 'без названия')}</span>}</div>
+                        <div className="text-slate-500 dark:text-slate-400 text-xs">
                           {p.authors.map((a) => `${a.name}${a.age != null ? ` (${a.age})` : ''}`).join(', ')}
-                          {p.categoryManual && <span className="ml-1.5 text-[11px] text-amber-700 dark:text-amber-400">· {t('contests.part.manualCategory', 'категория вручную')}</span>}
+                          {p.categoryManual && <span className="ml-1.5 text-xs text-amber-700 dark:text-amber-400">· {t('contests.part.manualCategory', 'категория вручную')}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 align-top hidden md:table-cell text-[13px] text-slate-600 dark:text-slate-300">
+                      <td className="px-3 py-2 align-top hidden md:table-cell text-sm text-slate-600 dark:text-slate-300">
                         <div>{p.phone}</div><div>{p.city}</div>
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td className="px-3 py-2 align-top">
                         {editable && !frozen
                           ? <StatusSwitch value={p.status} onChange={(s) => setP(p, s)} />
                           : <span className="inline-flex items-center gap-1.5"><ParticipantBadge status={p.status} />{frozen && <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" aria-label={t('contests.part.frozen', 'Итоги категории утверждены')} role="img" />}</span>}
                       </td>
-                      <td className="px-4 py-3 align-top text-right">
+                      <td className="px-3 py-2 align-top text-right">
                         {editable && !frozen && (
                           <RowMenu label={`${t('common.actions', 'Действия')}: ${p.number}`} items={[
                             { label: t('contests.edit', 'Изменить'), icon: Pencil, onSelect: () => openEdit(p) },
@@ -188,7 +188,7 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
               </tbody>
             </table>
           </div>
-          {!list.length && <p className="text-sm text-slate-600 dark:text-slate-300 text-center py-8">{t('contests.part.nobody', 'Никого не найдено')}{status || q || cat ? ` — ${t('contests.part.clearFilters', 'попробуйте снять фильтры')}` : ''}</p>}
+          {!list.length && <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">{t('contests.part.nobody', 'Никого не найдено')}{status || q || cat ? ` — ${t('contests.part.clearFilters', 'попробуйте снять фильтры')}` : ''}</p>}
         </div>
       )}
 
@@ -206,13 +206,13 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
                     <input type="number" inputMode="numeric" min={3} max={120} value={a.age} placeholder={t('contests.part.age', 'Возраст')} aria-label={t('contests.part.age', 'Возраст')}
                       onChange={(e) => setForm({ ...form, authors: form.authors.map((x, k) => (k === i ? { ...x, age: e.target.value } : x)) })} className={inputCls} />
                     {form.authors.length > 1
-                      ? <button type="button" onClick={() => setForm({ ...form, authors: form.authors.filter((_, k) => k !== i) })} className={ghostBtn} aria-label={t('contests.part.removeAuthor', 'Убрать автора')}><X className="w-4 h-4" /></button>
+                      ? <button type="button" onClick={() => setForm({ ...form, authors: form.authors.filter((_, k) => k !== i) })} className={ghostBtn} aria-label={t('contests.part.removeAuthor', 'Убрать автора')}><X className="w-3.5 h-3.5" /></button>
                       : <span />}
                   </div>
                 ))}
               </div>
               <button type="button" onClick={() => setForm({ ...form, authors: [...form.authors, { name: '', age: '' }] })} className={`${ghostBtn} mt-2`}><Plus className="w-3.5 h-3.5" />{t('contests.part.addCoauthor', 'Соавтор (командный проект)')}</button>
-              {form.authors.length > 1 && <p className="text-[12px] text-slate-600 dark:text-slate-400 mt-1">{t('contests.part.teamCategory', 'Категория команды определяется по старшему участнику.')}</p>}
+              {form.authors.length > 1 && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{t('contests.part.teamCategory', 'Категория команды определяется по старшему участнику.')}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label={t('common.phone', 'Телефон')}><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} /></Field>

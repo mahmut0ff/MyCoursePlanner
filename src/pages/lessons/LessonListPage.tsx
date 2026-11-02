@@ -158,27 +158,27 @@ const LessonListPage: React.FC = () => {
   if (loading) return <ListSkeleton rows={6} />;
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
+    <div className="pb-10">
       
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('lessons.title', 'Уроки')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('lessons.list.available', { count: filtered.length })}</p>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('lessons.title', 'Уроки')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs">{t('lessons.list.available', { count: filtered.length })}</p>
         </div>
         
         {isStaff && (
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {canAccess('ai') && (
               <button 
                 onClick={() => setIsAIModalOpen(true)}
-                className="flex-1 sm:flex-none btn-secondary flex justify-center items-center gap-2 border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+                className="flex-1 sm:flex-none btn-secondary flex justify-center items-center gap-1.5"
               >
-                <Sparkles className="w-4 h-4" /> 
+                <Sparkles className="w-3.5 h-3.5" /> 
                 <span>{t('lessons.list.aiBuilder', 'AI Конструктор')}</span>
               </button>
             )}
-            <Link to="/lessons/new" className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
-              <Plus className="w-4 h-4" />
+            <Link to="/lessons/new" className="flex-1 sm:flex-none btn-primary flex justify-center items-center gap-1.5 shrink-0">
+              <Plus className="w-3.5 h-3.5" />
               {t('lessons.create', 'Создать')}
             </Link>
           </div>
@@ -186,29 +186,29 @@ const LessonListPage: React.FC = () => {
       </div>
 
       {/* Advanced Filters */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col md:flex-row md:items-center gap-4">
+      <div className="mb-3 flex flex-col md:flex-row md:items-center gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input 
             type="text" 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
             placeholder={t('lessons.list.searchPlaceholder', 'Поиск по названию или описанию...')} 
-            className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20" 
+            className="input pl-8 w-full" 
           />
         </div>
         
-        <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
-          <div className="flex items-center gap-2 shrink-0">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="input w-auto">
               <option value="all">{t('lessons.list.allSubjects', 'Все предметы')}</option>
               {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
+            <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} className="input w-auto">
               <option value="all">{t('lessons.list.allLevels', 'Все уровни')}</option>
               {uniqueLevels.map(l => <option key={l} value={l}>{t(`lessons.${String(l).toLowerCase()}`, l)}</option>)}
             </select>
@@ -216,7 +216,7 @@ const LessonListPage: React.FC = () => {
 
           {uniqueGroups.length > 0 && (
             <div className="flex items-center gap-2 shrink-0">
-              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
+              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="input w-auto">
                 <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                 {uniqueGroups.map(([gid, gname]) => <option key={gid} value={gid}>{gname}</option>)}
               </select>
@@ -224,10 +224,10 @@ const LessonListPage: React.FC = () => {
           )}
 
           {isStaff && (
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0 ml-2">
+            <div className="flex gap-1 shrink-0 ml-1">
               {(['all', 'published', 'draft'] as const).map((s) => (
                 <button key={s} onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                  className={`h-7 px-2 rounded-md text-sm transition-colors ${statusFilter === s ? 'bg-primary-100 dark:bg-primary-950 text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {s === 'all' ? t('common.all', 'Все') : s === 'published' ? t('common.published', 'Опубликован') : t('common.draft', 'Черновик')}
                 </button>
               ))}
@@ -245,9 +245,9 @@ const LessonListPage: React.FC = () => {
           actionLink={isStaff ? '/lessons/new' : undefined}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px_60px] gap-3 items-center h-8 px-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400">
             <span>{t('lessons.titleLabel', 'Название')}</span>
             <span>{t('lessons.list.subjectLevel', 'Предмет / Уровень')}</span>
             <span>{t('nav.groups', 'Группы')}</span>
@@ -262,30 +262,30 @@ const LessonListPage: React.FC = () => {
               <Link 
                 key={lesson.id} 
                 to={`/lessons/${lesson.id}`} 
-                className={`group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_100px_90px_60px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative ${!completed ? '' : 'bg-emerald-50/20 dark:bg-emerald-900/5'}`}
+                className={`group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_100px_90px_60px] gap-2 md:gap-3 items-center min-h-[40px] px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors relative`}
               >
                 {/* Title + cover thumbnail */}
-                <div className="flex items-center gap-3 min-w-0 w-full">
+                <div className="flex items-center gap-2 min-w-0 w-full">
                   {lesson.coverImageUrl ? (
-                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+                    <div className="w-7 h-7 rounded-md overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
                       <img src={lesson.coverImageUrl} alt="" className="w-full h-full object-cover" />
                     </div>
                   ) : (
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${completed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-primary-50 dark:bg-primary-900/20 text-primary-400'}`}>
-                      {completed ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                    <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${completed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                      {completed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <BookOpen className="w-3.5 h-3.5" />}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                       {lesson.title}
                     </h3>
                     {/* Mobile-only meta */}
                     <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
-                      <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">{lesson.subject}</span>
-                      <span className="text-[10px] text-slate-400">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration} {t('common.minutes', 'мин')}</span>
+                      <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">{lesson.subject}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration} {t('common.minutes', 'мин')}</span>
                       {isStaff && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
+                        <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                           {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
                         </span>
                       )}
@@ -294,9 +294,9 @@ const LessonListPage: React.FC = () => {
                 </div>
 
                 {/* Subject / Level */}
-                <div className="hidden md:flex flex-col gap-1 min-w-0">
-                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{lesson.subject}</span>
-                  <span className="text-[10px] text-slate-400 text-center">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
+                <div className="hidden md:flex flex-col gap-0.5 min-w-0 items-start">
+                  <span className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 truncate max-w-full">{lesson.subject}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
                 </div>
 
                 {/* Groups — labelled through the same resolver as the filter, so a
@@ -304,14 +304,14 @@ const LessonListPage: React.FC = () => {
                 <div className="hidden md:flex flex-wrap gap-1 justify-start">
                   {(() => {
                     const labels = lessonGroupLabels(lesson).map(g => g.label);
-                    if (labels.length === 0) return <span className="text-[10px] text-slate-400">—</span>;
+                    if (labels.length === 0) return <span className="text-xs text-slate-400">—</span>;
                     return (
                       <>
                         {labels.slice(0, 2).map((label, i) => (
-                          <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px] font-bold truncate max-w-[90px]">{label}</span>
+                          <span key={i} className="inline-flex items-center h-5 px-1.5 rounded text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 truncate max-w-[90px]">{label}</span>
                         ))}
                         {labels.length > 2 && (
-                          <span className="text-[10px] text-slate-400">+{labels.length - 2}</span>
+                          <span className="text-xs text-slate-400 tabular-nums">+{labels.length - 2}</span>
                         )}
                       </>
                     );
@@ -319,7 +319,7 @@ const LessonListPage: React.FC = () => {
                 </div>
 
                 {/* Duration */}
-                <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="hidden md:flex items-center gap-1.5 text-sm tabular-nums text-slate-700 dark:text-slate-300">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   <span>{lesson.duration} {t('common.minutes', 'мин')}</span>
                 </div>
@@ -327,7 +327,7 @@ const LessonListPage: React.FC = () => {
                 {/* Status (staff only) */}
                 {isStaff && (
                   <div className="hidden md:block">
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
+                    <span className={`inline-flex items-center h-5 px-1.5 rounded text-xs font-medium ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                       {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
                     </span>
                   </div>
@@ -337,7 +337,7 @@ const LessonListPage: React.FC = () => {
                 <div className="hidden md:flex items-center gap-1.5 justify-end">
                   {(lesson.attachments?.length || 0) > 0 && (
                     <span className="flex items-center gap-0.5 text-slate-400 tooltip" data-tip={t('lessons.attachments', 'Вложения')}>
-                      <Paperclip className="w-3.5 h-3.5" /> <span className="text-[10px]">{lesson.attachments!.length}</span>
+                      <Paperclip className="w-3.5 h-3.5" /> <span className="text-xs tabular-nums">{lesson.attachments!.length}</span>
                     </span>
                   )}
                   {lesson.homework?.title && (
@@ -349,7 +349,7 @@ const LessonListPage: React.FC = () => {
                     <button 
                       onClick={(e) => handleDuplicate(e, lesson)}
                       disabled={duplicatingId === lesson.id}
-                      className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip"
+                      className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors tooltip"
                       data-tip={t('common.copy', 'Копировать')}
                     >
                       {duplicatingId === lesson.id ? <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-400 border-t-transparent animate-spin"/> : <Copy className="w-3.5 h-3.5" /> }

@@ -32,13 +32,13 @@ const PermissionGrid: React.FC<{
 }> = ({ hasPerm, togglePerm, toggleAll, viewOnly, openHelp, setOpenHelp, collapsed, setCollapsed, baselineHas }) => {
   const { t } = useTranslation();
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Column header */}
       {/* Колонки под действия — 62px: «Изменение» на 11px шрифта в 52px не влезало,
           и заголовки наезжали друг на друга. Ширина фиксированная, чтобы галочки
           стояли одна под другой во всех строках. */}
-      <div className="grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 text-[10px] font-semibold text-slate-500">
-        <span className="text-[11px]">{t('team.resource', 'Раздел')}</span>
+      <div className="grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 h-8 px-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <span className="text-xs">{t('team.resource', 'Раздел')}</span>
         {RBAC_ACTIONS.map(a => <span key={a} className="text-center leading-tight">{ACTION_LABELS[a]}</span>)}
         <span className="text-center leading-tight">{t('team.all', 'Все')}</span>
         <span />
@@ -51,7 +51,7 @@ const PermissionGrid: React.FC<{
             <button
               type="button"
               onClick={() => setCollapsed({ ...collapsed, [group.group]: !isCollapsed })}
-              className="w-full flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/70 dark:bg-slate-800/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              className="w-full flex items-center gap-1.5 h-7 px-3 bg-slate-50 dark:bg-slate-800/60 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             >
               {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               {group.group}
@@ -60,8 +60,8 @@ const PermissionGrid: React.FC<{
               const allowed = (res.actions ?? RBAC_ACTIONS);
               const allOn = allowed.every(a => hasPerm(res.id, a));
               return (
-                <div key={res.id} className="relative grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
-                  <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200 pl-4 truncate">{res.label}</span>
+                <div key={res.id} className="relative grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 min-h-[36px] px-3 py-1 border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                  <span className="text-sm text-slate-700 dark:text-slate-200 pl-4 truncate">{res.label}</span>
                   {RBAC_ACTIONS.map(a => (
                     <div key={a} className="flex justify-center">
                       {allowed.includes(a) ? (
@@ -70,7 +70,7 @@ const PermissionGrid: React.FC<{
                           checked={hasPerm(res.id, a)}
                           disabled={viewOnly}
                           onChange={() => togglePerm(res.id, a)}
-                          className={`w-4 h-4 rounded accent-primary-600 cursor-pointer disabled:cursor-default ${
+                          className={`w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer disabled:cursor-default ${
                             baselineHas && baselineHas(res.id, a) !== hasPerm(res.id, a)
                               ? 'ring-2 ring-amber-400 ring-offset-1 dark:ring-offset-slate-900'
                               : ''
@@ -87,7 +87,7 @@ const PermissionGrid: React.FC<{
                       checked={allOn}
                       disabled={viewOnly}
                       onChange={() => toggleAll(res.id, allowed)}
-                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer disabled:cursor-default"
+                      className="w-3.5 h-3.5 rounded accent-primary-600 cursor-pointer disabled:cursor-default"
                     />
                   </div>
                   {/* Help */}
@@ -95,22 +95,22 @@ const PermissionGrid: React.FC<{
                     <button
                       type="button"
                       onClick={() => setOpenHelp(openHelp === res.id ? null : res.id)}
-                      className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-400 hover:text-primary-500 hover:border-primary-400 transition-colors"
+                      className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >?</button>
                   </div>
                   {openHelp === res.id && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setOpenHelp(null)} />
-                      <div className="absolute right-2 top-9 z-20 w-64 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl text-xs">
+                      <div className="absolute right-2 top-9 z-20 w-64 p-3 rounded-lg shadow-pop bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{res.label}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-100">{res.label}</span>
                           <button onClick={() => setOpenHelp(null)}><X className="w-3.5 h-3.5 text-slate-400" /></button>
                         </div>
                         <div className="space-y-1.5">
                           {res.help.read && <p><span className={`font-semibold ${ACTION_COLORS.read}`}>{ACTION_LABELS.read}:</span> <span className="text-slate-500">{res.help.read}</span></p>}
                           {res.help.write && res.help.write !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.write}`}>{ACTION_LABELS.write}:</span> <span className="text-slate-500">{res.help.write}</span></p>}
                           {res.help.delete && res.help.delete !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.delete}`}>{ACTION_LABELS.delete}:</span> <span className="text-slate-500">{res.help.delete}</span></p>}
-                          {res.help.notes && <p className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-700 text-amber-600 dark:text-amber-400 italic">💡 {res.help.notes}</p>}
+                          {res.help.notes && <p className="pt-1.5 mt-1.5 border-t border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 italic">💡 {res.help.notes}</p>}
                         </div>
                       </div>
                     </>

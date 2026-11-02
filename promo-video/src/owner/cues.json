@@ -1,0 +1,67 @@
+{
+  "bpm": 120,
+  "fps": 60,
+  "bars": 31,
+  "sections": {
+    "hook": [0, 2],
+    "logo": [2, 1],
+    "finance": [3, 4],
+    "payroll": [7, 6],
+    "reminders": [13, 4],
+    "control": [17, 4],
+    "migration": [21, 5],
+    "outro": [26, 5]
+  },
+  "sfx": [
+    { "beat": 16, "type": "whoosh_soft" },
+    { "beat": 20, "type": "whoosh_soft" },
+    { "beat": 24, "type": "whoosh_soft" },
+    { "beat": 28, "type": "whoosh" },
+
+    { "beat": 33, "type": "click", "id": "rateType" },
+    { "beat": 34, "type": "tick", "id": "ratePercent" },
+    { "beat": 36, "type": "click", "id": "rateNamed" },
+    { "beat": 37, "type": "tick", "id": "tok1" },
+    { "beat": 37.5, "type": "tick", "id": "tok2" },
+    { "beat": 38, "type": "tick", "id": "tok3" },
+    { "beat": 38.5, "type": "tick", "id": "tok4" },
+    { "beat": 39, "type": "ping", "id": "rateTotal" },
+    { "beat": 40, "type": "whoosh_soft" },
+    { "beat": 44, "type": "click", "id": "approve" },
+    { "beat": 44.5, "type": "stamp", "id": "approved" },
+    { "beat": 46, "type": "click", "id": "pay" },
+    { "beat": 46.5, "type": "coin", "id": "paid" },
+    { "beat": 48, "type": "whoosh_soft" },
+
+    { "beat": 52, "type": "whoosh" },
+    { "beat": 56, "type": "chime", "id": "whatsapp" },
+    { "beat": 58, "type": "chime", "id": "telegram" },
+    { "beat": 62, "type": "coin", "id": "parentPaid" },
+
+    { "beat": 68, "type": "whoosh" },
+    { "beat": 72, "type": "whoosh_soft" },
+    { "beat": 76, "type": "whoosh_soft" },
+    { "beat": 80, "type": "whoosh_soft" },
+
+    { "beat": 84, "type": "whoosh" },
+    { "beat": 88, "type": "blip", "pitch": 0 },
+    { "beat": 88.5, "type": "blip", "pitch": 2 },
+    { "beat": 89, "type": "blip", "pitch": 4 },
+    { "beat": 89.5, "type": "blip", "pitch": 5 },
+    { "beat": 90, "type": "blip", "pitch": 7 },
+    { "beat": 90.5, "type": "blip", "pitch": 9 },
+    { "beat": 91, "type": "blip", "pitch": 11 },
+    { "beat": 91.5, "type": "blip", "pitch": 12 },
+    { "beat": 92, "type": "tick" },
+    { "beat": 93, "type": "tick" },
+    { "beat": 94, "type": "tick" },
+    { "beat": 95, "type": "tick" },
+    { "beat": 96, "type": "whoosh_soft" },
+
+    { "beat": 104.5, "type": "pop" },
+    { "beat": 105, "type": "pop" },
+    { "beat": 105.5, "type": "pop" },
+    { "beat": 106, "type": "pop" },
+    { "beat": 106.5, "type": "pop" }
+  ]
+}

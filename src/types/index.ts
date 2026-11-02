@@ -162,18 +162,36 @@ export interface AIManagerFAQ {
   answer: string;
 }
 
-export interface OrgAIManagerSettings {
+/** What anyone gets (action getSettings): the public profile's chat widget. */
+export interface PublicAIManagerSettings {
   organizationId: string;
   isActive: boolean;
   greetingMessage: string;
-  aboutOrganization: string;
   faq: AIManagerFAQ[];
+  telegramBotUsername: string;
+}
+
+/**
+ * The owner's editor (action getOwnerSettings). The bot token never reaches the
+ * client: the bot shows up as hasTelegramBot plus its public @username.
+ */
+export interface OrgAIManagerSettings extends PublicAIManagerSettings {
+  aboutOrganization: string;
   enrollmentPolicy: string;
   customInstructions: string;
-  telegramBotToken?: string;
-  telegramBotUsername?: string;
+  hasTelegramBot: boolean;
   updatedAt: string;
 }
+
+/**
+ * What updateSettings accepts; the server ignores anything else. Leave the token
+ * fields out to keep the connected bot as it is. telegramBotToken: a new token
+ * connects that bot, '' disconnects it. reconnectTelegram: re-register the
+ * webhook of the bot already connected.
+ */
+export type AIManagerSettingsUpdate = { organizationId: string }
+  & Partial<Pick<OrgAIManagerSettings, 'isActive' | 'greetingMessage' | 'aboutOrganization' | 'faq' | 'enrollmentPolicy' | 'customInstructions'>>
+  & { telegramBotToken?: string; reconnectTelegram?: boolean };
 
 export interface Subscription {
   id: string;

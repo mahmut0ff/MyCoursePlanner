@@ -13,19 +13,29 @@
 import { adminDb } from './firebase-admin';
 
 /**
- * Global SabakHub bot credentials. Prefer the TELEGRAM_BOT_TOKEN /
- * TELEGRAM_BOT_USERNAME env vars (recommended — keeps the token out of source);
- * the literals below are a fallback so the bot keeps working without config.
+ * Global SabakHub bot username. Not a secret, so it keeps a default.
  */
-export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8905679858:AAF2uxqpo_ccA2a8lvh068W3xiNU8tAA4-8';
 export const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'sabakhub_bot';
+
+/**
+ * Global SabakHub bot token — read ONLY from the TELEGRAM_BOT_TOKEN env var
+ * (Netlify site env). There is deliberately no fallback: a token in source is a
+ * leaked token. Returns null when unset; callers must then skip their Telegram
+ * call. Every miss is logged so a silent bot is diagnosable from the logs.
+ */
+export function getTelegramBotToken(): string | null {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (token) return token;
+  console.error('[telegram] TELEGRAM_BOT_TOKEN is not set — Telegram call skipped. Set it in the Netlify site environment.');
+  return null;
+}
 
 /**
  * Get the Telegram bot token for an org. Currently the global SabakHub bot
  * is used for all organizations.
  */
 async function getOrgBotToken(_orgId: string): Promise<string | null> {
-  return TELEGRAM_BOT_TOKEN;
+  return getTelegramBotToken();
 }
 
 /**

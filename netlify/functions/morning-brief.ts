@@ -18,10 +18,15 @@ import { adminDb } from './utils/firebase-admin';
 import { jsonResponse } from './utils/auth';
 import { planHasAIManager } from './utils/plan-limits';
 import { generateBrief, directorMenuKeyboard } from './utils/director-copilot';
-import { TELEGRAM_BOT_TOKEN } from './utils/telegram';
+import { getTelegramBotToken } from './utils/telegram';
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Telegram is the only channel here — without the bot token, stop before
+  // burning Firestore reads and AI calls on briefs nobody can receive.
+  const botToken = getTelegramBotToken();
+  if (!botToken) return jsonResponse(500, { error: 'TELEGRAM_BOT_TOKEN is not set' });
 
   try {
     const orgSnap = await adminDb.collection('organizations').get();
@@ -55,7 +60,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const text = `☀️ <b>Утренняя сводка</b>\n\n${brief}`;
 
       await Promise.allSettled(chatIds.map(chatId =>
-        fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup: directorMenuKeyboard() }),

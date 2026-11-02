@@ -1,8 +1,9 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
-import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
+import { resolveTelegramLinkCode, getTelegramBotToken } from './utils/telegram';
+import { telegramWebhookAccessError } from './utils/telegram-webhook-auth';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, consumeClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
 import { planHasAIManager } from './utils/plan-limits';
 import {
@@ -248,12 +249,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
+    // Determine if this is the Global SabakHub Bot or a Custom AI Bot
+    const queryOrgId = event.queryStringParameters?.orgId;
+
+    // Everything below trusts chat.id / from.id as the sender's identity, so an
+    // update must first prove it came from Telegram: the secret_token that bot's
+    // webhook was registered with. Forged POSTs stop here — before any parsing,
+    // Firestore read or Bot API call.
+    const denied = telegramWebhookAccessError(event, queryOrgId);
+    if (denied) return denied;
+
     const payload = JSON.parse(event.body || '{}');
     const appOrigin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host || ''}`;
 
-    // Determine if this is the Global SabakHub Bot or a Custom AI Bot
-    const queryOrgId = event.queryStringParameters?.orgId;
-    let botToken = TELEGRAM_BOT_TOKEN;
+    let botToken: string;
     let isGlobalBot = true;
 
     if (queryOrgId) {
@@ -266,6 +275,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
       botToken = settingsData.telegramBotToken;
       isGlobalBot = false;
+    } else {
+      // Without TELEGRAM_BOT_TOKEN the global bot can't answer anyone — drop the
+      // update before any side effects (the getter logs why). 200 for the same
+      // reason as the catch below: so Telegram doesn't retry it forever.
+      const globalToken = getTelegramBotToken();
+      if (!globalToken) return { statusCode: 200, body: 'OK' };
+      botToken = globalToken;
     }
 
     // Inline-button press — route by callback_data prefix.
@@ -642,6 +658,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
           await sendTg('Чтобы зарегистрироваться, откройте ссылку-приглашение от вашего учебного центра.', { remove_keyboard: true });
           return { statusCode: 200, body: 'OK' };
         }
+        // The phone resolves to an existing account and the bot then hands this chat a
+        // passwordless login, so only the sender's own number counts: a contact card
+        // picked from the address book carries someone else's user_id (or none).
+        if (!contact.user_id || String(contact.user_id) !== String(message.from?.id)) {
+          await sendTg(
+            'Нужен <b>ваш собственный</b> номер — нажмите кнопку «📱 Поделиться номером» ниже.',
+            { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+          );
+          return { statusCode: 200, body: 'OK' };
+        }
         const phone = contact.phone_number || '';
         const sFname = message.from?.first_name || contact.first_name || '';
         const sLname = message.from?.last_name || contact.last_name || '';
@@ -696,15 +722,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // Claim a pre-created account: /start claim_<TOKEN> (bulk import / voice add).
         if (payloadArg.startsWith('claim_')) {
-          const token = payloadArg.slice('claim_'.length);
-          const claim = await resolveClaimToken(token);
-          if (!claim) {
-            await reply('❌ Ссылка-приглашение недействительна или истекла. Попросите центр прислать новую.');
+          const claim = await consumeClaimToken(payloadArg.slice('claim_'.length), String(chatId));
+          if (!claim.ok) {
+            await reply(claim.reason === 'linked_elsewhere'
+              ? '🔒 Этот аккаунт уже подключён к другому Telegram. Если он ваш — отвяжите старый Telegram в профиле приложения или обратитесь в центр.'
+              : '❌ Ссылка-приглашение недействительна или уже использована. Если вы уже подключились — нажмите /login, иначе попросите центр прислать новую.');
             return { statusCode: 200, body: 'OK' };
           }
-          await adminDb.collection('users').doc(claim.uid).set(
-            { telegramChatId: String(chatId), telegramLinkedAt: new Date().toISOString() }, { merge: true },
-          );
           const u = await adminDb.collection('users').doc(claim.uid).get();
           const nm = u.data()?.displayName || '';
           await sendLoginButton(claim.uid, `🎉 Добро пожаловать${nm ? `, <b>${nm}</b>` : ''}! Ваш аккаунт готов.\n\nНажмите, чтобы войти — без пароля:`);

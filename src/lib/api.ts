@@ -9,6 +9,7 @@ import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
   Classroom, ChatDirectoryEntry,
+  PublicAIManagerSettings, OrgAIManagerSettings, AIManagerSettingsUpdate,
 } from '../types';
 import type {
   Contest, ContestBundle, ContestScoreLogEntry, JudgeContest, JudgeBoard,
@@ -1032,11 +1033,16 @@ export const apiGetStudentRating = (params?: { branchId?: string; period?: strin
 // AI ORGANIZATION MANAGER API
 // ============================================================
 
+// Public, no auth: the profile page's chat widget. Never includes the bot token.
 export const apiGetAIManagerSettings = (organizationId: string) =>
-  apiRequest('api-ai-org-manager', 'GET', undefined, { action: 'getSettings', organizationId });
+  apiRequest<{ data: PublicAIManagerSettings }>('api-ai-org-manager', 'GET', undefined, { action: 'getSettings', organizationId });
 
-export const apiUpdateAIManagerSettings = (data: any) =>
-  apiRequest('api-ai-org-manager', 'POST', data, { action: 'updateSettings' });
+// The settings editor: org owner or super_admin only (403 otherwise).
+export const apiGetAIManagerOwnerSettings = (organizationId: string) =>
+  apiRequest<{ data: OrgAIManagerSettings }>('api-ai-org-manager', 'GET', undefined, { action: 'getOwnerSettings', organizationId });
+
+export const apiUpdateAIManagerSettings = (data: AIManagerSettingsUpdate) =>
+  apiRequest<{ message: string; data: OrgAIManagerSettings }>('api-ai-org-manager', 'POST', data, { action: 'updateSettings' });
 
 export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
   apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });

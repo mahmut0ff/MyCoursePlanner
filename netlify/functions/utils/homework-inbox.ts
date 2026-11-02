@@ -11,6 +11,7 @@
  * полями упал бы в проде, а не на сборке.
  */
 import { adminDb, uploadServerFile } from './firebase-admin';
+import { LESSONS_COLLECTION } from './lessons';
 import { notifyOrgAdmins } from './notifications';
 
 /** Сколько заданий показываем кнопками — больше в одном экране бесполезно. */
@@ -61,8 +62,9 @@ export async function listOpenHomework(orgId: string, studentUid: string): Promi
 
   // array-contains-any берёт до 30 значений за один запрос — групп у ученика единицы.
   const groupIds = groups.slice(0, 30).map(g => g.id);
-  const lessonSnap = await adminDb.collection('lessons')
-    .where('groupIds', 'array-contains-any', groupIds).get().catch(() => null);
+  const lessonSnap = await adminDb.collection(LESSONS_COLLECTION)
+    .where('groupIds', 'array-contains-any', groupIds).get()
+    .catch((e) => { console.error('listOpenHomework: lessons query failed:', e); return null; });
 
   const lessons = (lessonSnap?.docs || [])
     .map(d => ({ id: d.id, ...(d.data() || {}) } as any))
@@ -287,7 +289,7 @@ export async function storeTelegramFile(
 async function resolveLessonTeacherIds(lessonId: string): Promise<string[]> {
   const ids = new Set<string>();
   try {
-    const lessonSnap = await adminDb.collection('lessons').doc(lessonId).get();
+    const lessonSnap = await adminDb.collection(LESSONS_COLLECTION).doc(lessonId).get();
     if (!lessonSnap.exists) return [];
     const lesson = lessonSnap.data() || {};
     if (lesson.authorId) ids.add(String(lesson.authorId));

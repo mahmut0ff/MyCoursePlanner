@@ -10,6 +10,7 @@ import {
 } from '../../lib/rbac';
 import PermissionGrid from './PermissionGrid';
 import AccessPresets from './AccessPresets';
+import RolePicker, { withCustomBase } from '../../components/shared/RolePicker';
 
 interface Member {
   uid: string;
@@ -63,12 +64,6 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const [createRoleId, setCreateRoleId] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const CREATE_ROLE_LABELS: Record<string, string> = {
-    admin: t('team.roleDirector', 'Директор'), manager: t('roles.manager', 'Менеджер'),
-    teacher: t('roles.teacher', 'Преподаватель'),
-  };
-  const toggleCreateRole = (r: string) =>
-    setCreateRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
 
   const openCreate = () => {
     setCreateForm({ displayName: '', username: '', email: '', password: '' });
@@ -81,7 +76,8 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     if (!createForm.displayName.trim()) { toast.error(t('team.create.nameRequired', 'Укажите имя')); return; }
     if (!createForm.username.trim() && !createForm.email.trim()) { toast.error(t('team.create.loginRequired', 'Укажите логин или email')); return; }
     if (createForm.password.length < 6) { toast.error(t('team.create.passwordShort', 'Пароль минимум 6 символов')); return; }
-    if (createRoles.length === 0) { toast.error(t('team.create.roleRequired', 'Выберите хотя бы одну роль')); return; }
+    const baseRoles = withCustomBase(createRoles, roles.find(r => r.id === createRoleId));
+    if (baseRoles.length === 0) { toast.error(t('team.create.roleRequired', 'Выберите хотя бы одну роль')); return; }
     setCreating(true);
     try {
       const created: any = await orgCreateUser({
@@ -89,7 +85,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         username: createForm.username.trim() || undefined,
         email: createForm.email.trim() || undefined,
         password: createForm.password,
-        roles: createRoles,
+        roles: baseRoles,
       });
       // Account is created — assigning the fine-grained RBAC role is best-effort so a
       // failure here never leaves the modal open (which would risk a duplicate account).
@@ -464,32 +460,13 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
               </div>
               <div>
                 <label className="label">{t('team.create.roles', 'Роли')} *</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(['admin', 'manager', 'teacher'] as const).map(r => {
-                    const selectedRole = createRoles.includes(r);
-                    return (
-                      <button key={r} type="button" onClick={() => toggleCreateRole(r)}
-                        className={`h-8 px-3 rounded-md text-sm font-medium border transition-colors inline-flex items-center gap-1.5 ${selectedRole ? 'bg-primary-100 dark:bg-primary-950 border-primary-200 dark:border-primary-900 text-slate-900 dark:text-slate-100' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                        {selectedRole && <Check className="w-3.5 h-3.5" />}
-                        {CREATE_ROLE_LABELS[r]}
-                      </button>
-                    );
-                  })}
-                </div>
+                <RolePicker roles={createRoles} roleId={createRoleId} orgRoles={roles}
+                  onChange={(r, id) => { setCreateRoles(r); setCreateRoleId(id); }} />
               </div>
-              {roles.length > 0 && (
-                <div>
-                  <label className="label">{t('team.create.rbacRole', 'Роль доступа (RBAC)')} <span className="text-slate-400 font-normal">{t('team.create.optional', '(необяз.)')}</span></label>
-                  <select value={createRoleId} onChange={e => setCreateRoleId(e.target.value)} className="input">
-                    <option value="">{t('team.defaultForRole', 'По умолчанию для роли')}</option>
-                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-              )}
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setShowCreate(false)} disabled={creating} className="btn-ghost disabled:opacity-50">{t('common.cancel', 'Отмена')}</button>
-              <button onClick={handleCreate} disabled={creating || !createForm.displayName.trim() || createRoles.length === 0}
+              <button onClick={handleCreate} disabled={creating || !createForm.displayName.trim() || (createRoles.length === 0 && !createRoleId)}
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
                 {creating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('team.create.creating', 'Создание...')}</> : t('common.create', 'Создать')}
               </button>

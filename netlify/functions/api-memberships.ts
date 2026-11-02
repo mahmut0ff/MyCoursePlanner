@@ -223,9 +223,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       const callerRole = await getOrgRole(user.uid, params.orgId);
       if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
       const m = await getMembership(params.userId, params.orgId) as any;
-      if (!m) return ok({ role: null, roles: [] });
+      if (!m) return ok({ role: null, roles: [], roleId: null });
       const roles = Array.isArray(m.roles) && m.roles.length ? m.roles : (m.role ? [m.role] : []);
-      return ok({ role: m.role || null, roles });
+      return ok({ role: m.role || null, roles, roleId: m.roleId || null });
     }
 
     // ═══ GET: Org members ═══

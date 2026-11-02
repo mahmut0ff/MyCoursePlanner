@@ -12,7 +12,7 @@ describe('Firestore Security Rules: Tenant Isolation', () => {
     testEnv = await initializeTestEnvironment({
       projectId: 'mycourseplan-test-sec',
       firestore: {
-        rules: readFileSync(resolve(__dirname, '../../../firestore.rules'), 'utf8'),
+        rules: readFileSync(resolve(__dirname, '../../firestore.rules'), 'utf8'),
       },
     });
   });
@@ -80,5 +80,41 @@ describe('Firestore Security Rules: Tenant Isolation', () => {
     await assertFails(bobProfile.update({
       role: 'admin'
     }));
+  });
+
+  // Членство несёт имя, email, роль, филиалы и permissionOverrides — чужая
+  // организация не должна выгружать его напрямую из SDK.
+  describe('membership docs', () => {
+    beforeAll(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await db.doc('users/alice_uid').set({ role: 'student', organizationId: 'org-A' });
+        await db.doc('users/alice_uid/memberships/org-A').set({ role: 'student', status: 'active' });
+        await db.doc('users/bob_uid').set({ role: 'admin', organizationId: 'org-B' });
+        await db.doc('users/bob_uid/memberships/org-B').set({ role: 'admin', userEmail: 'bob@b.org' });
+        await db.doc('orgMembers/org-A/members/alice_uid').set({ userName: 'Alice', role: 'student' });
+        await db.doc('orgMembers/org-B/members/bob_uid').set({ userName: 'Bob', role: 'admin' });
+      });
+    });
+
+    it('R-SEC-06: user reads own membership, not someone else\'s', async () => {
+      const aliceDb = testEnv.authenticatedContext('alice_uid').firestore();
+      await assertSucceeds(aliceDb.doc('users/alice_uid/memberships/org-A').get());
+      await assertFails(aliceDb.doc('users/bob_uid/memberships/org-B').get());
+      await assertFails(aliceDb.collection('users/bob_uid/memberships').get());
+    });
+
+    it('R-SEC-07: orgMembers readable by members of that org only', async () => {
+      const aliceDb = testEnv.authenticatedContext('alice_uid').firestore();
+      await assertSucceeds(aliceDb.doc('orgMembers/org-A/members/alice_uid').get());
+      await assertFails(aliceDb.doc('orgMembers/org-B/members/bob_uid').get());
+      await assertFails(aliceDb.collection('orgMembers/org-B/members').get());
+    });
+
+    it('R-SEC-08: super admin reads any org roster', async () => {
+      const adminDb = testEnv.authenticatedContext('root_uid', { role: 'super_admin' }).firestore();
+      await assertSucceeds(adminDb.collection('orgMembers/org-B/members').get());
+      await assertSucceeds(adminDb.doc('users/bob_uid/memberships/org-B').get());
+    });
   });
 });

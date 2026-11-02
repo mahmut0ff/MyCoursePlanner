@@ -14,6 +14,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { jsonResponse } from './utils/auth';
+import { cronAccessError } from './utils/cron-auth';
 import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
 import { notifySuperAdminTelegram } from './utils/notifications';
 
@@ -23,6 +24,11 @@ const WARN_WITHIN_DAYS = 3;
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();

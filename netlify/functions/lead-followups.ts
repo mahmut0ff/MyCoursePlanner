@@ -14,11 +14,17 @@ import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { sendTelegramRaw } from './utils/telegram';
 import { jsonResponse } from './utils/auth';
+import { cronAccessError } from './utils/cron-auth';
 
 const STALE_HOURS = 24;
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   const now = new Date();
   const today = now.toISOString().split('T')[0];

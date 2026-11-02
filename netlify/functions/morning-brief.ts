@@ -16,12 +16,18 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { jsonResponse } from './utils/auth';
+import { cronAccessError } from './utils/cron-auth';
 import { planHasAIManager } from './utils/plan-limits';
 import { generateBrief, directorMenuKeyboard } from './utils/director-copilot';
 import { getTelegramBotToken } from './utils/telegram';
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   // Telegram is the only channel here — without the bot token, stop before
   // burning Firestore reads and AI calls on briefs nobody can receive.

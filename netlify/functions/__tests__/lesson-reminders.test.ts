@@ -5,7 +5,7 @@
  * почти всегда указан дважды: он состоит в group.teacherIds и записан в
  * ev.teacherId, — и в проде это давало третью строку в напоминании на два урока.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const events: any[] = [];
 const groups: Record<string, any> = {};
@@ -36,7 +36,15 @@ vi.mock('../utils/notifications', () => ({
   createNotification: vi.fn(async (n: any) => { sent.push(n); }),
 }));
 
+vi.mock('../utils/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/auth')>();
+  return { ...actual, verifyAuth: vi.fn() };
+});
+
 import { handler } from '../lesson-reminders';
+import { adminDb, getDocsByIds } from '../utils/firebase-admin';
+import { createNotification } from '../utils/notifications';
+import { verifyAuth } from '../utils/auth';
 
 const ORG = 'org-1';
 const TEACHER = 'teacher-1';
@@ -53,6 +61,10 @@ beforeEach(() => {
   events.length = 0;
   sent.length = 0;
   for (const k of Object.keys(groups)) delete groups[k];
+  vi.clearAllMocks();
+  // Вызывающий не опознан: без CRON_ENFORCE крон такой вызов пропускает (на этом
+  // идут проверки дедупа), с ним — отбивает (последний блок файла).
+  (verifyAuth as any).mockResolvedValue(null);
 });
 
 describe('напоминание о завтрашних занятиях', () => {
@@ -114,5 +126,69 @@ describe('напоминание о завтрашних занятиях', () =
     const student = sent.find(n => n.recipientId === 's1');
     expect(student.title).toBe('Завтра у вас 1 занятие');
     expect(student.link).toBe('/student/schedule');
+  });
+});
+
+/**
+ * Кто вправе запустить рассылку. У запланированной функции публичный адрес, а
+ * прогон пишет каждому ученику и преподавателю завтрашних занятий (в
+ * приложение, push и Telegram). При включённом CRON_ENFORCE неопознанный вызов
+ * обязан отбиваться ДО всякой работы: ни одного чтения Firestore, ни одной
+ * отправки. Разрешённый запуск на тех же заглушках обязан дойти и до базы, и до
+ * рассылки — иначе «ничего не произошло» доказывало бы лишь то, что заглушки не
+ * подключены.
+ */
+describe('lesson-reminders — кто вправе запустить рассылку', () => {
+  const ENV = { ...process.env };
+  let fetchMock: any;
+
+  const runWith = (headers: Record<string, string>) =>
+    handler({ httpMethod: 'POST', headers, body: null, queryStringParameters: {} } as any, {} as any, () => {}) as Promise<any>;
+
+  beforeEach(() => {
+    process.env.CRON_ENFORCE = 'true';
+    process.env.CRON_SECRET = 's3cret';
+    fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    // Завтрашнее занятие группы с учеником и преподавателем — разрешённому запуску есть кому писать.
+    groups['g1'] = { name: 'Группа', teacherIds: [TEACHER], studentIds: ['s1'] };
+    events.push({
+      id: 'e1', organizationId: ORG, recurring: true, dayOfWeek: tomorrowDow,
+      startTime: '16:00', title: 'Урок', groupId: 'g1',
+    });
+  });
+  afterEach(() => {
+    process.env = { ...ENV };
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { who: 'анонимный вызов', headers: {}, user: null },
+    { who: 'вызов с неверным x-cron-secret', headers: { 'x-cron-secret': 'wrong' }, user: null },
+    { who: 'вошедший админ организации, но не суперадмин', headers: { authorization: 'Bearer t' }, user: { uid: 'admin-1', role: 'admin', organizationId: ORG } },
+  ])('$who — 403, и ни чтений Firestore, ни отправок', async ({ headers, user }) => {
+    (verifyAuth as any).mockResolvedValue(user);
+
+    const res = await runWith(headers);
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).code).toBe('cron_forbidden');
+    expect(adminDb.collection).not.toHaveBeenCalled();
+    expect(getDocsByIds).not.toHaveBeenCalled();
+    expect(createNotification).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { who: 'плановый запуск Netlify', headers: { 'x-nf-event': 'schedule' } },
+    { who: 'ручной прогон с верным x-cron-secret', headers: { 'x-cron-secret': 's3cret' } },
+  ])('$who доходит до Firestore и рассылки', async ({ headers }) => {
+    const res = await runWith(headers);
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ events: 1, reminders: 2 });
+    expect(adminDb.collection).toHaveBeenCalledWith('scheduleEvents');
+    expect(createNotification).toHaveBeenCalledTimes(2);
+    expect(sent.map(n => n.recipientId).sort()).toEqual(['s1', TEACHER].sort());
   });
 });

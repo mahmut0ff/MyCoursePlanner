@@ -15,6 +15,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
+import { cronAccessError } from './utils/cron-auth';
 
 const WEEKDAYS_RU = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
 
@@ -22,6 +23,11 @@ interface ReminderItem { time: string; title: string; groupName?: string; }
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   try {
     const now = new Date();

@@ -543,7 +543,7 @@ const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, 
  * Актёр — `staff.uid` из resolveStaffByChat (привязка чата к аккаунту), то есть
  * авторство так же неподделываемо, как на вебе.
  */
-async function logJournalActivity(
+export async function logJournalActivity(
   staff: StaffContext,
   type: 'grade_set' | 'attendance_marked',
   count: number,
@@ -658,7 +658,7 @@ async function upsertGrade(staff: StaffContext, g: {
  * `patch` carries only the fields to change (attendance and/or note), so marking
  * attendance never wipes a note and adding a note never wipes attendance.
  */
-async function applyJournalUpserts(
+export async function applyJournalUpserts(
   staff: StaffContext, date: string,
   items: { entry: RosterStudent; patch: { attendance?: AttendanceStatus; note?: string } }[],
 ): Promise<{ okIds: Set<string>; failed: string[] }> {

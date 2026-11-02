@@ -14,6 +14,10 @@ import {
   type DirectorChatMessage,
 } from './utils/director-copilot';
 import { resolveStaffByChat, runStaffCopilotTurn, can, type StaffContext } from './utils/copilot-actions';
+import {
+  listRollcallGroups, groupPickerKeyboard, startRollcall, toggleRollcall, saveRollcall,
+  rollcallText, rollcallKeyboard,
+} from './utils/telegram-rollcall';
 import { runSalesBotTurn, type SalesMessage } from './utils/sales-copilot';
 import {
   resolveStudentByChat, runStudentTutorTurn,
@@ -168,6 +172,51 @@ async function handleHomeworkCallback(cq: any, botToken: string): Promise<void> 
   await send(renderHomeworkCard(hw));
 }
 
+/**
+ * Перекличка кнопками (callback_data "att:…"): g:<groupId> — открыть группу,
+ * t:<i> — переключить студента, all — все были, s — сохранить. Тариф не нужен.
+ */
+async function handleRollcallCallback(cq: any, botToken: string): Promise<void> {
+  const chatId = String(cq.from?.id || cq.message?.chat?.id || '');
+  const tg = (method: string, body: Record<string, unknown>) =>
+    fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+  const answer = (text?: string, alert = false) =>
+    tg('answerCallbackQuery', { callback_query_id: cq.id, ...(text ? { text } : {}), show_alert: alert });
+  const edit = (text: string, replyMarkup?: any) => tg('editMessageText', {
+    chat_id: chatId, message_id: cq.message?.message_id, text, parse_mode: 'HTML',
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
+
+  const staff = await resolveStaffByChat(chatId);
+  if (!staff || !can(staff, 'gradebook', 'write')) { await answer('Перекличка доступна преподавателям центра', true); return; }
+
+  const [, action, arg] = String(cq.data || '').split(':');
+  if (action === 'g' && arg) {
+    const res = await startRollcall(staff, chatId, arg);
+    if (typeof res === 'string') { await answer(res, true); return; }
+    await answer();
+    await edit(rollcallText(res), rollcallKeyboard(res));
+    return;
+  }
+  if (action === 't' || action === 'all') {
+    const d = await toggleRollcall(chatId, staff.uid, action === 'all' ? 'all' : Number(arg));
+    if (!d) { await answer('Перекличка устарела — начните заново: /otmetka', true); return; }
+    await answer();
+    await edit(rollcallText(d), rollcallKeyboard(d));
+    return;
+  }
+  if (action === 's') {
+    await answer('Сохраняю…');
+    await edit(await saveRollcall(staff, chatId));
+    return;
+  }
+  await answer('Неизвестное действие');
+}
+
 /** Handle a director action-button press (callback_data starts with "dir:"). */
 async function handleDirectorCallback(cq: any, botToken: string): Promise<void> {
   const cbId = cq.id;
@@ -291,6 +340,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
         await handleDirectorCallback(payload.callback_query, botToken);
       } else if (cqData.startsWith('hw:')) {
         await handleHomeworkCallback(payload.callback_query, botToken);
+      } else if (cqData.startsWith('att:') && isGlobalBot) {
+        await handleRollcallCallback(payload.callback_query, botToken);
       } else {
         await handleApprovalCallback(payload.callback_query, botToken, appOrigin);
       }
@@ -445,10 +496,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const setDirectorCommands = () => setBotCommands([
       { command: 'menu', description: '📊 Меню директора' },
       { command: 'brief', description: '☀️ AI-сводка по центру' },
+      { command: 'otmetka', description: '✅ Перекличка' },
       { command: 'schedule', description: '🗓 Расписание на неделю' },
       { command: 'login', description: '🔑 Войти в SabakHub' },
     ]);
     const setStaffCommands = () => setBotCommands([
+      { command: 'otmetka', description: '✅ Перекличка' },
       { command: 'schedule', description: '🗓 Моё расписание' },
       { command: 'login', description: '🔑 Войти в SabakHub' },
     ]);
@@ -646,7 +699,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
           history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: toHistoryText(answer) });
           if (history.length > 8) history = history.slice(-8);
           await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          return { statusCode: 200, body: 'OK' };
         }
+        // Голосовое, которое некому расшифровать (родитель, тариф без AI): молчание выглядит как поломка.
+        await reply('Голосовые сообщения здесь пока не распознаются — напишите, пожалуйста, текстом 🙏');
         return { statusCode: 200, body: 'OK' };
       }
 
@@ -814,9 +870,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             } else if (can(staff, 'gradebook', 'write')) {
               await setStaffCommands();
               await sendTg(
-                '🤖 <b>AI-помощник преподавателя</b>\nПишите или диктуйте голосом — например:\n• «Поставь Аброру 4 за сегодня, Мухаммаду 5»\n• «Отметь, что все пришли; Аброр отсутствовал»\n• «Усмановой заметка: молодец на уроке»\n• «Когда у меня следующий урок?» (или команда /schedule)',
+                '🤖 <b>AI-помощник преподавателя</b>\nПишите или диктуйте голосом — например:\n• «Поставь Аброру 4 за сегодня, Мухаммаду 5»\n• «Отметь, что все пришли; Аброр отсутствовал»\n• «Усмановой заметка: молодец на уроке»\n• «Когда у меня следующий урок?» (или команда /schedule)\n\n✅ Перекличка кнопками — /otmetka',
               );
             }
+          } else if (staff && can(staff, 'gradebook', 'write')) {
+            await setStaffCommands();
+            await sendTg('✅ <b>Перекличка прямо здесь</b>\nНажмите /otmetka, выберите группу и отметьте, кого не было. Журнал заполнится сам.');
           } else if (!staff) {
             // Students get a tutor nudge so they discover homework help right here.
             const student = await resolveStudentByChat(String(chatId));
@@ -892,6 +951,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
         await clearDraft(String(chatId)); // выбор начинается заново
         await sendHomeworkPicker(student, '📚 <b>Ваши домашние задания</b>\nВыберите задание, которое хотите сдать:');
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c3.45) /otmetka — перекличка кнопками, без AI и без плана.
+      if (text === '/otmetka' || text === '/attendance') {
+        const staff = await resolveStaffByChat(String(chatId));
+        if (!staff || !can(staff, 'gradebook', 'write')) {
+          await reply('Перекличка доступна преподавателям центра.');
+          return { statusCode: 200, body: 'OK' };
+        }
+        const groups = await listRollcallGroups(staff);
+        if (!groups.length) {
+          await reply('Не нашёл групп для переклички: у вас нет групп со студентами и курсом.');
+          return { statusCode: 200, body: 'OK' };
+        }
+        await sendTg('✅ <b>Перекличка за сегодня</b>\nВыберите группу (🟢 — занятие сегодня):', groupPickerKeyboard(groups));
         return { statusCode: 200, body: 'OK' };
       }
 
@@ -1015,7 +1090,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ─── CUSTOM ORG AI BOT BEHAVIOR ───
-    if (voice) return { statusCode: 200, body: 'OK' }; // sales bot doesn't transcribe voice
+    if (voice) { // sales bot doesn't transcribe voice — а лид без ответа уходит
+      await reply('Пожалуйста, напишите ваш вопрос текстом — так я отвечу точнее 🙏');
+      return { statusCode: 200, body: 'OK' };
+    }
     const orgId = queryOrgId!;
     const settingsSnap = await adminDb.collection('organizationAIManager').doc(orgId).get();
     const settingsData = settingsSnap.data() || { isActive: false };

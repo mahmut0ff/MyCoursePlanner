@@ -5,11 +5,32 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 import type { AuthUser } from './utils/auth';
-import { notifyOrgStudents } from './utils/notifications';
+import { notifyOrgStudents, createNotification } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { LESSONS_COLLECTION } from './utils/lessons';
 
 const COLLECTION = LESSONS_COLLECTION;
+
+/** Блок ДЗ заполнен — тот же критерий, что у бота при выдаче заданий (homework-inbox). */
+export function hasHomeworkTask(hw: any): boolean {
+  if (typeof hw === 'string') return hw.trim().length > 0;
+  return !!hw && typeof hw === 'object' && !!(hw.title || hw.description);
+}
+
+/** Студентам групп урока (и их родителям — через createNotification) уходит новое ДЗ. */
+async function notifyHomeworkAssigned(orgId: string, groupIds: string[], lessonTitle: string, hw: any): Promise<void> {
+  if (!orgId || groupIds.length === 0) return;
+  const groups = await getDocsByIds('groups', groupIds);
+  const students = new Set<string>();
+  for (const g of Object.values(groups)) for (const s of (g as any)?.studentIds || []) students.add(s);
+  const title = (typeof hw === 'object' && hw?.title) || lessonTitle;
+  const due = typeof hw === 'object' && hw?.dueDate ? ` Срок: до ${String(hw.dueDate).slice(0, 10)}.` : '';
+  await Promise.allSettled([...students].map(uid => createNotification({
+    recipientId: uid, type: 'homework_assigned', organizationId: orgId, link: '/lessons',
+    title: 'Новое домашнее задание',
+    message: `«${title}».${due} Сдать можно в Telegram-боте командой /dz.`,
+  })));
+}
 
 /**
  * Read the group names off the group documents, index for index with `groupIds`.
@@ -179,6 +200,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     const hasHomework = !!body.homework && (typeof body.homework === 'string'
       ? body.homework.trim().length > 0
       : typeof body.homework === 'object' && Object.keys(body.homework).length > 0);
+    if (data.status !== 'draft' && hasHomeworkTask(body.homework)) {
+      await notifyHomeworkAssigned(data.organizationId, data.groupIds, body.title, body.homework).catch(() => {});
+    }
     await recordTeacherActivity({
       organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
       type: 'lesson_created', branchId: user.primaryBranchId, entityId: ref.id, entityLabel: body.title,
@@ -208,9 +232,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       delete updateFields.groupNames;
     }
     updateFields.updatedAt = new Date().toISOString();
+    const before = (await adminDb.collection(COLLECTION).doc(id).get()).data() || {};
     await adminDb.collection(COLLECTION).doc(id).update(updateFields);
     const updated = await adminDb.collection(COLLECTION).doc(id).get();
-    return ok({ id: updated.id, ...updated.data() });
+    const after: any = updated.data() || {};
+    // Видимым ДЗ становится, когда урок опубликован и блок заполнен; шлём только на этом переходе.
+    const visible = (l: any) => l.status !== 'draft' && hasHomeworkTask(l.homework);
+    if (visible(after) && !visible(before) && after.organizationId === user.organizationId) {
+      await notifyHomeworkAssigned(after.organizationId, after.groupIds || [], after.title || '', after.homework).catch(() => {});
+    }
+    return ok({ id: updated.id, ...after });
   }
 
   // DELETE

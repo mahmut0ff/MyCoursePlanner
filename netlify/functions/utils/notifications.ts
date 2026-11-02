@@ -66,7 +66,9 @@ export type NotificationType =
   // Ведомость по зарплате рассчитана кроном и ждёт проверки человеком.
   // Выплата без утверждения не производится, поэтому это именно напоминание
   // директору, а не отчёт о движении денег.
-  | 'payroll_ready';
+  | 'payroll_ready'
+  | 'homework_assigned'
+  | 'journal_unfilled';
 
 interface NotificationPayload {
   recipientId: string;
@@ -93,6 +95,7 @@ const PARENT_RELEVANT_TYPES = new Set<NotificationType>([
   'grade_posted',
   'exam_result_ready',
   'homework_graded',
+  'homework_assigned',
   'schedule_changed',
 ]);
 
@@ -138,9 +141,19 @@ export async function createNotification(payload: NotificationPayload): Promise<
   // Write to Firestore (in-app)
   await adminDb.collection(NOTIFICATIONS).add(data);
 
+  // Настройки получателя решают и за push, и за Telegram — так обещает экран настроек.
+  let userData: Record<string, any> | undefined;
+  try {
+    userData = (await adminDb.collection('users').doc(payload.recipientId).get()).data();
+  } catch (e) {
+    console.warn('Recipient lookup failed (non-fatal):', e);
+  }
+  // Выключенная категория глушит только самого получателя: родителям копия уходит всё равно.
+  const allowed = !userData || prefsAllow(userData, payload.type);
+
   // Attempt FCM push (best-effort, never throw)
   try {
-    await sendPush(payload.recipientId, payload.title, payload.message, payload.link, payload.type);
+    if (userData && allowed) await sendPush(payload.recipientId, userData, payload.title, payload.message, payload.link);
   } catch (e) {
     console.warn('FCM push failed (non-fatal):', e);
   }
@@ -148,13 +161,8 @@ export async function createNotification(payload: NotificationPayload): Promise<
   // Attempt Telegram notification (best-effort, never throw)
   if (skipTelegram) return;
   try {
-    // Resolve orgId: use provided or look up from user doc
-    let orgId = organizationId;
-    if (!orgId) {
-      const userDoc = await adminDb.collection('users').doc(payload.recipientId).get();
-      orgId = userDoc.data()?.activeOrgId || userDoc.data()?.organizationId;
-    }
-    if (orgId) {
+    const orgId = organizationId || userData?.activeOrgId || userData?.organizationId;
+    if (orgId && allowed) {
       const tgMessage = `🔔 <b>${payload.title}</b>\n\n${payload.message}`;
       await sendTelegramToUser(orgId, payload.recipientId, tgMessage);
     }
@@ -311,23 +319,23 @@ const TYPE_TO_PREF: Record<string, string> = {
   attendance_absent: 'schedule',
   lesson_reminder: 'schedule',
   schedule_changed: 'schedule',
+  homework_assigned: 'homework',
+  journal_unfilled: 'lessons',
 };
+
+/** Общий выключатель (pushEnabled) и категория из TYPE_TO_PREF. Родителям дублируется без учёта настроек ребёнка. */
+export function prefsAllow(userData: Record<string, any>, type: string): boolean {
+  const prefs = userData.notificationPreferences || {};
+  if (prefs.pushEnabled === false) return false;
+  const key = TYPE_TO_PREF[type];
+  return !(key && prefs[key] === false);
+}
 
 /**
  * Send FCM push to a specific user (best-effort).
- * Checks user's notification preferences before sending.
  * Uses DATA-ONLY messages (no `notification` key) to prevent duplication.
  */
-async function sendPush(userId: string, title: string, body: string, link?: string, notifType?: string): Promise<void> {
-  const userDoc = await adminDb.collection('users').doc(userId).get();
-  if (!userDoc.exists) return;
-  const userData = userDoc.data() || {};
-
-  // Check notification preferences
-  const prefs = userData.notificationPreferences || {};
-  if (prefs.pushEnabled === false) return; // User disabled all push
-  if (notifType && TYPE_TO_PREF[notifType] && prefs[TYPE_TO_PREF[notifType]] === false) return; // Category disabled
-
+async function sendPush(userId: string, userData: Record<string, any>, title: string, body: string, link?: string): Promise<void> {
   const fcmTokens: string[] = userData.fcmTokens || [];
   if (fcmTokens.length === 0) return;
 

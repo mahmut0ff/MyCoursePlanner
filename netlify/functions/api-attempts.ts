@@ -182,7 +182,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     createNotification({
       recipientId: user.uid, type: 'exam_result_ready',
       title: 'Результат экзамена',
-      message: `Ваш результат: ${data.percentage}% по «${data.examTitle}»${data.passed ? ' — Сдан' : ' — Не сдан'}`,
+      // Без «Ваш»: тот же текст уходит родителю с именем ребёнка в заголовке.
+      message: `«${data.examTitle}»: ${data.percentage}% (${data.score} из ${data.totalPoints} б.) — ${data.passed ? 'сдан' : 'не сдан'}`,
       link: '/my-results',
       organizationId: user.organizationId || '',
     }).catch(() => {});

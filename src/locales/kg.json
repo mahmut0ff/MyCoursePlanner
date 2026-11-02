@@ -6573,7 +6573,16 @@
     "tokenPh": "Мисалы: 1234567890:AAH_XYZ...",
     "webhookActive": "Webhook иштеп жатат!",
     "connectedBot": "Туташкан AI-ассистент:",
-    "saveActivate": "Сактоо жана webhook'ту иштетүү"
+    "saveActivate": "Сактоо жана webhook'ту иштетүү",
+    "notOwner": "Telegram-ботту уюмдун ээси гана туташтырат.",
+    "tokenLabelNew": "Жаңы Bot Token (башка ботту туташтыруу үчүн)",
+    "tokenPhStored": "Токен сакталган жана жашырылган. Ботту алмаштыруу үчүн жаңысын киргизиңиз",
+    "botConnected": "бот туташкан",
+    "disconnect": "Ажыратуу",
+    "disconnectTitle": "Telegram-ботту ажыратасызбы?",
+    "disconnectMessage": "Бот кардарларга жооп бербей калат. Аны @BotFather берген ошол эле токен менен кайра туташтырса болот.",
+    "disconnected": "Telegram-бот ажыратылды",
+    "reconnected": "Telegram webhook кайра орнотулду"
   },
   "courses": {
     "byBranch": "Филиалдар боюнча",

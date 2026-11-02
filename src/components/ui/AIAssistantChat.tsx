@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiAIManagerChat } from '../../lib/api';
-import type { OrgAIManagerSettings } from '../../types';
+import type { PublicAIManagerSettings } from '../../types';
 
 interface Message {
   id: string;
@@ -12,7 +12,7 @@ interface Message {
 
 interface Props {
   organizationId: string;
-  settings: OrgAIManagerSettings;
+  settings: PublicAIManagerSettings;
 }
 
 export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) => {

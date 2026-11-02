@@ -2,11 +2,97 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { AI_MODEL } from './utils/ai';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
+import type { AuthUser } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
 import { planHasAIManager } from './utils/plan-limits';
 import { setTelegramWebhook, TELEGRAM_WEBHOOK_PATH } from './utils/telegram-webhook-auth';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+const DEFAULT_GREETING = 'Здравствуйте! Чем я могу вам помочь?';
+
+// organizationAIManager/{orgId} holds the org's Telegram bot token, so the doc is
+// never served as is. Both views below are allowlists: a field added to the doc
+// later stays private until someone lists it here on purpose.
+
+const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
+
+const faqOf = (v: unknown): { question: string; answer: string }[] =>
+  Array.isArray(v)
+    ? v.filter((f) => f && typeof f === 'object').map((f) => ({ question: str(f.question), answer: str(f.answer) }))
+    : [];
+
+/**
+ * Anyone's view, for the public profile's chat widget. FAQ answers are included:
+ * the assistant tells them to any visitor anyway.
+ */
+function publicView(organizationId: string, doc: FirebaseFirestore.DocumentData, planAllowsAI: boolean) {
+  return {
+    organizationId,
+    // A plan without the AI manager keeps the assistant off, whatever the doc says.
+    isActive: planAllowsAI && !!doc.isActive,
+    greetingMessage: str(doc.greetingMessage, DEFAULT_GREETING),
+    faq: faqOf(doc.faq),
+    telegramBotUsername: str(doc.telegramBotUsername),
+  };
+}
+
+/** The owner's editor. The bot shows up as connected-or-not plus its public @username, never as the token. */
+function ownerView(organizationId: string, doc: FirebaseFirestore.DocumentData, planAllowsAI: boolean) {
+  return {
+    ...publicView(organizationId, doc, planAllowsAI),
+    aboutOrganization: str(doc.aboutOrganization),
+    enrollmentPolicy: str(doc.enrollmentPolicy),
+    customInstructions: str(doc.customInstructions),
+    hasTelegramBot: !!doc.telegramBotToken,
+    updatedAt: str(doc.updatedAt),
+  };
+}
+
+type Reply = ReturnType<typeof jsonResponse>;
+
+/**
+ * The org, when `user` may manage its AI settings: its owner or a super admin.
+ * The editor's read and its save both go through here, so they can't drift apart.
+ */
+async function ownedOrg(user: AuthUser, organizationId: string): Promise<{ org: FirebaseFirestore.DocumentData } | { error: Reply }> {
+  const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+  if (!orgSnap.exists) return { error: badRequest('Organization not found') };
+  const org = orgSnap.data()!;
+  if (org.ownerId !== user.uid && user.role !== 'super_admin') {
+    return { error: forbidden('Only organization owner can manage AI settings') };
+  }
+  return { org };
+}
+
+const EDITABLE_TEXT = ['greetingMessage', 'aboutOrganization', 'enrollmentPolicy', 'customInstructions'] as const;
+
+/**
+ * What updateSettings stores from the body, type-checked. The editors post their
+ * whole settings object back, so everything else in it (telegramBotUsername,
+ * hasTelegramBot, updatedAt, …) is dropped rather than stored. The bot token has
+ * its own path in updateSettings.
+ */
+function pickEditable(body: Record<string, unknown>): { updates: Record<string, unknown> } | { error: string } {
+  const updates: Record<string, unknown> = {};
+  if (body.isActive !== undefined) {
+    if (typeof body.isActive !== 'boolean') return { error: 'isActive must be a boolean' };
+    updates.isActive = body.isActive;
+  }
+  for (const key of EDITABLE_TEXT) {
+    if (body[key] === undefined) continue;
+    if (typeof body[key] !== 'string') return { error: `${key} must be a string` };
+    updates[key] = body[key];
+  }
+  const faq = body.faq;
+  if (faq !== undefined) {
+    if (!Array.isArray(faq) || !faq.every((f) => f && typeof f.question === 'string' && typeof f.answer === 'string')) {
+      return { error: 'faq must be a list of { question, answer } strings' };
+    }
+    updates.faq = faq.map((f) => ({ question: f.question, answer: f.answer }));
+  }
+  return { updates };
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -18,38 +104,32 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     const action = event.queryStringParameters?.action || (event.body ? JSON.parse(event.body).action : null);
     
-    // --- action: getSettings ---
+    // --- action: getSettings (public, no auth: the profile page's chat widget) ---
     if (action === 'getSettings') {
       const organizationId = event.queryStringParameters?.organizationId;
       if (!organizationId) return badRequest('organizationId is required');
-      
-      const docPath = adminDb.collection('organizationAIManager').doc(organizationId);
+
       const [snap, orgSnap] = await Promise.all([
-        docPath.get(),
+        adminDb.collection('organizationAIManager').doc(organizationId).get(),
         adminDb.collection('organizations').doc(organizationId).get()
       ]);
       const orgPlan = orgSnap.exists ? orgSnap.data()?.planId : null;
-      
-      let data: any = {
-        organizationId,
-        isActive: false,
-        greetingMessage: 'Здравствуйте! Чем я могу вам помочь?',
-        aboutOrganization: '',
-        faq: [],
-        enrollmentPolicy: '',
-        customInstructions: '',
-        updatedAt: new Date().toISOString()
-      };
-      
-      if (snap.exists) {
-        data = { ...data, ...snap.data() };
-      }
-      
-      if (!planHasAIManager(orgPlan)) {
-        data.isActive = false;
-      }
 
-      return ok({ data });
+      return ok({ data: publicView(organizationId, snap.data() || {}, planHasAIManager(orgPlan)) });
+    }
+
+    // --- action: getOwnerSettings (the settings editor: owner or super admin) ---
+    if (action === 'getOwnerSettings') {
+      const user = await verifyAuth(event);
+      if (!user) return unauthorized(event);
+      const organizationId = event.queryStringParameters?.organizationId;
+      if (!organizationId) return badRequest('organizationId is required');
+
+      const owned = await ownedOrg(user, organizationId);
+      if ('error' in owned) return owned.error;
+
+      const snap = await adminDb.collection('organizationAIManager').doc(organizationId).get();
+      return ok({ data: ownerView(organizationId, snap.data() || {}, planHasAIManager(owned.org.planId)) });
     }
 
     // --- action: getUsage (current month AI consumption) ---
@@ -72,26 +152,37 @@ const handler: Handler = async (event: HandlerEvent) => {
       const user = await verifyAuth(event);
       if (!user) return unauthorized(event);
       
-      const body = JSON.parse(event.body || '{}');
-      const { organizationId, ...updates } = body;
-      
-      if (!organizationId) return badRequest('organizationId is required');
+      const body = JSON.parse(event.body || '{}') || {};
+      const organizationId = body.organizationId;
 
-      // Check ownership
-      const orgRef = adminDb.collection('organizations').doc(organizationId);
-      const orgSnap = await orgRef.get();
-      if (!orgSnap.exists) return badRequest('Organization not found');
-      
-      const orgData = orgSnap.data()!;
-      if (!planHasAIManager(orgData.planId) && user.role !== 'super_admin') {
+      if (!organizationId || typeof organizationId !== 'string') return badRequest('organizationId is required');
+
+      const owned = await ownedOrg(user, organizationId);
+      if ('error' in owned) return owned.error;
+      if (!planHasAIManager(owned.org.planId) && user.role !== 'super_admin') {
          return forbidden('Your current plan does not support AI features');
       }
-      if (orgData.ownerId !== user.uid && user.role !== 'super_admin') {
-         return forbidden('Only organization owner can update AI settings');
+
+      const picked = pickEditable(body);
+      if ('error' in picked) return badRequest(picked.error);
+      const updates = picked.updates;
+      const docPath = adminDb.collection('organizationAIManager').doc(organizationId);
+
+      // The bot token changes only on request: a new token connects that bot, ''
+      // disconnects it, and reconnectTelegram re-registers the webhook of the bot
+      // already stored. Otherwise the stored token stays as it is, which is what
+      // lets the client work without ever holding it.
+      if (body.telegramBotToken !== undefined && typeof body.telegramBotToken !== 'string') {
+        return badRequest('telegramBotToken must be a string');
+      }
+      let tokenChange: string | undefined = body.telegramBotToken;
+      if (tokenChange === undefined && body.reconnectTelegram === true) {
+        tokenChange = str((await docPath.get()).data()?.telegramBotToken);
+        if (!tokenChange) return badRequest('No Telegram bot is connected');
       }
 
-      if (updates.telegramBotToken !== undefined) {
-        const token = updates.telegramBotToken.trim();
+      if (tokenChange !== undefined) {
+        const token = tokenChange.trim();
         if (token === '') {
           updates.telegramBotToken = '';
           updates.telegramBotUsername = '';
@@ -126,14 +217,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      const docPath = adminDb.collection('organizationAIManager').doc(organizationId);
       await docPath.set({
         organizationId,
         ...updates,
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      return ok({ message: 'Settings updated' });
+      const saved = await docPath.get();
+      return ok({ message: 'Settings updated', data: ownerView(organizationId, saved.data() || {}, planHasAIManager(owned.org.planId)) });
     }
 
     // --- action: chat ---

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Loader2, Plus, Trash2 } from 'lucide-react';
-import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
+import { apiGetAIManagerOwnerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
 import type { OrgAIManagerSettings, AIManagerFAQ } from '../../types';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
   const { t } = useTranslation();
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notOwner, setNotOwner] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -16,9 +17,14 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
       setLoading(false);
       return;
     }
-    apiGetAIManagerSettings(organizationId)
+    apiGetAIManagerOwnerSettings(organizationId)
       .then((res) => setSettings(res.data))
       .catch((err) => {
+        // Only the owner edits the assistant: anyone else gets a 403 here.
+        if (err?.status === 403) {
+          setNotOwner(true);
+          return;
+        }
         console.error(err);
         toast.error(t('aiManager.loadFailed', 'Не удалось загрузить настройки AI'));
       })
@@ -68,6 +74,10 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
         <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
       </div>
     );
+  }
+
+  if (notOwner) {
+    return <div className="text-center py-12 text-slate-500">Настройки ассистента меняет только владелец организации.</div>;
   }
 
   if (!settings) {

@@ -6556,7 +6556,16 @@
     "tokenPh": "For example: 1234567890:AAH_XYZ...",
     "webhookActive": "Webhook is active!",
     "connectedBot": "Connected AI assistant:",
-    "saveActivate": "Save and activate webhook"
+    "saveActivate": "Save and activate webhook",
+    "notOwner": "Only the organization owner can connect the Telegram bot.",
+    "tokenLabelNew": "New Bot Token (to connect a different bot)",
+    "tokenPhStored": "The token is saved and hidden. Paste a new one to switch bots",
+    "botConnected": "bot connected",
+    "disconnect": "Disconnect",
+    "disconnectTitle": "Disconnect the Telegram bot?",
+    "disconnectMessage": "The bot will stop replying to clients. You can reconnect it later with the same token from @BotFather.",
+    "disconnected": "Telegram bot disconnected",
+    "reconnected": "Telegram webhook set up again"
   },
   "courses": {
     "byBranch": "By branch",

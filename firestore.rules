@@ -99,9 +99,11 @@ service cloud.firestore {
     }
     
     match /organizationAIManager/{orgId} {
-      // Chat widget checks isActive — require at least auth (public Telegram bot uses Admin SDK)
-      allow read: if request.auth != null;
-      allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId);
+      // Server-only: the doc holds the org's Telegram bot token, so "any signed-in
+      // user may read" handed every org's token to anyone with an account. Clients go
+      // through api-ai-org-manager instead: its read views never include the token,
+      // and updateSettings whitelists fields and checks a new token with Telegram.
+      allow read, write: if false;
     }
     
     match /orgMembers/{orgId}/members/{userId} {

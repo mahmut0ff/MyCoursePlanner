@@ -15,7 +15,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
 import {
-  apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings, orgGetDashboardStats,
+  apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerOwnerSettings, orgGetDashboardStats,
   apiGetDashboardOverview, apiGetFinanceMetrics, orgGetTimetable, orgGetSchedule, apiAIInsightsAsk,
 } from '../../lib/api';
 import { intlLocale, numericDateLocale } from '../../lib/locale';
@@ -171,8 +171,8 @@ const AdminDashboard: React.FC = () => {
       loads.push(
         apiGetOrganization(organizationId).then(data => {
           setOrgData(data);
-          apiGetAIManagerSettings(organizationId).then(res => {
-            if (res.data?.isActive || !!res.data?.telegramBotToken || !!res.data?.customInstructions || !!res.data?.aboutOrganization) {
+          apiGetAIManagerOwnerSettings(organizationId).then(res => {
+            if (res.data?.isActive || res.data?.hasTelegramBot || !!res.data?.customInstructions || !!res.data?.aboutOrganization) {
               setOrgData((prev: any) => ({ ...prev, aiConfigured: true }));
             }
           }).catch(() => {});

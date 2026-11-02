@@ -6530,7 +6530,16 @@
     "tokenPh": "Masalan: 1234567890:AAH_XYZ...",
     "webhookActive": "Webhook faol!",
     "connectedBot": "Ulangan AI-assistent:",
-    "saveActivate": "Saqlash va webhookni faollashtirish"
+    "saveActivate": "Saqlash va webhookni faollashtirish",
+    "notOwner": "Telegram botini faqat tashkilot egasi ulaydi.",
+    "tokenLabelNew": "Yangi Bot Token (boshqa botni ulash uchun)",
+    "tokenPhStored": "Token saqlangan va yashirilgan. Botni almashtirish uchun yangisini kiriting",
+    "botConnected": "bot ulangan",
+    "disconnect": "Uzish",
+    "disconnectTitle": "Telegram botini uzasizmi?",
+    "disconnectMessage": "Bot mijozlarga javob berishni to'xtatadi. Uni @BotFather bergan o'sha token bilan qayta ulash mumkin.",
+    "disconnected": "Telegram boti uzildi",
+    "reconnected": "Telegram webhook qayta o'rnatildi"
   },
   "courses": {
     "byBranch": "Filiallar bo'yicha",

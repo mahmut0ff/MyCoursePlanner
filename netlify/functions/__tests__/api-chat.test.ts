@@ -171,6 +171,9 @@ beforeEach(() => {
   autoId = 0;
   vi.clearAllMocks();
   fetchMock.mockResolvedValue({ ok: true, text: async () => '' } as any);
+  // Токен бота берётся только из окружения — запасного в коде нет, и без него
+  // сервер пропускает отправку в телеграм. В тестах — заведомо фальшивый.
+  process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
 
   member('u_admin', 'admin', 'Админ');
   member('u_teacher', 'teacher', 'Преподаватель');
@@ -646,5 +649,29 @@ describe('api-chat — телеграм', () => {
     expect(res.statusCode).toBe(200);
     expect(store.has('notifications/chat_u_student_room1')).toBe(true);
     expect(room('room1')!.participants.u_student.lastTelegramAt).toBeUndefined();
+  });
+
+  it('ходит в Bot API с токеном из TELEGRAM_BOT_TOKEN', async () => {
+    seedRoom({ participantIds: ['u_teacher', 'u_student'] });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Привет' });
+
+    expect(fetchMock.mock.calls.map(([url]: any) => url))
+      .toEqual(['https://api.telegram.org/bottest-bot-token/sendMessage']);
+  });
+
+  it('без TELEGRAM_BOT_TOKEN не пишет в телеграм и громко логирует, а чат работает', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    seedRoom();
+    as(TEACHER);
+
+    const res = await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Бот не настроен' });
+    expect(res.statusCode).toBe(200);
+    expect(store.has('notifications/chat_u_student_room1')).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();          // никакого зашитого запасного токена
+    expect(room('room1')!.participants.u_student.lastTelegramAt).toBeUndefined();
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('TELEGRAM_BOT_TOKEN is not set'));
+    errSpy.mockRestore();
   });
 });

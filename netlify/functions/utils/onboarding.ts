@@ -469,12 +469,33 @@ export async function createClaimToken(uid: string, orgId: string): Promise<stri
   return token;
 }
 
-export async function resolveClaimToken(token: string): Promise<{ uid: string; orgId: string } | null> {
-  const snap = await adminDb.collection('orgClaimTokens').doc(token).get();
-  if (!snap.exists) return null;
-  const d = snap.data()!;
-  if (new Date(d.expiresAt) < new Date()) return null;
-  return { uid: d.uid, orgId: d.orgId };
+export type ClaimResult =
+  | { ok: true; uid: string; orgId: string }
+  | { ok: false; reason: 'invalid' | 'linked_elsewhere' };
+
+/**
+ * Link `chatId` to the account behind a claim token. The token is spent in the
+ * same transaction, so a forwarded or leaked invite link can't be replayed, and
+ * an account already bound to another Telegram chat is never rebound — the bot
+ * hands the claimer a passwordless login, so either would be an account takeover.
+ */
+export async function consumeClaimToken(token: string, chatId: string): Promise<ClaimResult> {
+  const tokenRef = adminDb.collection('orgClaimTokens').doc(token);
+  return adminDb.runTransaction(async (tx): Promise<ClaimResult> => {
+    const snap = await tx.get(tokenRef);
+    if (!snap.exists) return { ok: false, reason: 'invalid' };
+    const d = snap.data()!;
+    if (new Date(d.expiresAt) < new Date()) {
+      tx.delete(tokenRef);
+      return { ok: false, reason: 'invalid' };
+    }
+    const userRef = adminDb.collection('users').doc(d.uid);
+    const linked = (await tx.get(userRef)).data()?.telegramChatId;
+    tx.delete(tokenRef);
+    if (linked && String(linked) !== chatId) return { ok: false, reason: 'linked_elsewhere' };
+    tx.set(userRef, { telegramChatId: chatId, telegramLinkedAt: now() }, { merge: true });
+    return { ok: true, uid: d.uid, orgId: d.orgId };
+  });
 }
 
 export interface InviteResult {

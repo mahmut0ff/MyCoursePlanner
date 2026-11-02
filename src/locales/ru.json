@@ -6622,7 +6622,16 @@
     "tokenPh": "Например: 1234567890:AAH_XYZ...",
     "webhookActive": "Вебхук активен!",
     "connectedBot": "Подключенный AI-ассистент:",
-    "saveActivate": "Сохранить и активировать Webhook"
+    "saveActivate": "Сохранить и активировать Webhook",
+    "notOwner": "Telegram-бота подключает только владелец организации.",
+    "tokenLabelNew": "Новый Bot Token (чтобы подключить другого бота)",
+    "tokenPhStored": "Токен сохранён и скрыт. Вставьте новый, чтобы сменить бота",
+    "botConnected": "бот подключён",
+    "disconnect": "Отключить",
+    "disconnectTitle": "Отключить Telegram-бота?",
+    "disconnectMessage": "Бот перестанет отвечать клиентам. Подключить его снова можно тем же токеном от @BotFather.",
+    "disconnected": "Telegram-бот отключён",
+    "reconnected": "Telegram Webhook установлен заново"
   },
   "courses": {
     "byBranch": "По филиалам",

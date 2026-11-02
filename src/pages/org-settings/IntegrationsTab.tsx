@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Loader2, MessageCircle, Link2, Lock, HelpCircle } from 'lucide-react';
-import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
-import type { OrgAIManagerSettings } from '../../types';
+import { apiGetAIManagerOwnerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
+import type { OrgAIManagerSettings, AIManagerSettingsUpdate } from '../../types';
 import toast from 'react-hot-toast';
 import { useTranslation, Trans } from 'react-i18next';
 import { usePlanGate } from '../../contexts/PlanContext';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organizationId }) => {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
+  // The stored token never comes back from the server, so this field only takes a new one.
+  const [newToken, setNewToken] = useState('');
   const [loading, setLoading] = useState(true);
+  const [notOwner, setNotOwner] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const { canAccess } = usePlanGate();
   
@@ -22,31 +27,43 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       return;
     }
     // Only attempt to fetch settings if the user has a plan supporting it just to prevent extraneous API errors, though the API handles it normally.
-    apiGetAIManagerSettings(organizationId)
+    apiGetAIManagerOwnerSettings(organizationId)
       .then((res) => setSettings(res.data))
       .catch((err) => {
+        // The bot is the owner's to configure: anyone else gets a 403 here.
+        if (err?.status === 403) {
+          setNotOwner(true);
+          return;
+        }
         console.error(err);
         toast.error(t('integrations.loadFailed', 'Не удалось загрузить интеграции'));
       })
       .finally(() => setLoading(false));
   }, [organizationId]);
 
-  const update = <K extends keyof OrgAIManagerSettings>(key: K, value: OrgAIManagerSettings[K]) => {
-    setSettings(s => s ? { ...s, [key]: value } as OrgAIManagerSettings : null);
-  };
-
-  const handleSave = async () => {
-    if (!settings || !hasAccess) return;
+  const save = async (change: Omit<AIManagerSettingsUpdate, 'organizationId'>, successMessage: string) => {
+    if (!hasAccess) return;
     setSaving(true);
     try {
-      await apiUpdateAIManagerSettings(settings);
-      toast.success(t('integrations.saved', 'Интеграции сохранены (Telegram Webhook установлен)'));
+      const res = await apiUpdateAIManagerSettings({ organizationId, ...change });
+      setSettings(res.data);
+      setNewToken('');
+      setConfirmDisconnect(false);
+      toast.success(successMessage);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || t('integrations.saveFailed', 'Ошибка связи с API или Telegram'));
     } finally {
       setSaving(false);
     }
+  };
+
+  // A new token connects that bot. With the field empty, saving re-registers the
+  // webhook of the bot already connected, from the token the server keeps.
+  const handleSave = () => {
+    const token = newToken.trim();
+    if (token) save({ telegramBotToken: token }, t('integrations.saved', 'Интеграции сохранены (Telegram Webhook установлен)'));
+    else if (settings?.hasTelegramBot) save({ reconnectTelegram: true }, t('integrations.reconnected', 'Telegram Webhook установлен заново'));
   };
 
   if (loading) {
@@ -57,9 +74,15 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
     );
   }
 
+  if (notOwner) {
+    return <div className="text-center py-12 text-slate-500">{t('integrations.notOwner', 'Telegram-бота подключает только владелец организации.')}</div>;
+  }
+
   if (!settings) {
     return <div className="text-center py-12 text-slate-500">{t('integrations.loadFailedLong', 'Не удалось загрузить интеграции.')}</div>;
   }
+
+  const canSave = hasAccess && !saving && (!!newToken.trim() || settings.hasTelegramBot);
 
   return (
     <div className="space-y-4 relative max-w-3xl">
@@ -121,35 +144,62 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
 
         <div>
           <label className="label">
-            {t('integrations.tokenLabel', 'Bot Token (API Ключ от @BotFather)')}
+            {settings.hasTelegramBot
+              ? t('integrations.tokenLabelNew', 'Новый Bot Token (чтобы подключить другого бота)')
+              : t('integrations.tokenLabel', 'Bot Token (API Ключ от @BotFather)')}
           </label>
           <input
             type="text"
-            value={settings.telegramBotToken || ''}
-            onChange={e => update('telegramBotToken', e.target.value)}
+            value={newToken}
+            onChange={e => setNewToken(e.target.value)}
             className="input"
-            placeholder={t('integrations.tokenPh', 'Например: 1234567890:AAH_XYZ...')}
+            placeholder={settings.hasTelegramBot
+              ? t('integrations.tokenPhStored', 'Токен сохранён и скрыт. Вставьте новый, чтобы сменить бота')
+              : t('integrations.tokenPh', 'Например: 1234567890:AAH_XYZ...')}
+            autoComplete="off"
             disabled={!hasAccess}
           />
         </div>
 
-        {settings.telegramBotUsername && (
+        {settings.hasTelegramBot && (
           <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 rounded-md">
             <Link2 className="w-4 h-4 flex-shrink-0" />
-            <div className="text-sm">
-              <strong>{t('integrations.webhookActive', 'Вебхук активен!')}</strong> {t('integrations.connectedBot', 'Подключенный AI-ассистент:')} <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-semibold hover:underline">@{settings.telegramBotUsername}</a>
+            <div className="text-sm flex-1 min-w-0">
+              <strong>{t('integrations.webhookActive', 'Вебхук активен!')}</strong> {t('integrations.connectedBot', 'Подключенный AI-ассистент:')}{' '}
+              {settings.telegramBotUsername ? (
+                <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-semibold hover:underline">@{settings.telegramBotUsername}</a>
+              ) : t('integrations.botConnected', 'бот подключён')}
             </div>
+            <button
+              type="button"
+              onClick={() => setConfirmDisconnect(true)}
+              disabled={saving || !hasAccess}
+              className="shrink-0 text-sm font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+            >
+              {t('integrations.disconnect', 'Отключить')}
+            </button>
           </div>
         )}
       </div>
 
       {/* ── Save Action ── */}
       <div className="flex justify-end">
-        <button onClick={handleSave} disabled={saving || !hasAccess} className="btn-primary inline-flex items-center gap-1.5">
+        <button onClick={handleSave} disabled={!canSave} className="btn-primary inline-flex items-center gap-1.5">
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           {t('integrations.saveActivate', 'Сохранить и активировать Webhook')}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDisconnect}
+        title={t('integrations.disconnectTitle', 'Отключить Telegram-бота?')}
+        message={t('integrations.disconnectMessage', 'Бот перестанет отвечать клиентам. Подключить его снова можно тем же токеном от @BotFather.')}
+        confirmLabel={t('integrations.disconnect', 'Отключить')}
+        danger
+        busy={saving}
+        onConfirm={() => save({ telegramBotToken: '' }, t('integrations.disconnected', 'Telegram-бот отключён'))}
+        onClose={() => setConfirmDisconnect(false)}
+      />
     </div>
   );
 };

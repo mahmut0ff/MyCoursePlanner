@@ -3,7 +3,7 @@ import { adminDb } from './utils/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { resolveTelegramLinkCode, getTelegramBotToken } from './utils/telegram';
 import { telegramWebhookAccessError } from './utils/telegram-webhook-auth';
-import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, consumeClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
 import { planHasAIManager } from './utils/plan-limits';
 import {
@@ -658,6 +658,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
           await sendTg('Чтобы зарегистрироваться, откройте ссылку-приглашение от вашего учебного центра.', { remove_keyboard: true });
           return { statusCode: 200, body: 'OK' };
         }
+        // The phone resolves to an existing account and the bot then hands this chat a
+        // passwordless login, so only the sender's own number counts: a contact card
+        // picked from the address book carries someone else's user_id (or none).
+        if (!contact.user_id || String(contact.user_id) !== String(message.from?.id)) {
+          await sendTg(
+            'Нужен <b>ваш собственный</b> номер — нажмите кнопку «📱 Поделиться номером» ниже.',
+            { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+          );
+          return { statusCode: 200, body: 'OK' };
+        }
         const phone = contact.phone_number || '';
         const sFname = message.from?.first_name || contact.first_name || '';
         const sLname = message.from?.last_name || contact.last_name || '';
@@ -712,15 +722,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // Claim a pre-created account: /start claim_<TOKEN> (bulk import / voice add).
         if (payloadArg.startsWith('claim_')) {
-          const token = payloadArg.slice('claim_'.length);
-          const claim = await resolveClaimToken(token);
-          if (!claim) {
-            await reply('❌ Ссылка-приглашение недействительна или истекла. Попросите центр прислать новую.');
+          const claim = await consumeClaimToken(payloadArg.slice('claim_'.length), String(chatId));
+          if (!claim.ok) {
+            await reply(claim.reason === 'linked_elsewhere'
+              ? '🔒 Этот аккаунт уже подключён к другому Telegram. Если он ваш — отвяжите старый Telegram в профиле приложения или обратитесь в центр.'
+              : '❌ Ссылка-приглашение недействительна или уже использована. Если вы уже подключились — нажмите /login, иначе попросите центр прислать новую.');
             return { statusCode: 200, body: 'OK' };
           }
-          await adminDb.collection('users').doc(claim.uid).set(
-            { telegramChatId: String(chatId), telegramLinkedAt: new Date().toISOString() }, { merge: true },
-          );
           const u = await adminDb.collection('users').doc(claim.uid).get();
           const nm = u.data()?.displayName || '';
           await sendLoginButton(claim.uid, `🎉 Добро пожаловать${nm ? `, <b>${nm}</b>` : ''}! Ваш аккаунт готов.\n\nНажмите, чтобы войти — без пароля:`);

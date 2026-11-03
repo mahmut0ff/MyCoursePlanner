@@ -10,7 +10,7 @@ import FolderCard, { type ArtRecipe } from '../../components/ui/FolderCard';
 import TeamLanyardRail, { type LanyardMember } from '../../components/ui/TeamLanyardRail';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
-  Cta, MktNav, MktFooter, Reveal, focusRing, h2Cls, leadCls, primaryBtn, secondaryBtn, useScrolledPast,
+  Cta, FaqJsonLd, MktNav, MktFooter, Reveal, focusRing, h2Cls, leadCls, primaryBtn, secondaryBtn, useScrolledPast,
 } from '../../components/landing/LandingKit';
 import {
   CountUp, DayStory, FitSwitcher, HeroChat, Struck, useInView, type InstId,
@@ -335,6 +335,7 @@ const LandingPage: React.FC = () => {
         </Cta>
       </div>
 
+      <FaqJsonLd items={faqs} />
       <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );

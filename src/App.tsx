@@ -13,6 +13,7 @@ import AppLayout from './components/layout/AppLayout';
 import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
 import LoginActivityPing from './components/presence/LoginActivityPing';
 import { lazyRetry, lazyPreload } from './lib/lazyRetry';
+import { GUIDE_PATH, SOLUTIONS } from './components/landing/solutions';
 
 const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
 const ParentPortalPage = lazyRetry(() => import('./pages/parent/ParentPortalPage'));
@@ -27,6 +28,8 @@ const DocsPage = lazyPreload(() => import('./pages/landing/DocsPage'));
 const VibecoderPage = lazyPreload(() => import('./pages/landing/VibecoderPage'));
 const PrivacyPage = lazyPreload(() => import('./pages/landing/PrivacyPage'));
 const TermsPage = lazyPreload(() => import('./pages/landing/TermsPage'));
+const SolutionPage = lazyPreload(() => import('./pages/landing/SolutionPage'));
+const GuidePage = lazyPreload(() => import('./pages/landing/GuidePage'));
 
 const DashboardPage = lazyRetry(() => import('./pages/dashboard/DashboardPage'));
 const GradebookPage = lazyRetry(() => import('./pages/gradebook/GradebookPage'));
@@ -111,7 +114,8 @@ const OrganizationsDirectoryPage = lazyRetry(() => import('./pages/directory/Org
 // Prerendered public pages (scripts/prerender.mjs) — main.tsx loads the current one before the first render.
 const PRERENDERED: Record<string, { preload: () => Promise<void> }> = {
   '/': LandingPage, '/features': FeaturesPage, '/about': AboutPage, '/contact': ContactPage, '/docs': DocsPage,
-  '/vibecoder': VibecoderPage, '/privacy': PrivacyPage, '/terms': TermsPage,
+  '/vibecoder': VibecoderPage, '/privacy': PrivacyPage, '/terms': TermsPage, [GUIDE_PATH]: GuidePage,
+  ...Object.fromEntries(SOLUTIONS.map((s) => [s.path, SolutionPage])),
 };
 // eslint-disable-next-line react-refresh/only-export-components
 export const preloadRoute = (pathname: string) =>
@@ -193,6 +197,8 @@ const App: React.FC = () => {
             <Route path="/vibecoder" element={<VibecoderPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            {SOLUTIONS.map((s) => <Route key={s.id} path={s.path} element={<SolutionPage id={s.id} />} />)}
+            <Route path={GUIDE_PATH} element={<GuidePage />} />
             <Route path="/login" element={<LoginPage />} />
             {/* Self-service registration was removed — accounts are provisioned by
                 admins (teachers/students) and super-admins (owners). Keep the path

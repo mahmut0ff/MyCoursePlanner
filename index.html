@@ -59,13 +59,15 @@
             "url": "https://sabakhub.kg/",
             "description": "CRM для учебных центров, школ и курсов: учёт студентов, оплат и должников, журнал, расписание, зарплата преподавателей, экзамены и Telegram-бот.",
             "publisher": { "@id": "https://sabakhub.kg/#org" },
-            "offers": {
-              "@type": "AggregateOffer",
-              "priceCurrency": "KGS",
-              "lowPrice": "1990",
-              "highPrice": "9900",
-              "offerCount": "3"
-            }
+            "inLanguage": ["ru", "ky", "uz", "en"],
+            "areaServed": [{ "@type": "Country", "name": "Кыргызстан" }, { "@type": "Country", "name": "Узбекистан" }],
+            "audience": { "@type": "BusinessAudience", "audienceType": "Учебные центры, языковые школы, частные школы, детские центры, онлайн-школы" },
+            "featureList": "Ежемесячные счета и должники; электронный журнал и посещаемость; расписание с аудиториями; зарплата преподавателей; онлайн-экзамены с автопроверкой; Telegram-бот для директора, учителей и родителей; филиалы, роли и права; ИИ-помощник",
+            "offers": [
+              { "@type": "Offer", "name": "Базовый", "price": "1990", "priceCurrency": "KGS", "description": "До 50 студентов, первый месяц бесплатно" },
+              { "@type": "Offer", "name": "Профессиональный", "price": "4990", "priceCurrency": "KGS", "description": "До 300 студентов, экзамены, ИИ, сертификаты" },
+              { "@type": "Offer", "name": "Корпоративный", "price": "9900", "priceCurrency": "KGS", "description": "Без ограничений, филиалы, перенос данных под ключ" }
+            ]
           }
         ]
       }

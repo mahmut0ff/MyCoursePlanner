@@ -14,7 +14,12 @@ import { extname, join, normalize } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const DIST = join(process.cwd(), 'dist');
-export const ROUTES = ['/', '/features', '/about', '/contact', '/docs', '/vibecoder', '/privacy', '/terms'];
+export const ROUTES = [
+  '/', '/features', '/about', '/contact', '/docs', '/vibecoder', '/privacy', '/terms',
+  // src/components/landing/solutions.ts
+  '/crm-dlya-uchebnogo-centra', '/crm-dlya-yazykovoy-shkoly', '/crm-dlya-chastnoy-shkoly',
+  '/crm-dlya-detskogo-centra', '/crm-dlya-onlayn-shkoly', '/kak-vybrat-crm',
+];
 // Not /directory: its list comes from an API that doesn't run at build time.
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
 

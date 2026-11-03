@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { APP_LOGIN_URL, TELEGRAM_LINK, isPlaceholder } from './ctaLinks';
+import { GUIDE_PATH, SOLUTIONS } from './solutions';
 
 /* ──────────────────────────────────────────────────────────────
    Marketing kit shared by the home page, /features and /login:
@@ -240,9 +241,31 @@ export const MktNav: React.FC<{ anchors: NavAnchor[]; onDemo: () => void }> = ({
   );
 };
 
+/** FAQPage structured data: search engines and AI answers read the same Q&A the page shows. */
+export const FaqJsonLd: React.FC<{ items: { q: string; a: string }[] }> = ({ items }) => (
+  <script
+    type="application/ld+json"
+    // Data block, not executed: CSP doesn't apply. `<` escaped so text can't close the tag.
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: items.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+      }).replace(/</g, '\\u003c'),
+    }}
+  />
+);
+
 export const MktFooter: React.FC = () => {
   const { t } = useTranslation();
   const cols = [
+    {
+      title: t('sol.common.nav'),
+      links: [
+        ...SOLUTIONS.map((s) => ({ to: s.path, label: t(`sol.${s.id}.nav`) })),
+        { to: GUIDE_PATH, label: t('sol.common.guide') },
+      ],
+    },
     {
       title: t('mkt.footerProduct'),
       links: [
@@ -267,7 +290,7 @@ export const MktFooter: React.FC = () => {
   const headCls = 'text-[13px] font-medium text-slate-900 dark:text-slate-100';
   return (
     <footer className="border-t border-slate-200 bg-slate-50 px-4 pb-8 pt-12 sm:px-8 dark:border-slate-700 dark:bg-slate-800/40">
-      <div className="mx-auto grid max-w-[1200px] gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+      <div className="mx-auto grid max-w-[1200px] gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1.1fr_1fr_1fr_1.2fr]">
         <div>
           <div className="flex items-center gap-2.5">
             <Logo size="sm" />

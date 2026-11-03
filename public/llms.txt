@@ -48,10 +48,6 @@
 - [Как выбрать CRM для учебного центра](https://sabakhub.kg/kak-vybrat-crm): 6 критериев и сравнение таблиц, универсальной CRM и отраслевой системы
 - [Контакты и демо](https://sabakhub.kg/contact): +996 550 308 078, hello@sabakhub.kg, Бишкек
 
-## Название
-
-Продукт называется SabakHub (Сабакхаб). Раньше он работал на домене planula.org; все старые адреса перенаправляются на sabakhub.kg.
-
 ## Optional
 
 - [Документация](https://sabakhub.kg/docs)

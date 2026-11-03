@@ -31,32 +31,6 @@
 [context.branch-deploy]
   command = "npm run build"
 
-# ---- Old domain: planula.org → sabakhub.kg, page for page, so search engines
-# and AI answers move their links over. Needs planula.org as a domain alias. ----
-[[redirects]]
-  from = "https://planula.org/*"
-  to = "https://sabakhub.kg/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
-  from = "http://planula.org/*"
-  to = "https://sabakhub.kg/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
-  from = "https://www.planula.org/*"
-  to = "https://sabakhub.kg/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
-  from = "http://www.planula.org/*"
-  to = "https://sabakhub.kg/:splat"
-  status = 301
-  force = true
-
 # ---- SPA routing — all non-file routes go to the empty shell ----
 # index.html and /<page>.html are prerendered public pages (scripts/prerender.mjs);
 # app routes get app.html so they never flash the landing page's markup.

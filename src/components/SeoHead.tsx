@@ -7,8 +7,8 @@ import { useLocation } from 'react-router-dom';
 
 export const SITE_URL = 'https://sabakhub.kg';
 
-const DEFAULT_TITLE = 'SabakHub — CRM для учебного центра: оплаты, журнал, расписание';
-const DEFAULT_DESC = 'CRM для учебных центров, языковых школ и курсов в Кыргызстане: оплаты и должники, журнал посещаемости, расписание, зарплата преподавателей и Telegram-бот. Месяц бесплатно.';
+const DEFAULT_TITLE = 'SabakHub — CRM и система управления учебным центром';
+const DEFAULT_DESC = 'Система управления учебным центром: журнал и оценки, посещаемость, качество обучения и KPI преподавателей, оплаты, долги и расписание. Первый месяц бесплатно.';
 
 const PAGES: Record<string, { title: string; description: string }> = {
   '/': { title: DEFAULT_TITLE, description: DEFAULT_DESC },

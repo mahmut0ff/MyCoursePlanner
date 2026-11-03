@@ -4491,7 +4491,7 @@
     "navLogin": "Kirish",
     "heroTitle1": "Birorta to'lov unutilmaydi.",
     "heroTitleMark": "Birorta talaba yo'qolmaydi.",
-    "heroEyebrow": "O'quv markazlari, maktablar va kurslar uchun CRM",
+    "heroEyebrow": "O'quv markazini boshqarish tizimi va CRM",
     "heroSubtitle": "SabakHub o'quv markazining to'lovlari, davomati, jadvali va maoshlarini yuritadi. Har kuni ertalab 07:30 da direktor Telegramda hisobot oladi: kim qarzdor, kim darslarni qoldira boshladi, o'qituvchilarga qancha hisoblandi.",
     "heroCta2": "Qanday ishlashini ko'rish",
     "visGroupTitle": "B-2 guruhi · Ingliz tili",
@@ -4584,7 +4584,7 @@
     "faq7Q": "To'lashni to'xtatsam, ma'lumotlar nima bo'ladi?",
     "faq7A": "Kirish to'xtatiladi, lekin ma'lumotlar o'chirilmaydi. So'rov bo'yicha talabalar, to'lovlar va jurnalni Excel'ga chiqarib beramiz.",
     "faq8Q": "SabakHub o'quv markazi uchun boshqa CRMlardan nimasi bilan farq qiladi?",
-    "faq8A": "Oddiy CRM faqat arizalar va sotuvlarni yuritadi. SabakHub o'quv markazini to'liq boshqaradi: to'lovlar va qarzdorlar, davomat jurnali, dars jadvali va xonalar, o'qituvchilar maoshi hamda talabalar va ota-onalar uchun Telegram-bot. Bishkekda va butun Qirg'izistonda ishlaydi, narxlar somda."
+    "faq8A": "Oddiy CRM arizalar va sotuvlarni yuritadi. SabakHub — o'quv markazining o'zini boshqarish tizimi: o'quv jarayoni va uning sifati (jurnal, baholar, davomat, ketish xavfi bor talabalar), o'qituvchilar ishi (faollik va KPI), to'lovlar va qarzlar, jadval va maoshlar. Bishkekda va butun Qirg'izistonda ishlaydi, narxlar somda."
   },
   "support": {
     "title": "Qo'llab-quvvatlash",

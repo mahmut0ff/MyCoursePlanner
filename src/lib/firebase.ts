@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, getToken, onMessage, isSupported, type Messaging } from 'firebase/messaging';
@@ -26,7 +26,11 @@ if (!isFirebaseConfigured) {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+// getAuth() minus the popup/redirect resolver: that resolver loads Google's auth
+// iframe + gapi (~130 KB) on every page, and the app has no popup/redirect sign-in.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 

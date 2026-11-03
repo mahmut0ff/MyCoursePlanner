@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import SeoHead from './components/SeoHead';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -11,21 +12,21 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
 import LoginActivityPing from './components/presence/LoginActivityPing';
-import { lazyRetry } from './lib/lazyRetry';
+import { lazyRetry, lazyPreload } from './lib/lazyRetry';
 
 const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
 const ParentPortalPage = lazyRetry(() => import('./pages/parent/ParentPortalPage'));
 const OnboardingPage = lazyRetry(() => import('./pages/auth/OnboardingPage'));
 const TgLoginPage = lazyRetry(() => import('./pages/auth/TgLoginPage'));
 
-const LandingPage = lazyRetry(() => import('./pages/landing/LandingPage'));
-const FeaturesPage = lazyRetry(() => import('./pages/landing/FeaturesPage'));
-const AboutPage = lazyRetry(() => import('./pages/landing/AboutPage'));
-const ContactPage = lazyRetry(() => import('./pages/landing/ContactPage'));
-const DocsPage = lazyRetry(() => import('./pages/landing/DocsPage'));
-const VibecoderPage = lazyRetry(() => import('./pages/landing/VibecoderPage'));
-const PrivacyPage = lazyRetry(() => import('./pages/landing/PrivacyPage'));
-const TermsPage = lazyRetry(() => import('./pages/landing/TermsPage'));
+const LandingPage = lazyPreload(() => import('./pages/landing/LandingPage'));
+const FeaturesPage = lazyPreload(() => import('./pages/landing/FeaturesPage'));
+const AboutPage = lazyPreload(() => import('./pages/landing/AboutPage'));
+const ContactPage = lazyPreload(() => import('./pages/landing/ContactPage'));
+const DocsPage = lazyPreload(() => import('./pages/landing/DocsPage'));
+const VibecoderPage = lazyPreload(() => import('./pages/landing/VibecoderPage'));
+const PrivacyPage = lazyPreload(() => import('./pages/landing/PrivacyPage'));
+const TermsPage = lazyPreload(() => import('./pages/landing/TermsPage'));
 
 const DashboardPage = lazyRetry(() => import('./pages/dashboard/DashboardPage'));
 const GradebookPage = lazyRetry(() => import('./pages/gradebook/GradebookPage'));
@@ -106,6 +107,15 @@ const AdminOrgDetailPage = lazyRetry(() => import('./pages/admin/AdminOrgDetailP
 
 // Directory Pages (Ecosystem)
 const OrganizationsDirectoryPage = lazyRetry(() => import('./pages/directory/OrganizationsDirectoryPage'));
+
+// Prerendered public pages (scripts/prerender.mjs) — main.tsx loads the current one before the first render.
+const PRERENDERED: Record<string, { preload: () => Promise<void> }> = {
+  '/': LandingPage, '/features': FeaturesPage, '/about': AboutPage, '/contact': ContactPage, '/docs': DocsPage,
+  '/vibecoder': VibecoderPage, '/privacy': PrivacyPage, '/terms': TermsPage,
+};
+// eslint-disable-next-line react-refresh/only-export-components
+export const preloadRoute = (pathname: string) =>
+  PRERENDERED[pathname.replace(/\/+$/, '') || '/']?.preload() ?? Promise.resolve();
 const PublicOrgProfilePage = lazyRetry(() => import('./pages/directory/PublicOrgProfilePage'));
 
 // AI Leads CRM
@@ -169,6 +179,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <ThemedToaster />
+        <SeoHead />
         <PresenceHeartbeat />
         <LoginActivityPing />
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>

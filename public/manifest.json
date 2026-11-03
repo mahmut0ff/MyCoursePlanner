@@ -1,7 +1,7 @@
 {
   "name": "SabakHub",
   "short_name": "SabakHub",
-  "description": "Education Management Platform — Lessons, Exams, AI Feedback",
+  "description": "Учёт студентов, оплат и должников для учебных центров: журнал, расписание, экзамены и Telegram-бот",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

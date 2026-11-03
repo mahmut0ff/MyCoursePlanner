@@ -1,30 +1,79 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icons/logo.png" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" href="/fonts/inter-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#6366f1" />
-    <meta name="description" content="Каждое утро директор видит должников, уходящих учеников и зарплату преподавателей. Журнал, расписание, экзамены и Telegram-бот — в одном месте. Первый месяц бесплатно." />
+    <meta name="description" content="CRM для учебных центров, языковых школ и курсов в Кыргызстане: оплаты и должники, журнал посещаемости, расписание, зарплата преподавателей и Telegram-бот. Месяц бесплатно." />
+    <meta name="keywords" content="crm для учебного центра, crm система для учебного центра, программа для учебного центра, crm для образовательного центра, crm для языковой школы, crm для школы, crm для детского центра, crm для курсов, crm для репетитора, автоматизация учебного центра, учет учеников, учет оплат, журнал посещаемости учеников, расписание занятий, crm Бишкек, crm Кыргызстан" />
+    <meta name="robots" content="index, follow" />
+    <meta name="google-site-verification" content="4I0Gb0305TGZEL7KHdRnOj8kPALp_m_6ggkFbCItCks" />
+    <meta name="yandex-verification" content="65d5445db4bf7ea6" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="SabakHub — учёт учеников, оплат и должников для учебных центров" />
-    <meta property="og:description" content="Каждое утро директор видит должников, уходящих учеников и зарплату преподавателей. Журнал, расписание, экзамены и Telegram-бот — в одном месте. Первый месяц бесплатно." />
+    <meta property="og:site_name" content="SabakHub" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:image" content="https://sabakhub.kg/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SabakHub — учёт студентов, оплат и должников для учебных центров" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://sabakhub.kg/og-image.png" />
+    <meta property="og:title" content="SabakHub — CRM для учебного центра: оплаты, журнал, расписание" />
+    <meta property="og:description" content="CRM для учебных центров, языковых школ и курсов в Кыргызстане: оплаты и должники, журнал посещаемости, расписание, зарплата преподавателей и Telegram-бот. Месяц бесплатно." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SabakHub" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <title>SabakHub — учёт учеников, оплат и должников для учебных центров</title>
+    <!-- Theme before first paint (mirrors ThemeContext), so prerendered pages don't flash light. -->
+    <script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}</script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://sabakhub.kg/#org",
+            "name": "SabakHub",
+            "url": "https://sabakhub.kg/",
+            "logo": "https://sabakhub.kg/icons/icon-512.png",
+            "telephone": "+996550308078",
+            "address": { "@type": "PostalAddress", "addressLocality": "Бишкек", "addressCountry": "KG" }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://sabakhub.kg/#website",
+            "url": "https://sabakhub.kg/",
+            "name": "SabakHub",
+            "inLanguage": "ru",
+            "publisher": { "@id": "https://sabakhub.kg/#org" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "SabakHub",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web, Android, iOS",
+            "url": "https://sabakhub.kg/",
+            "description": "CRM для учебных центров, школ и курсов: учёт студентов, оплат и должников, журнал, расписание, зарплата преподавателей, экзамены и Telegram-бот.",
+            "publisher": { "@id": "https://sabakhub.kg/#org" },
+            "offers": {
+              "@type": "AggregateOffer",
+              "priceCurrency": "KGS",
+              "lowPrice": "1990",
+              "highPrice": "9900",
+              "offerCount": "3"
+            }
+          }
+        ]
+      }
+    </script>
+    <title>SabakHub — CRM для учебного центра: оплаты, журнал, расписание</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
-      }
-    </script>
   </body>
 </html>

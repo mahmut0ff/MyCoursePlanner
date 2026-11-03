@@ -54,7 +54,7 @@ const LandingPage: React.FC = () => {
     group: t(`terms.${inst}.group`),
   };
 
-  const faqs = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ q: t(`home.faq${n}Q`), a: t(`home.faq${n}A`) }));
+  const faqs = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ q: t(`home.faq${n}Q`), a: t(`home.faq${n}A`) }));
 
   // The director's morning opens the day: money first, then the teaching hours.
   const days = [
@@ -97,6 +97,7 @@ const LandingPage: React.FC = () => {
         />
         <div className="relative mx-auto grid max-w-[1200px] items-center gap-14 px-4 pb-16 pt-12 sm:px-8 sm:pt-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pb-24 lg:pt-20">
         <div>
+          <p className="hero-rise mb-4 text-[14px] font-medium text-primary-600 dark:text-primary-400">{t('home.heroEyebrow')}</p>
           <HeroTitle />
           <p className={`hero-rise mt-5 max-w-[56ch] ${leadCls} sm:!text-[18px]`} style={{ animationDelay: '0.35s' }}>
             {t('home.heroSubtitle')}
@@ -348,8 +349,8 @@ const HeroTitle: React.FC = () => {
   const words = [...plain.map((w) => ({ w, mark: false })), ...mark.map((w) => ({ w, mark: true }))];
   return (
     <h1 className="text-balance text-[clamp(34px,4.3vw,54px)] font-semibold leading-[1.06] tracking-[-0.035em]">
-      <span className="sr-only">{`${t('home.heroTitle1')} ${t('home.heroTitleMark')}`}</span>
-      <span aria-hidden>
+      {/* Real words, not an sr-only copy: crawlers and screen readers read the H1 once. */}
+      <span>
         {words.map(({ w, mark: m }, i) => (
           <React.Fragment key={i}>
             <span className="-mb-[0.12em] inline-block overflow-hidden pb-[0.12em] align-top">

@@ -31,10 +31,12 @@
 [context.branch-deploy]
   command = "npm run build"
 
-# ---- SPA routing — all non-file routes go to index.html ----
+# ---- SPA routing — all non-file routes go to the empty shell ----
+# index.html and /<page>.html are prerendered public pages (scripts/prerender.mjs);
+# app routes get app.html so they never flash the landing page's markup.
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/app.html"
   status = 200
 
 # ---- Functions ----
@@ -96,6 +98,17 @@
 #   www.openstreetmap.org                     — branch map (PublicOrgProfilePage)
 #   *.firebaseapp.com, accounts.google.com    — Firebase Auth iframe
 # Note: `*.youtube.com` does NOT match the bare `youtube.com`, hence both.
+# Hashed build output and self-hosted fonts never change under the same URL.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -103,4 +116,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(self), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com; media-src 'self' blob: https://firebasestorage.googleapis.com https://*.youtube.com https://*.ytimg.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://apis.google.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://generativelanguage.googleapis.com wss://*.firebaseio.com; frame-src 'self' blob: https://youtube.com https://*.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://firebasestorage.googleapis.com https://view.officeapps.live.com https://www.openstreetmap.org https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-Pi5sjuXquUWfdQfRCOw/PSYj/daitMiZM6ii4shWqRA=' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com; media-src 'self' blob: https://firebasestorage.googleapis.com https://*.youtube.com https://*.ytimg.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://apis.google.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://generativelanguage.googleapis.com wss://*.firebaseio.com; frame-src 'self' blob: https://youtube.com https://*.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://firebasestorage.googleapis.com https://view.officeapps.live.com https://www.openstreetmap.org https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'"

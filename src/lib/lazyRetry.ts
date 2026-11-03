@@ -25,6 +25,21 @@ export function lazyRetry<T extends ComponentType<any>>(
   return lazy(() => importWithReload(importFn));
 }
 
+/**
+ * lazyRetry that can also be loaded before the first render: main.tsx preloads
+ * the current public page so prerendered HTML is swapped for the same page,
+ * not for the Suspense spinner.
+ */
+export function lazyPreload<T extends ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>,
+): ComponentType<React.ComponentProps<T>> & { preload: () => Promise<void> } {
+  let loaded: T | undefined;
+  const Lazy = lazyRetry(importFn);
+  const Page = (props: React.ComponentProps<T>) => React.createElement(loaded ?? Lazy, props);
+  Page.preload = () => importWithReload(importFn).then((m) => { loaded = m.default; });
+  return Page;
+}
+
 async function importWithReload<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
 ): Promise<{ default: T }> {

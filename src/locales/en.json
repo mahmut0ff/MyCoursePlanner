@@ -4116,6 +4116,7 @@
     "navLogin": "Log in",
     "heroTitle1": "Not one payment forgotten.",
     "heroTitleMark": "Not one student lost.",
+    "heroEyebrow": "CRM for learning centers, schools and courses",
     "heroSubtitle": "SabakHub runs the payments, attendance, schedule and payroll of a learning center. Every morning at 07:30 the director gets a Telegram digest: who owes, who has started skipping lessons, what the teachers are owed.",
     "heroCta2": "See how it works",
     "visGroupTitle": "Group B-2 · English",
@@ -4206,7 +4207,9 @@
     "faq6Q": "Who can see my center’s data?",
     "faq6A": "Only you and the staff you grant access to. Each center’s data is isolated; other centers have no access to it.",
     "faq7Q": "What happens to my data if I stop paying?",
-    "faq7A": "Access is paused, but nothing is deleted. On request we export your students, payments and gradebook to Excel."
+    "faq7A": "Access is paused, but nothing is deleted. On request we export your students, payments and gradebook to Excel.",
+    "faq8Q": "How is SabakHub different from other CRMs for learning centers?",
+    "faq8A": "A typical CRM tracks leads and sales. SabakHub runs the whole learning center: payments and debtors, attendance gradebook, schedule and classrooms, teacher payroll and a Telegram bot for students and parents. Built for Bishkek and all of Kyrgyzstan, priced in som."
   },
   "support": {
     "title": "Support",
@@ -6922,6 +6925,7 @@
     "mockLate": "past due",
     "mockSum": "{{n}} som",
     "fpTitle": "Every process in your center, in its place",
+    "fpEyebrow": "CRM features for learning centers",
     "fpSub": "Money, teaching, the schedule, your team and parents all live in one system — instead of a dozen spreadsheets and chats.",
     "fpPricing": "See pricing",
     "fpSections": "Sections",

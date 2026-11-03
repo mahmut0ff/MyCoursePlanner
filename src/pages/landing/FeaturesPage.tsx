@@ -40,6 +40,7 @@ const FeaturesPage: React.FC = () => {
 
       {/* ═══ Hero ═══ */}
       <header className="mx-auto max-w-[1200px] px-4 pb-12 pt-12 sm:px-8 sm:pt-20">
+        <p className="hero-rise mb-4 text-[14px] font-medium text-primary-600 dark:text-primary-400">{t('mkt.fpEyebrow')}</p>
         <h1
           className="hero-rise max-w-[20ch] text-balance text-[clamp(34px,4.6vw,56px)] font-semibold leading-[1.06] tracking-[-0.035em]"
         >

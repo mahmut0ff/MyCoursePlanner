@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /tg-login
+Disallow: /onboarding
+Disallow: /parent/
+Disallow: /test/
+Disallow: /take/
+Disallow: /quiz/
+Disallow: /viewer
+Disallow: /judge
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /.netlify/
+
+Sitemap: https://sabakhub.kg/sitemap.xml

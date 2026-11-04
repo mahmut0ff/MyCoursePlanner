@@ -3241,7 +3241,7 @@
     },
     "docsComingSoon": "Tez orada",
     "legalEyebrow": "Huquqiy ma'lumot",
-    "legalUpdated": "Oxirgi yangilanish: 2026-yil 15-iyun",
+    "legalUpdated": "Oxirgi yangilanish: 2026-yil 4-noyabr",
     "privacyIntro": "Biz maxfiyligingizni hurmat qilamiz. Bu yerda SabakHub qanday ma'lumotlarni to'plashi, ulardan qanday foydalanishimiz va sizning qanday huquqlaringiz borligi tasvirlangan.",
     "termsIntro": "Platformadan foydalanishni boshlashdan oldin SabakHub foydalanish shartlari bilan diqqat bilan tanishib chiqing."
   },
@@ -7194,5 +7194,12 @@
     "a1": "SabakHub'da talabalar, guruhlar va to'lovlar tarixini jadvallardan ko'chirish odatda bir kun oladi va buni biz o'zimiz qilamiz.",
     "q2": "Kichik markazga CRM kerakmi?",
     "a2": "Ha, agar qarzlar va davomat esingizda qolmay qolsa. Kichik markazga oyiga 1 990 somga 50 talabagacha bo'lgan tarif mos keladi."
+  },
+  "entity": {
+    "heading": "Rekvizitlar",
+    "short": "YaTT {{short}} · STIR {{inn}}",
+    "full": "YaTT {{person}}, STIR {{inn}}, OKPO {{okpo}}. Davlat ro'yxatidan o'tganlik guvohnomasi № {{reg}}, {{date}}, O'sh shahri bo'yicha Davlat soliq xizmati boshqarmasi tomonidan berilgan. Yuridik manzil: {{address}}.",
+    "privacyOperator": "Shaxsiy ma'lumotlar operatori va SabakHub xizmati egasi — YaTT {{person}}.",
+    "termsProvider": "SabakHub xizmatini YaTT {{person}} taqdim etadi (keyingi o'rinlarda — «Ijrochi»)."
   }
 }

@@ -2865,7 +2865,7 @@
     },
     "docsComingSoon": "Coming soon",
     "legalEyebrow": "Legal information",
-    "legalUpdated": "Last updated: June 15, 2026",
+    "legalUpdated": "Last updated: November 4, 2026",
     "privacyIntro": "We respect your privacy. This page describes what data SabakHub collects, how we use it and what rights you have.",
     "termsIntro": "Please read the SabakHub terms of use carefully before you start using the platform."
   },
@@ -7217,5 +7217,12 @@
     "a1": "With SabakHub, moving students, groups and payment history from spreadsheets usually takes one day, and we do it for you.",
     "q2": "Does a small center need a CRM?",
     "a2": "Yes, once debts and attendance no longer fit in your head. A small center fits the plan for up to 50 students at 1,990 som a month."
+  },
+  "entity": {
+    "heading": "Company details",
+    "short": "Sole proprietor {{short}} · TIN {{inn}}",
+    "full": "Sole proprietor {{person}}, TIN {{inn}}, OKPO {{okpo}}. State registration certificate No. {{reg}} dated {{date}}, issued by the State Tax Service office for Osh. Registered address: {{address}}.",
+    "privacyOperator": "The personal data controller and owner of the SabakHub service is sole proprietor {{person}}.",
+    "termsProvider": "The SabakHub service is provided by sole proprietor {{person}} (the “Provider”)."
   }
 }

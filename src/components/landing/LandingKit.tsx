@@ -7,6 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { APP_LOGIN_URL, TELEGRAM_LINK, isPlaceholder } from './ctaLinks';
 import { GUIDE_PATH, SOLUTIONS } from './solutions';
+import { LEGAL_ENTITY } from './legalEntity';
 
 /* ──────────────────────────────────────────────────────────────
    Marketing kit shared by the home page, /features and /login:
@@ -324,7 +325,9 @@ export const MktFooter: React.FC = () => {
         </div>
       </div>
       <div className="mx-auto mt-10 flex max-w-[1200px] flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-700">
-        <p className="text-[13px] text-slate-500 dark:text-slate-400">© {new Date().getFullYear()} SabakHub</p>
+        <p className="text-[13px] text-slate-500 dark:text-slate-400">
+          © {new Date().getFullYear()} SabakHub · <Link to="/terms#requisites" className={`rounded-sm hover:text-slate-900 dark:hover:text-slate-100 ${focusRing}`}>{t('entity.short', LEGAL_ENTITY)}</Link>
+        </p>
         <div className="flex items-center gap-0.5">
           <ThemeToggle />
           <LanguageSwitcher compact />

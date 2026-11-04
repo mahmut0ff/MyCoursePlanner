@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LegalLayout, type LegalSection } from '../../components/landing/LandingChrome';
+import { LEGAL_ENTITY } from '../../components/landing/legalEntity';
 
 /**
  * Политика конфиденциальности. Текст пока на русском (основной язык продукта)
@@ -68,6 +69,10 @@ const PrivacyPage: React.FC = () => {
       body: [
         t('legal.privacy.contact.p1', 'По вопросам конфиденциальности: hello@sabakhub.kg, Telegram @sabakhub_bot, г. Ош, Кыргызстан.'),
       ],
+    },
+    {
+      id: 'requisites', heading: t('entity.heading'),
+      body: [t('entity.privacyOperator', LEGAL_ENTITY), t('entity.full', LEGAL_ENTITY)],
     },
   ];
 

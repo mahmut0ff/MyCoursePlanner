@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Phone, MessageCircle, Send, Check } from 'lucide-react';
 import { LandingNav, LandingFooter, PageHero } from '../../components/landing/LandingChrome';
+import { LEGAL_ENTITY } from '../../components/landing/legalEntity';
 import { primaryBtn } from '../../components/landing/LandingKit';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 
@@ -90,6 +91,8 @@ const ContactPage: React.FC = () => {
                 );
               })}
             </ul>
+            <h2 className="mt-10 text-[15px] font-semibold">{t('entity.heading')}</h2>
+            <p className="mt-3 max-w-[48ch] text-[14px] leading-relaxed text-slate-600 dark:text-slate-400">{t('entity.full', LEGAL_ENTITY)}</p>
           </div>
         </section>
       </main>

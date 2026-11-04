@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LegalLayout, type LegalSection } from '../../components/landing/LandingChrome';
+import { LEGAL_ENTITY } from '../../components/landing/legalEntity';
 
 /**
  * Условия использования. Текст пока на русском (основной язык продукта)
@@ -77,6 +78,10 @@ const TermsPage: React.FC = () => {
       body: [
         t('legal.terms.contact.p1', 'По юридическим вопросам: hello@sabakhub.kg, Telegram @sabakhub_bot, г. Ош, Кыргызстан.'),
       ],
+    },
+    {
+      id: 'requisites', heading: t('entity.heading'),
+      body: [t('entity.termsProvider', LEGAL_ENTITY), t('entity.full', LEGAL_ENTITY)],
     },
   ];
 
